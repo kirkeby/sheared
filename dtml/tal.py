@@ -8,6 +8,24 @@ import abml
 class SyntaxError(Exception):
     pass
 
+def quote_html(s):
+    s = s.replace('&', '&amp;')
+    s = s.replace('"', '&quot;')
+    s = s.replace('<', '&lt;')
+    s = s.replace('>', '&gt;')
+    return s
+
+def htmlify(thing):
+    if isinstance(thing, types.StringTypes):
+        pass
+    elif isinstance(thing, types.IntType) \
+      or isinstance(thing, types.LongType) \
+      or isinstance(thing, types.FloatType):
+        thing = str(thing)
+    else:
+        raise ValueError, '%r is not string or number' % s
+    return quote_html(thing)
+
 def format_attribute(attr):
     if len(attr) == 2:
         ns, (name, value) = None, attr
@@ -20,7 +38,7 @@ def format_attribute(attr):
         s += '%s:' % ns
     s += name
     if not value is None:
-        s += '=%r' % str(value)
+        s += '="%s"' % htmlify(value)
     return s
 
 def format_tag(name, attributes):
@@ -247,16 +265,7 @@ def execute(program, context, exp):
             result += exp.execute(instruction[1], context)
 
         elif op == 'text':
-            s = exp.execute(instruction[1], context)
-            if isinstance(s, types.StringTypes):
-                s = s.replace('&', '&amp;')
-                s = s.replace('<', '&lt;')
-                s = s.replace('>', '&gt;')
-            elif isinstance(s, types.IntType) or isinstance(s, types.LongType) or isinstance(s, types.FloatType):
-                s = str(s)
-            else:
-                raise ValueError, '%r is not string or number' % s
-            result += s
+            result += htmlify(exp.execute(instruction[1], context))
 
         elif op == 'replace':
             (op, expr), block = instruction[1:]

@@ -32,7 +32,22 @@ class TALInterpreterTestCase(unittest.TestCase):
 
     def testAttribute(self):
         """Test tal:attribute."""
-        self.assertEquals(self.execute('<tag tal:attributes="src string:foo" />'), "<tag src='foo'></tag>")
+        self.assertEquals(self.execute('<tag tal:attributes="src string:foo" />'),
+                                       '<tag src="foo"></tag>')
+
+    def testAttributeQuoting(self):
+        """Test that attribute values are properly quoted."""
+        self.context['answer'] = 42
+        self.context['html'] = '<&>'
+        self.context['quotes'] = """\'\""""
+        code = """<tag tal:attributes='attr %s' />"""
+
+        self.assertEquals(self.execute(code % 'answer'),
+                          """<tag attr="42"></tag>""")
+        self.assertEquals(self.execute(code % 'html'),
+                          """<tag attr="&lt;&amp;&gt;"></tag>""")
+        self.assertEquals(self.execute(code % 'quotes'),
+                          """<tag attr="'&quot;"></tag>""")
 
     def testContent(self):
         """Test tal:content."""
