@@ -85,7 +85,14 @@ class ReactorFile:
     def write(self, data):
         self.reactor._write(self, data)
     def sendfile(self, file):
-        self.reactor._sendfile(file, self)
+        if isinstance(file, ReactorFile):
+            self.reactor._sendfile(file, self)
+        else:
+            while 1:
+                d = file.read()
+                if d == '':
+                    break
+                self.write(d)
     def seek(self, o, i):
         return os.lseek(self.fd, o, i)
     def close(self):
