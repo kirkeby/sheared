@@ -16,7 +16,25 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-__all__ = ['coroutine', 'fdpass', 'aio', 'daemonize', 'commands', 'io',
-           'benchmark', 'queue', 'path', 'application', 'conffile',
-           'process', 'log', 'logfile', 'proctitle', 'bitbucket',
-           'rfc822', 'sendmail', 'time_since', 'semaphore']
+
+import stackless
+
+class Semaphore:
+    def __init__(self):
+        self.channel = stackless.channel()
+        self.taken = 0
+        self.waiting = 0
+
+    def grab(self):
+        if self.taken:
+            self.waiting = self.waiting + 1
+            self.channel.receive()
+            self.waiting = self.waiting - 1
+        else:
+            self.taken = 1
+            
+    def release(self):
+        if self.waiting:
+            self.channel.send()
+        else:
+            self.taken = 0
