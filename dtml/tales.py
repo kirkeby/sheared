@@ -75,6 +75,8 @@ def walkPath(context, path):
         try:
             context = context[step]
             continue
+        except AttributeError:
+            pass
         except TypeError:
             pass
         except KeyError:
