@@ -211,6 +211,8 @@ class HTTPHeaders:
             raise KeyError, name
     def __getitem__(self, name):
         return self.get(name)
+    def keys(self):
+        return [ name for name, value in self.headers.values() ]
     def has_key(self, name):
         return self.headers.has_key(headerKey(name))
     def item(self, name):

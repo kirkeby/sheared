@@ -102,6 +102,7 @@ class HTTPHeadersTestCase(unittest.TestCase):
         self.assertEquals(len(http.splitHeaderList(h['header'])), 2)
         self.assertEquals(http.splitHeaderList(h['header'])[0], 'value')
         self.assertEquals(http.splitHeaderList(h['header'])[1], 'and this too')
+
     def testItems(self):
         """Test HTTPHeaders items method."""
         h = http.HTTPHeaders('One: \r\nTwo: \r\n')
@@ -113,6 +114,11 @@ class HTTPHeadersTestCase(unittest.TestCase):
         # XMMS breaks this :(
         #self.assertRaises(ValueError, http.HTTPHeaders, "Header:")
         self.assertRaises(ValueError, http.HTTPHeaders, "\r\n Header: bar")
+
+    def testKeys(self):
+        """Test HTTPHeaders.keys."""
+        h = http.HTTPHeaders("Foo: value\r\nBar: and this too")
+        self.assertEquals(h.keys(), ['Foo', 'Bar'])
 
 class HTTPRequestLineTestCase(unittest.TestCase):
     def testSimpleRequest(self):
