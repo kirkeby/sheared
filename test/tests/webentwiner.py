@@ -22,11 +22,8 @@ import unittest
 
 from sheared.web import entwiner
 
-class FakeReply:
-    def __init__(self):
-        self.sent = ''
-    def send(self, d):
-        self.sent = self.sent + d
+from tests.web import FakeReply, FakeRequest
+
 class EntwinerTestCase(unittest.TestCase):
     def testTemplatePage(self):
         class Foo(entwiner.Entwiner):
@@ -47,6 +44,21 @@ class EntwinerTestCase(unittest.TestCase):
         rep = FakeReply()
         ent.handle(None, rep, None)
         self.assertEquals(rep.sent, 'foo\n')
+
+    def testRequestContext(self):
+        class FooEntwiner(entwiner.Entwiner):
+            template_page = './test/http-docroot/page.html'
+            def entwine(self, request, reply, subpath):
+                pass
+
+        request = FakeRequest('/')
+        request.context = {'foo': 'fubar'}
+        reply = FakeReply()
+
+        foo = FooEntwiner()
+        foo.handle(request, reply, '')
+        
+        self.assertEquals(reply.sent, 'fubar\n')
 
 suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(EntwinerTestCase, 'test')])

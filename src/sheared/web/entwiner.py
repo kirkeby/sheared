@@ -35,10 +35,15 @@ class Entwiner(resource.NormalResource):
 
     def handle(self, request, reply, subpath):
         self.context = {}
+        if hasattr(request, 'context'):
+            self.context.update(request.context)
+
         self.entwine(request, reply, subpath)
+    
         for i in range(len(self.template_pages)):
             last = i == range(len(self.template_pages))
             r = self.execute(self.template_pages[i], throwaway=last)
+
         reply.send(r)
 
     def execute(self, path, throwaway=1):
