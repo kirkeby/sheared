@@ -27,11 +27,9 @@ setup(name = "Sheared", version = "0.1",
       packages = [
         'sheared', 'sheared.database', 'sheared.internet',
         'sheared.protocol', 'sheared.python', 'sheared.reactor',
-        'sheared.web', 'dtml'
+        'sheared.web'
       ],
       ext_modules = [
-        Extension("dtml.cabml",
-                  ["dtml/cabml.c"]),
         Extension("sheared.python.fdpass",
                   ["sheared/python/fdpass.c"]),
         Extension("sheared.python.aio",

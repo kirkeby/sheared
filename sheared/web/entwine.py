@@ -18,7 +18,7 @@
 #
 import warnings
 
-from dtml import tal, metal, tales
+from entwine import entwine
 
 from sheared.python import io
 
@@ -30,11 +30,7 @@ class Entwiner:
         reply.send(r)
 
     def execute(self, path, throwaway=1):
-        r = io.readfile(path)
-        c = tal.compile(r, tales)
-        r = tal.execute(c, self.context, tales)
-        c = metal.compile(r, tales)
-        r = metal.execute(c, self.context, tales)
+        r = entwine(io.readfile(path), self.context)
 
         if throwaway and r.strip():
             warnings.warn('%s: ignored non-macro content' % path)
