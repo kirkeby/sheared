@@ -64,7 +64,7 @@ def getstatusoutput(cmd, argv):
 
     return waitpid(pid)[1], out
 
-def waitpid(pid, interval=0):
+def waitpid(pid, interval=1):
     while 1:
         status = os.waitpid(pid, os.WNOHANG)
         if status[0]:
@@ -87,14 +87,21 @@ def isok(status):
         return 0
 
 def filter(cmd, argv, data):
-    def writer(pid, file, data):
-        file.write(data) ; file.close()
-        waitpid(pid)
+    class Writer:
+        def run(self, file, data):
+            file.write(data) ; file.close()
+    class Reader:
+        def run(self, file):
+            self.data = file.read() ; file.close()
+
+    writer = Writer()
+    in_reader = Reader()
+    er_reader = Reader()
  
     pid, stdin, stdout, stderr = spawn(cmd, argv, with_stderr=1)
-    reactor.createtasklet(writer, (pid, stdin, data))
-    out = stdout.read() ; stdout.close()
-    err = stderr.read() ; stderr.close()
+    reactor.createtasklet(writer.run, (stdin, data))
+    reactor.createtasklet(in_reader.run, (stdout,))
+    reactor.createtasklet(er_reader.run, (stderr,))
+    waitpid(pid)
 
-    return out, err
-
+    return in_reader.data, er_reader.data
