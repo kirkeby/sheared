@@ -120,14 +120,22 @@ class Reactor:
         self.stopped = 0
         self.stop = 0
 
+    def wake_sleepers(self):
+        now = self.time()
+        while (not self.sleeping.empty()) and (self.sleeping.minkey() <= now):
+            channel = self.sleeping.getmin()
+            channel.send(None)
+
     def start(self):
         self.started = 1
         self.tasklet.become()
 
         try:
             while not self.stop:
+                self.wake_sleepers()
                 while stackless.getruncount() > 1:
                     stackless.schedule()
+                    self.wake_sleepers()
 
                 r, w, e = self.buildselectable()
                 if self.sleeping.empty():
@@ -145,10 +153,7 @@ class Reactor:
                 except select.error, (eno, emsg):
                     self.flushunselectabels(r, w)
 
-                now = self.time()
-                while (not self.sleeping.empty()) and (self.sleeping.minkey() <= now):
-                    channel = self.sleeping.getmin()
-                    channel.send(None)
+                self.wake_sleepers()
 
                 fds = r + w
                 for fd in e:
@@ -215,6 +220,14 @@ class Reactor:
         channel = self.tasklet_channel[stackless.getcurrent()]
         self.sleeping.insert(self.time() + seconds, channel)
         return channel.receive()
+
+    def schedule(self):
+        if self.started and not self.stopped:
+            channel = self.tasklet_channel[stackless.getcurrent()]
+            self.sleeping.insert(0, channel)
+            return channel.receive()
+        else:
+            stackless.schedule()
 
     def time(self):
         return time.time()
