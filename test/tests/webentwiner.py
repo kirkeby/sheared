@@ -88,6 +88,23 @@ class EntwinerTestCase(unittest.TestCase):
         self.assertRaises(error.web.NotModified, foo.handle, request, reply, '')
         self.assertEquals(reply.sent, '')
 
+    def testContentLength(self):
+        class FooEntwiner(entwiner.Entwiner):
+            template_page = './test/http-docroot/foo.html'
+            def entwine(self, request, reply, subpath):
+                pass
+
+        # test with no match
+        request = FakeRequest('/')
+        request.context = {'foo': 'fubar'}
+        reply = FakeReply()
+
+        foo = FooEntwiner()
+        foo.handle(request, reply, '')
+        
+        self.assertEquals(reply.status, 200)
+        self.assertEquals(reply.sent, 'fubar\n')
+        self.assertEquals(reply.headers['content-length'], str(len(reply.sent)))
 
 suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(EntwinerTestCase, 'test')])

@@ -46,6 +46,8 @@ class Entwiner(resource.NormalResource):
             last = i == range(len(self.template_pages))
             r = self.execute(self.template_pages[i], throwaway=last)
 
+        reply.headers.setHeader('Content-Length', str(len(r)))
+
         # Conditional GET support
         if not reply.headers.has_key('ETag') and \
            not reply.headers.has_key('Last-Modified'):
