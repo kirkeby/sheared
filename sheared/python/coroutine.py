@@ -72,4 +72,19 @@ class DummyCoroutine:
 dummy = DummyCoroutine()
 tasklet_coroutines[id(dummy.tasklet)] = dummy
 
+class FIFO:
+    def __init__(self):
+        self.channel = stackless.channel()
+    def take(self):
+        args = self.channel.receive()
+        # see last comment in Coroutine.__call__,
+        if len(args) == 0:
+            return
+        if len(args) == 1:
+            return args[0]
+        else:
+            return args
+    def give(self, *args):
+        self.channel.send(args)
+
 __all__ = ['Coroutine', 'CoroutineFailed', 'CoroutineReturned']

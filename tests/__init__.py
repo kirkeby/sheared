@@ -1,1 +1,2 @@
-__all__ = ['coroutine', 'reactor', 'transport', 'protocol', 'http', 'database']
+__all__ = ['coroutine', 'reactor', 'transport', 'protocol', 'http',
+    'database', 'pool']
