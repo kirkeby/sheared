@@ -251,11 +251,6 @@ class Application:
         pass
 
     def start(self):
-        if self.daemonize and not self.logfile:
-            self.logfile = self.name + '.log'
-        if self.daemonize and not self.pidfile:
-            self.pidfile = self.name + '.pid'
-
         if self.logfile:
             daemonize.openstdlog(self.logfile)
 
