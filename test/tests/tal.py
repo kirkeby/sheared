@@ -10,12 +10,13 @@ from dtml import context
 # textual representation here...
 class TALInterpreterTestCase(unittest.TestCase):
     def setUp(self):
-        self.context = context.Context()
-        self.builtins = context.BuiltIns({})
-        self.context.setDefaults(self.builtins)
+        self.context = {
+            'nothing': None,
+            'default': self,
+        }
 
     def execute(self, xml):
-        return tal.execute(tal.compile(xml, tales.compile), self.context, self.builtins, tales.execute)
+        return tal.execute(tal.compile(xml, tales), self.context, tales)
 
     def testVanillaXML(self):
         """Test with plain, vanilla XML."""

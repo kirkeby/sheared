@@ -20,8 +20,7 @@ class ProtocolFactoryTestCase(unittest.TestCase):
 
 class EchoServerTestCase(unittest.TestCase):
     def setUp(self):
-        self.reactor = reactor.current
-        self.reactor.reset()
+        self.reactor = reactor.current.__class__()
         self.protocol = echo.EchoServer
         self.factory = basic.ProtocolFactory(self.reactor, self.protocol)
 

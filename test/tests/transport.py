@@ -55,7 +55,8 @@ class StringTransportTestCase(unittest.TestCase):
 class FileTransportTestCase(unittest.TestCase):
     def testRead(self):
         path = os.path.dirname(sys.argv[0])
-        t = transport.FileTransport(reactor.current, open('%s/http-docroot/hello.txt' % path, 'r'), 'some-file')
+        path = '%s/../http-docroot/hello.txt' % path
+        t = transport.FileTransport(reactor.current, open(path, 'r'), 'some-file')
         data = ''
         while 1:
             r = t.read()
