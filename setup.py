@@ -27,7 +27,7 @@ setup(name = "Sheared", version = "0.1",
         'sheared', 'sheared.database', 'sheared.protocol',
         'sheared.python', 'sheared.reactors', 'sheared.web',
         'sheared.web.server', 'sheared.web.collections',
-        'skewed', 'skewed.wsgi', 'skewed.web',
+        'skewed', 'skewed.wsgi', 'skewed.wsgi.misc', 'skewed.web',
       ],
       package_dir = { '': 'src' },
       ext_modules = [
