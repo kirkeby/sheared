@@ -156,9 +156,11 @@ def parseHeaderLines(s):
 
 def parseHeaderLine(s):
     try:
-        name, value = s.split(': ')
+        name, value = s.split(':')
         if not name:
             raise ValueError
+        name = name.strip()
+        value = value.strip()
     except ValueError:
         raise ValueError('"%s" is not a proper HTTP header' % s)
     return name, value
