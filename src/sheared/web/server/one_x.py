@@ -61,10 +61,11 @@ class HTTPReply:
 
     def sendHead(self):
         assert not self.decapitated
-        self.decapitated = 1
 
         for cb in self.server.massageReplyHeadCallbacks:
             cb(self.request, self)
+
+        self.decapitated = 1
 
         self.transport.write('HTTP/%d.%d ' % self.version)
         reason = http.http_reason.get(self.status, 'Unknown Status')
