@@ -59,6 +59,8 @@ http_reason[http.HTTP_NOT_FOUND] = \
 #    "\r\n" \
 #    "-- Judy Birmingham"
 
+def movedHandler(server, exc_info, request, reply):
+    send_http_error_page(reply, None)
 def notModifiedHandler(server, exc_info, request, reply):
     reply.sendHead()
     reply.done()
@@ -119,6 +121,7 @@ class HTTPServer:
         self.errorHandlers = [
             (error.web.WebServerError, defaultErrorHandler),
             (error.web.NotModified, notModifiedHandler),
+            (error.web.Moved, movedHandler),
             (error.web.InternalServerError, internalServerErrorHandler),
         ]
 
