@@ -26,17 +26,6 @@ from sheared import error
 from tests.web import FakeReply, FakeRequest
 
 class EntwinerTestCase(unittest.TestCase):
-    def testTemplatePage(self):
-        class Foo(entwiner.Entwiner):
-            template_page = './test/http-docroot/foo.html'
-            def entwine(self, request, reply, subpath):
-                self.context['foo'] = 'foo'
-        ent = Foo()
-        req = FakeRequest()
-        rep = FakeReply()
-        ent.handle(req, rep, None)
-        self.assertEquals(rep.sent, 'foo\n')
-
     def testTemplatePages(self):
         class Foo(entwiner.Entwiner):
             template_pages = ['./test/http-docroot/foo.html']
@@ -46,11 +35,11 @@ class EntwinerTestCase(unittest.TestCase):
         req = FakeRequest()
         rep = FakeReply()
         ent.handle(req, rep, None)
-        self.assertEquals(rep.sent, 'foo\n')
+        self.assertEquals(rep.sent, 'foo')
 
     def testRequestContext(self):
         class FooEntwiner(entwiner.Entwiner):
-            template_page = './test/http-docroot/foo.html'
+            template_pages = ['./test/http-docroot/foo.html']
             def entwine(self, request, reply, subpath):
                 pass
 
@@ -61,11 +50,11 @@ class EntwinerTestCase(unittest.TestCase):
         foo = FooEntwiner()
         foo.handle(request, reply, '')
         
-        self.assertEquals(reply.sent, 'fubar\n')
+        self.assertEquals(reply.sent, 'fubar')
 
     def testConditionalGet(self):
         class FooEntwiner(entwiner.Entwiner):
-            template_page = './test/http-docroot/foo.html'
+            template_pages = ['./test/http-docroot/foo.html']
             def entwine(self, request, reply, subpath):
                 pass
 
@@ -79,7 +68,7 @@ class EntwinerTestCase(unittest.TestCase):
         foo.handle(request, reply, '')
         
         self.assertEquals(reply.status, 200)
-        self.assertEquals(reply.sent, 'fubar\n')
+        self.assertEquals(reply.sent, 'fubar')
 
         # test with match
         request.headers.setHeader('If-None-Match', reply.headers['ETag'])
@@ -90,7 +79,7 @@ class EntwinerTestCase(unittest.TestCase):
 
     def testContentLength(self):
         class FooEntwiner(entwiner.Entwiner):
-            template_page = './test/http-docroot/foo.html'
+            template_pages = ['./test/http-docroot/foo.html']
             def entwine(self, request, reply, subpath):
                 pass
 
@@ -103,7 +92,7 @@ class EntwinerTestCase(unittest.TestCase):
         foo.handle(request, reply, '')
         
         self.assertEquals(reply.status, 200)
-        self.assertEquals(reply.sent, 'fubar\n')
+        self.assertEquals(reply.sent, 'fubar')
         self.assertEquals(reply.headers['content-length'], str(len(reply.sent)))
 
 suite = unittest.TestSuite()
