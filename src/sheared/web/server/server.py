@@ -37,7 +37,7 @@ class HTTPServer:
 
         self.errorlog = None
 
-        self.requestCallbacks = [self.logCompletedRequest]
+        self.requestCallbacks = []
 
     def addVirtualHost(self, name, vhost):
         self.hosts[name] = vhost
