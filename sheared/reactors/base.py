@@ -29,8 +29,7 @@ class ReactorFile:
         self.reactor = reactor
         self.closed = 0
     def __del__(self):
-        if not self.closed:
-            self.close()
+        self.close()
     def __repr__(self):
         return '<ReactorFile %s>' % self.other
 
@@ -56,8 +55,8 @@ class ReactorSocket(ReactorFile):
     def __repr__(self):
         return '<ReactorSocket %s>' % self.socket
     def close(self):
-        assert not self.closed
-        self.socket.close()
+        if not self.closed:
+            self.socket.close()
         self.closed = 1
 
 class Reactor:

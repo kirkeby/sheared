@@ -25,8 +25,10 @@ from sheared.python import path
 from sheared.protocol import http
 from sheared.web import resource
 
-class StaticCollection:
+class StaticCollection(resource.GettableResource):
     def __init__(self):
+        resource.GettableResource.__init__(self)
+
         self.bindings = {}
         self.index = 'index'
 

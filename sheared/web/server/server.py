@@ -58,20 +58,19 @@ class HTTPServer:
                 raise error.web.NotImplementedError, 'HTTP Version not supported'
 
         except error.web.WebServerError, e:
+            self.logInternalError(sys.exc_info())
+
             if len(e.args) == 1 and isinstance(e.args[0], types.StringType):
                 err = e.args[0]
             else:
                 err = 'Unknown why?!'
+
             transport.write('HTTP/1.0 %d %s\r\n' % (e.statusCode, err))
             transport.write('Content-Type: text/plain\r\n\r\n')
             transport.write('Crashing in flames!\r\n')
-            transport.close()
 
         except:
-            transport.write('HTTP/1.0 500 Crashing in flames!\r\n')
-            transport.write('Content-Type: text/plain\r\n\r\n')
-            transport.write('Crashing in flames!\r\n')
-            transport.close()
+            self.logInternalError(sys.exc_info())
 
     def handle(self, request, reply):
         try:
@@ -102,8 +101,6 @@ class HTTPServer:
                 reply.headers.setHeader('Content-Type', 'text/plain')
                 reply.send("I am terribly sorry, but an error (%d) occured "
                            "while processing your request.\r\n" % e.statusCode)
-                
-        reply.done()
 
     def logInternalError(self, (tpe, val, tb)):
         traceback.print_exception(tpe, val, tb)
