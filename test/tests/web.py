@@ -23,7 +23,8 @@ import unittest, os, random, signal, time
 from sheared import reactor
 from sheared import error
 from sheared.protocol import http
-from sheared.web import server, subserver, collection, querystring, virtualhost, resource
+from sheared.web import server, subserver, querystring, virtualhost, resource
+from sheared.web.collections.filesystem import FilesystemCollection
 from sheared.python import commands
 
 from tests import transport
@@ -161,7 +162,8 @@ class FilesystemCollectionTestCase(unittest.TestCase):
         self.reactor = reactor
         
         self.server = server.HTTPServer()
-        vhost = virtualhost.VirtualHost(collection.FilesystemCollection('./test/http-docroot'))
+        root = FilesystemCollection('./test/http-docroot')
+        vhost = virtualhost.VirtualHost(root)
         self.server.addVirtualHost('foo.com', vhost)
 
         self.transport = transport.StringTransport()
