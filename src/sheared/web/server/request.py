@@ -30,6 +30,7 @@ class HTTPRequest:
         self.path = requestline.uri[2]
         self.headers = headers
         self.body = body
+        self.head_only = 0
 
         self.cookies = {}
         cookies = self.headers.get('Cookie', '')

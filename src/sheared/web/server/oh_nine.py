@@ -28,12 +28,16 @@ class HTTPReply:
         self.headers = http.HTTPHeaders()
         self.cookies = {}
 
+        self.head_only = 0
         self.decapitated = 0
 
     def __getstate__(self):
-        return self.decapitated
+        return {
+            'decapitated': self.decapitated,
+            'head_only': self.head_only,
+        }
     def __setstate__(self, state):
-        self.decapitated = state
+        self.__dict__.update(state)
         self.transport = None
         self.headers = http.HTTPHeaders()
 

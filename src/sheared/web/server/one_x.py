@@ -35,6 +35,7 @@ class HTTPReply:
 
         self.cookies = []
 
+        self.head_only = 0
         self.decapitated = 0
 
     def __getstate__(self):
@@ -42,6 +43,7 @@ class HTTPReply:
            'status': self.status, 
            'version': self.version, 
            'headers': self.headers, 
+           'head_only': self.head_only,
            'decapitated': self.decapitated, 
            'cookies': self.cookies,
         }
@@ -70,7 +72,8 @@ class HTTPReply:
     def send(self, data):
         if not self.decapitated:
             self.sendHead()
-        self.transport.write(data)
+        if not self.head_only:
+            self.transport.write(data)
 
     def sendfile(self, file):
         if not self.decapitated:

@@ -33,12 +33,17 @@ class GettableResource(Resource):
     def __init__(self):
         Resource.__init__(self)
         self.method_parsers['GET'] = self.parseGet
+        self.method_parsers['HEAD'] = self.parseHead
 
     def parseGet(self, request, reply):
         if request.body:
             raise error.web.BadRequestError
         qs = request.requestline.uri[3]
         request.args = querystring.HTTPQueryString(qs)
+
+    def parseHead(self, request, reply):
+        self.parseGet(request, reply)
+        request.head_only = reply.head_only = 1
 
 class PostableResource(Resource):
     def __init__(self):
