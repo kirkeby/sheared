@@ -64,6 +64,8 @@ def movedHandler(server, exc_info, request, reply):
 def notModifiedHandler(server, exc_info, request, reply):
     reply.sendHead()
     reply.done()
+def notFoundErrorHandler(server, exc_info, request, reply):
+    send_http_error_page(reply, None)
 
 def internalServerErrorHandler(server, exc_info, request, reply):
     send_http_error_page(reply, None)
@@ -122,6 +124,7 @@ class HTTPServer:
             (error.web.WebServerError, defaultErrorHandler),
             (error.web.NotModified, notModifiedHandler),
             (error.web.Moved, movedHandler),
+            (error.web.NotFoundError, notFoundErrorHandler),
             (error.web.InternalServerError, internalServerErrorHandler),
         ]
 
@@ -235,7 +238,14 @@ class HTTPServer:
         if not handler:
             raise error.web.InternalServerError
 
-        handler[1](self, exc_info, request, reply)
+        try:
+            handler[1](self, exc_info, request, reply)
+        except error.web.NotModified:
+            notModifiedHandler(None, None, request, reply)
+        except error.web.Moved:
+            movedHandler(None, None, request, reply)
+        except error.web.WebServerError:
+            notFoundErrorHandler(None, None, request, reply)
 
     def logInternalError(self, exc_info):
         if self.errorlog:
