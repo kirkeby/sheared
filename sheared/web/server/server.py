@@ -119,6 +119,18 @@ class HTTPServer:
                 reply.headers.setHeader('Content-Type', 'text/plain')
                 self.handleWebServerError(e, request, reply)
 
+        self.handleCompletedRequest(request, reply)
+     
+    def handleCompletedRequest(self, request, reply):
+        print reply.status,
+        print '<%s>' % request.requestline.wire_uri,
+        if request.headers.has_key('Referer'):
+           print '<%s>' % request.headers.get('Referer'),
+        else:
+            print '<>',
+        print reply.transport.other,
+        print
+
     def handleWebServerError(self, e, request, reply):
         if isinstance(e, error.web.Moved):
             reply.send("This page has moved. You can now find it here:\r\n"
