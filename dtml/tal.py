@@ -24,7 +24,7 @@ def format_attribute(attr):
     return s
 
 def format_tag(name, attributes):
-    words = [name]
+    words = [abml.format_name(name)]
     words.extend(map(format_attribute, attributes))
     return '<%s>' % ' '.join(words)
 
@@ -223,7 +223,7 @@ def optimize_tal(program, exp):
         name, attrs, block = optimized[0][1:]
         optimized[0:1] = [('static', format_tag(name, attrs))] + \
                          optimized[0][3] + \
-                         [('static', '</%s>' % name)]
+                         [('static', '</%s>' % abml.format_name(name))]
 
     # FIXME -- this would look sooooo much better with pattern-matching :(
     while len(optimized) > 1 and optimized[0][0] == 'static' and optimized[1][0] == 'static':
@@ -295,7 +295,7 @@ def execute(program, context, builtins, exp):
                 result += format_tag(name, attrs)
             result += content
             if not omit_tag:
-                result += '</%s>' % name
+                result += '</%s>' % abml.format_name(name)
 
         elif op == 'define':
             olv = {}
