@@ -22,13 +22,15 @@ import unittest
 
 from sheared import error
 
-from sheared.web.resource import MovedResource
+from sheared.web.resource import MovedResource, AliasedResource
+from sheared.web.collections.static import StaticCollection
+from sheared.web.virtualhost import VirtualHost
 
-from web import FakeRequest, FakeReply
+from web import FakeRequest, FakeReply, FakeResource
 
 class MovedResourceTestCase(unittest.TestCase):
     def testShallow(self):
-        request = FakeRequest('foo')
+        request = FakeRequest('GET /foo HTTP/1.0')
         reply = FakeReply()
 
         coll = MovedResource('bar')
@@ -37,7 +39,7 @@ class MovedResourceTestCase(unittest.TestCase):
         self.assertEquals(reply.headers['location'], 'bar')
 
     def testDeep(self):
-        request = FakeRequest('fubar')
+        request = FakeRequest('GET /fubar HTTP/1.0')
         reply = FakeReply()
 
         coll = MovedResource('fu')
@@ -46,7 +48,28 @@ class MovedResourceTestCase(unittest.TestCase):
                           request, reply, '')
         self.assertEquals(reply.headers['location'], 'fu/bar')
 
+class AliasedResourceTestCase(unittest.TestCase):
+    def testGet(self):
+        request = FakeRequest('GET /alias HTTP/1.0')
+        reply = FakeReply()
+
+        orig = FakeResource()
+        alias = AliasedResource(orig, 'real')
+        coll = StaticCollection()
+        coll.bind('real', orig)
+        coll.bind('alias', alias)
+        vh = VirtualHost(coll)
+
+        vh.handle(request, reply)
+        
+        self.assertEquals(reply.status, 200)
+        self.assertEquals(reply.headers.has_key('Location'), 1)
+        self.assertEquals(reply.headers['Location'], 'real')
+        self.assertEquals(reply.headers['Content-Type'], 'text/plain')
+        self.assertEquals(reply.sent, 'Welcome to foo!\r\n')
+
 suite = unittest.TestSuite()
+suite.addTests([unittest.makeSuite(AliasedResourceTestCase, 'test')])
 suite.addTests([unittest.makeSuite(MovedResourceTestCase, 'test')])
 
 __all__ = ['suite']

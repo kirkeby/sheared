@@ -54,7 +54,7 @@ class EntwinerTestCase(unittest.TestCase):
             def entwine(self, request, reply, subpath):
                 pass
 
-        request = FakeRequest('/')
+        request = FakeRequest()
         request.context = {'foo': 'fubar'}
         reply = FakeReply()
 
@@ -70,7 +70,7 @@ class EntwinerTestCase(unittest.TestCase):
                 pass
 
         # test with no match
-        request = FakeRequest('/')
+        request = FakeRequest()
         request.context = {'foo': 'fubar'}
         request.headers.setHeader('If-None-Match', 'abc')
         reply = FakeReply()
@@ -95,7 +95,7 @@ class EntwinerTestCase(unittest.TestCase):
                 pass
 
         # test with no match
-        request = FakeRequest('/')
+        request = FakeRequest()
         request.context = {'foo': 'fubar'}
         reply = FakeReply()
 

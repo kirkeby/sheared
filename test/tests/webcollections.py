@@ -25,6 +25,7 @@ import unittest
 from sheared.web.collections.filesystem import FilesystemCollection
 from sheared.web.collections.entwined import EntwinedCollection
 from sheared.web.collections.static import StaticCollection
+from sheared.web.virtualhost import VirtualHost
 
 from sheared.protocol import http
 from sheared.python import io
@@ -36,7 +37,7 @@ class FilesystemCollectionTestCase(unittest.TestCase):
     def doRequest(self, coll, uri, request=None):
         reply = FakeReply()
         if not request:
-            request = FakeRequest(uri)
+            request = FakeRequest('GET %s HTTP/1.0' % uri)
 
         try:
             rsrc = coll
@@ -71,7 +72,7 @@ class FilesystemCollectionTestCase(unittest.TestCase):
         last_mod = os.stat('./test/http-docroot/hello.py')[8]
 
         coll = FilesystemCollection('./test/http-docroot')
-        request = FakeRequest('/hello.py')
+        request = FakeRequest('GET /hello.py HTTP/1.0')
         request.headers.setHeader('If-Modified-Since',
                                  str(http.HTTPDateTime(0)))
         reply = self.doRequest(coll, '/hello.py', request)
@@ -89,7 +90,7 @@ class FilesystemCollectionTestCase(unittest.TestCase):
         last_mod = os.stat('./test/http-docroot/hello.py')[8]
 
         coll = FilesystemCollection('./test/http-docroot')
-        request = FakeRequest('/hello.py')
+        request = FakeRequest('GET /hello.py HTTP/1.0')
         request.headers.setHeader('If-Modified-Since',
                                  str(http.HTTPDateTime(last_mod)))
         reply = self.doRequest(coll, '/hello.py', request)
@@ -107,7 +108,7 @@ class FilesystemCollectionTestCase(unittest.TestCase):
         last_mod = os.stat('./test/http-docroot/hello.py')[8]
 
         coll = FilesystemCollection('./test/http-docroot')
-        request = FakeRequest('/hello.py')
+        request = FakeRequest('GET /hello.py HTTP/1.0')
         request.headers.setHeader('If-Modified-Since',
                                  str(http.HTTPDateTime(int(time.time()))))
         reply = self.doRequest(coll, '/hello.py', request)
@@ -169,7 +170,7 @@ class EntwinedCollectionTestCase(unittest.TestCase):
         coll = EntwinedCollection(['./test/http-docroot/page.html'],
                                   './test/http-docroot')
         
-        request = FakeRequest('/index.html')
+        request = FakeRequest('GET /index.html HTTP/1.0')
         reply = FakeReply()
 
         child = coll.getChild(request, reply, 'index.html')
@@ -203,11 +204,7 @@ class StaticCollectionTestCase(unittest.TestCase):
 
     def testHandleIndex(self):
         gadget = Gadget()
-        class FakeRequest:
-            path = '/'
-        request = FakeRequest()
-        class FakeReply:
-            headers = http.HTTPHeaders()
+        request = FakeRequest('GET / HTTP/1.0')
         reply = FakeReply()
     
         coll = StaticCollection()
@@ -218,17 +215,14 @@ class StaticCollectionTestCase(unittest.TestCase):
 
     def testHandleRedirect(self):
         gadget = Gadget()
-        class FakeRequest:
-            path = 'foo'
-        request = FakeRequest()
-        class FakeReply:
-            headers = http.HTTPHeaders()
+        request = FakeRequest('GET /foo HTTP/1.0')
         reply = FakeReply()
     
         coll = StaticCollection()
         coll.bind('foo/bar', gadget)
+        vh = VirtualHost(coll)
         
-        self.assertRaises(error.web.Moved, coll.handle, request, reply, 'foo')
+        self.assertRaises(error.web.Moved, vh.handle, request, reply)
         self.assertEquals(reply.headers['location'], 'foo/')
 
 suite = unittest.TestSuite()

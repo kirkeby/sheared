@@ -80,3 +80,16 @@ class MovedResource(NormalResource):
         assert not subpath
         reply.headers.setHeader('Location', self.destination)
         raise error.web.MovedPermanently
+
+class AliasedResource:
+    def __init__(self, resource, location):
+        self.resource = resource
+        self.location = location
+
+    def getMethodParser(self, method):
+        return self.resource.getMethodParser(method)
+
+    def handle(self, request, reply, subpath):
+        assert not subpath
+        reply.headers.setHeader('Location', self.location)
+        self.resource.handle(request, reply, subpath)

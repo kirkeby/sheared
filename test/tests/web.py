@@ -24,15 +24,17 @@ from sheared import reactor
 from sheared import error
 from sheared.protocol import http
 from sheared.web import server, subserver, virtualhost, resource
+from sheared.web.collections.collection import Collection
+from sheared.web.server.request import HTTPRequest
 from sheared.python import commands
 
 from tests import transport
 
-class FakeRequest:
-    def __init__(self, uri='/', head_only=0):
-        self.path = uri
-        self.headers = http.HTTPHeaders()
-        self.head_only = head_only
+class FakeRequest(HTTPRequest):
+    def __init__(self, requestline='GET / HTTP/1.0', headers='', body=''):
+        requestline = http.HTTPRequestLine(requestline)
+        headers = http.HTTPHeaders(headers)
+        HTTPRequest.__init__(self, requestline, headers, body)
 
 class FakeReply:
     def __init__(self, head_only=0):
@@ -51,34 +53,45 @@ class FakeReply:
     def done(self):
         self.done = 1
 
-class SimpleCollection(resource.GettableResource):
-    def __init__(self, name):
+class FakeResource(resource.GettableResource):
+    def __init__(self, name='foo'):
         resource.GettableResource.__init__(self)
         self.name = name
 
     def handle(self, request, reply, subpath):
-        if subpath == '':
-            content = """Welcome to %s!\r\n""" % self.name
-            last_mod = http.HTTPDateTime(300229200)
+        content = """Welcome to %s!\r\n""" % self.name
+        last_mod = http.HTTPDateTime(300229200)
+        
+        reply.headers.setHeader('Content-Type', 'text/plain')
+        reply.headers.setHeader('Content-Length', len(content))
+        reply.headers.setHeader('Last-Modified', last_mod)
+        reply.headers.setHeader('ETag', 'abc')
+        
+        if not request.head_only:
+            if request.headers.has_key('If-None-Match'):
+                if request.headers['If-None-Match'] == 'abc':
+                    raise error.web.NotModified
             
-            reply.headers.setHeader('Content-Type', 'text/plain')
-            reply.headers.setHeader('Content-Length', len(content))
-            reply.headers.setHeader('Last-Modified', last_mod)
-            reply.headers.setHeader('ETag', 'abc')
+            if request.headers.has_key('If-Modified-Since'):
+                when = http.HTTPDateTime(request.headers['If-Modified-Since'])
+                if not last_mod > when:
+                    raise error.web.NotModified
             
-            if not request.head_only:
-                if request.headers.has_key('If-None-Match'):
-                    if request.headers['If-None-Match'] == 'abc':
-                        raise error.web.NotModified
-                
-                if request.headers.has_key('If-Modified-Since'):
-                    when = http.HTTPDateTime(request.headers['If-Modified-Since'])
-                    if not last_mod > when:
-                        raise error.web.NotModified
-                
-            reply.send(content)
-            reply.done()
+        reply.send(content)
+        reply.done()
 
+class SimpleCollection(Collection):
+    def __init__(self, name):
+        resource.GettableResource.__init__(self)
+        self.name = name
+        self.resource = FakeResource(name)
+
+    def getChild(self, request, reply, subpath):
+        if subpath == '':
+            return self.resource
+        elif subpath == 'moved':
+            reply.headers.setHeader('Location', '/')
+            raise error.web.MovedPermanently
         else:
             raise error.web.NotFoundError
 
