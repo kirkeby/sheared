@@ -1,6 +1,9 @@
 class Error(StandardError):
     pass
 
+class CursorEmpty(Error):
+    pass
+
 class InterfaceError(Error):
     pass
 

@@ -13,7 +13,7 @@ class DummyCursor:
         if self.cursor is None:
             raise error.ProgrammingError, 'cursor has been released'
         if self.cursor == len(self.rows):
-            return
+            raise error.CursorEmpty, 'no more rows in cursor'
         c, self.cursor = self.cursor, self.cursor + 1
         return self.rows[c]
 
@@ -21,7 +21,7 @@ class DummyCursor:
         if self.cursor is None:
             raise error.ProgrammingError, 'cursor has been released'
         if self.cursor == len(self.rows):
-            return
+            raise error.CursorEmpty, 'no more rows in cursor'
         c, self.cursor = self.cursor, len(self.rows)
         return self.rows[c:]
 
