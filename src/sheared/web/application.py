@@ -2,7 +2,7 @@ from sheared.python.application import Application
 from sheared.python import log
 from sheared.python.logfile import LogFile
 from sheared.python.bitbucket import BitBucket
-from sheared.web.log import AccessLog
+from sheared.web.log import CombinedLog
 from sheared.web.server import HTTPServer
 from sheared.web.subserver import HTTPSubServer
 from sheared.web.virtualhost import VirtualHost
@@ -53,7 +53,7 @@ class WebserverApplication(Application):
         self.webserver.setDefaultHost(self.hostname)
 
         if self.accesslog:
-            accesslog = AccessLog(LogFile(self.accesslog))
+            accesslog = CombinedLog(LogFile(self.accesslog))
             self.webserver.requestCallback.append(accesslog.logRequest)
         if self.errorlog:
             self.webserver.setErrorLog(LogFile(self.errorlog))
