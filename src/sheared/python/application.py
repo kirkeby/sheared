@@ -247,7 +247,7 @@ class Application:
 
         for opt, val in opts:
             for handler, value, name, short, long, conf, description in self.options:
-                if (opt == '-' + short) or (opt == '--' + long):
+                if (short and opt == '-' + short) or (long and opt == '--' + long):
                     break
             else:
                 raise 'Internal error, dropped an option on the floor: %r' % opt
