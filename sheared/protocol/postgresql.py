@@ -5,8 +5,13 @@ import struct
 import string
 import array
 
+from sheared.python import coroutine
+
 from sheared.database import error
 from sheared.database import dummy
+
+class ProtocolError(error.OperationalError):
+    pass
 
 class IncompletePacket(Exception):
     pass
@@ -202,6 +207,20 @@ def parsePacket(client, data, columns=None):
 
     raise UnknownPacket(orig_data)
 
+class PostgresqlClientFactory:
+    def __init__(self, user, password='', database='', args='', tty=''):
+        self.user = user
+        self.password = password
+        self.database = database
+        self.args = args
+        self.tty = tty
+
+    def connected(self, transport):
+        cl = PostgresqlClient(transport)
+        cl.factory = self
+        cl.connected()
+        return cl
+    
 # FIXME -- From the Postgresql Developers Manual section 4.2.1:
 #
 # A frontend must be prepared to accept ErrorResponse and NoticeResponse
@@ -218,30 +237,19 @@ def parsePacket(client, data, columns=None):
 # to accept NotificationResponse messages at any time; see below.
 
 class PostgresqlClient:
-    def __init__(self, reactor, transport, user, password='', database='', args='', tty=''):
-        # gratitous argument, but it lets us treat this like a normal Protocol, which
-        # is kind of nice...
-        #self.reactor = reactor
+    def __init__(self, transport):
         self.transport = transport
-
-        self.user = user
-        self.password = password
-        self.database = database
-        self.backend_args = args
-        self.backend_tty = tty
 
         self.buffer = ''
 
-        self._sendPacket(StartupPacket(self.user, self.database))
+    def connected(self):
+        self._sendPacket(StartupPacket(self.factory.user, self.factory.database))
         reply = self._readPacket(AuthenticationPacket)
         if not reply.authentication == 0:
             s = 'Got request for unsupported authentication: %d' % reply.authentication
-            raise error.ProtocolError, s
+            raise ProtocolError, s
         reply = self._readPacket(BackendKeyDataPacket)
         reply = self._readPacket(ReadyForQueryPacket)
-
-    def begin(self):
-        self._sendPacket
 
     def query(self, query):
         self._sendPacket(QueryPacket(query))
@@ -331,4 +339,4 @@ class PostgresqlClient:
 
         return packet
 
-__all__ = ['PostgresqlClient']
+__all__ = ['PostgresqlClient', 'PostgresqlClientFactory']
