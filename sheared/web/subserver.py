@@ -29,7 +29,7 @@ class HTTPSubServerCollection:
         self.path = path
 
     def handle(self, request, reply, subpath):
-        transport = reactor.current.connectUNIX(self.path)
+        transport = reactor.connectUNIX(self.path)
         fdpass.send(transport.fileno(), reply.transport.fileno(), pickle.dumps(reply.transport.other))
         pickle.dump((request, subpath), transport)
         transport.close()
@@ -54,7 +54,7 @@ class HTTPSubServer(server.HTTPServer):
         transport.close()
         request, subpath = pickle.loads(data)
 
-        transport = reactor.current.createTransport(sock, addr)
+        transport = reactor.openfd(sock, addr)
         reply = server.HTTPReply(request.version, transport)
         self.handle(request, reply)
 

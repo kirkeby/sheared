@@ -18,13 +18,15 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import unittest, os, random, signal, commands, time
+import unittest, os, random, signal, time
 
 from sheared import reactor
 from sheared import error
-from sheared.reactor import transport
 from sheared.protocol import http
 from sheared.web import server, subserver, collection
+from sheared.python import commands
+
+from tests import transport
 
 class SimpleCollection:
     def __init__(self, name):
@@ -57,19 +59,19 @@ def parseReply(reply):
 
 class HTTPServerTestCase(unittest.TestCase):
     def setUp(self):
-        self.reactor = reactor.current.__class__()
-
         self.server = server.HTTPServer()
         self.server.addVirtualHost('foo.com', SimpleCollection('foo.com'))
         self.server.addVirtualHost('bar.com', SimpleCollection('bar.com'))
         self.server.setDefaultHost('bar.com')
 
         self.transport = transport.StringTransport()
+
+        self.reactor = reactor
         self.reactor.createtasklet(self.server.startup, (self.transport,))
 
     def testFullRequestWithFoo(self):
         self.transport.appendInput('''GET / HTTP/1.0\r\nHost: foo.com\r\n\r\n''')
-        self.reactor.run()
+        self.reactor.start()
 
         status, headers, body = parseReply(self.transport.getOutput())
         
@@ -79,7 +81,7 @@ class HTTPServerTestCase(unittest.TestCase):
 
     def testFullRequestWithBar(self):
         self.transport.appendInput('''GET / HTTP/1.0\r\nHost: bar.com\r\n\r\n''')
-        self.reactor.run()
+        self.reactor.start()
 
         status, headers, body = parseReply(self.transport.getOutput())
         
@@ -89,7 +91,7 @@ class HTTPServerTestCase(unittest.TestCase):
 
     def testFullRequestWithBlech(self):
         self.transport.appendInput('''GET / HTTP/1.0\r\nHost: blech.com\r\n\r\n''')
-        self.reactor.run()
+        self.reactor.start()
 
         status, headers, body = parseReply(self.transport.getOutput())
         
@@ -100,7 +102,7 @@ class HTTPServerTestCase(unittest.TestCase):
     def testFullRequestWithoutDefault(self):
         self.server.setDefaultHost(None)
         self.transport.appendInput('''GET / HTTP/1.0\r\nHost: blech.com\r\n\r\n''')
-        self.reactor.run()
+        self.reactor.start()
 
         status, headers, body = parseReply(self.transport.getOutput())
         
@@ -109,7 +111,7 @@ class HTTPServerTestCase(unittest.TestCase):
 
     def testSimpleRequest(self):
         self.transport.appendInput('''GET /''')
-        self.reactor.run()
+        self.reactor.start()
         self.assertEquals(self.transport.getOutput(), 'Welcome to bar.com!\r\n')
 
 class HTTPSubServerTestCase(unittest.TestCase):
@@ -121,7 +123,7 @@ class HTTPSubServerTestCase(unittest.TestCase):
 
         self.port = int(random.random() * 8192 + 22000)
             
-        self.reactor = reactor.current
+        self.reactor = reactor
 
         factory = subserver.HTTPSubServer()
         factory.addVirtualHost('localhost', SimpleCollection('localhost'))
@@ -135,26 +137,25 @@ class HTTPSubServerTestCase(unittest.TestCase):
         self.reactor.listenTCP(factory, ('127.0.0.1', self.port))
 
     def testRequest(self):
-        pid = os.fork()
-        if pid:
-            try:
-                reply = commands.getoutput('curl -D - http://localhost:%d/ 2>/dev/null' % self.port)
-                status, headers, body = parseReply(reply)
-                
-                self.assertEquals(status.version, (1, 0))
-                self.assertEquals(status.code, 200)
-                self.assertEquals(body, 'Welcome to localhost!\r')
-
-            finally:
-                os.kill(pid, signal.SIGTERM)
+        def f():
+            argv = ['/bin/sh', '-c',
+                    'curl -D - '
+                    'http://localhost:%d/ 2>/dev/null' % self.port]
+            reply = commands.getoutput(argv[0], argv)
+            status, headers, body = parseReply(reply)
             
-        else:
-            self.reactor.run()
-            sys.exit(0)
+            self.assertEquals(status.version, (1, 0))
+            self.assertEquals(status.code, 200)
+            self.assertEquals(body, 'Welcome to localhost!\r\n')
+
+            self.reactor.stop()
+
+        self.reactor.createtasklet(f)
+        self.reactor.start()
 
 class FilesystemCollectionTestCase(unittest.TestCase):
     def setUp(self):
-        self.reactor = reactor.current.__class__()
+        self.reactor = reactor
         
         self.server = server.HTTPServer()
         vhost = server.VirtualHost(collection.FilesystemCollection('./test/http-docroot'))
@@ -165,7 +166,7 @@ class FilesystemCollectionTestCase(unittest.TestCase):
 
     def doRequest(self, path):
         self.transport.appendInput('''GET %s HTTP/1.0\r\nHost: foo.com\r\n\r\n''' % path)
-        self.reactor.run()
+        self.reactor.start()
         return parseReply(self.transport.getOutput())
     
     def testRegularFile(self):

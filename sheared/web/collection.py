@@ -70,8 +70,7 @@ class FilesystemCollection:
                 reply.sendErrorPage(http.HTTP_FORBIDDEN, 'Indexing forbidden.')
 
             elif stat.S_ISREG(st.st_mode):
-                file = open(path, 'r')
-                file = reactor.current.prepareFile(file)
+                file = reactor.open(path, 'r')
                 reply.headers.setHeader('Last-Modified', http.HTTPDateTime(st.st_mtime))
                 reply.headers.setHeader('Content-Length', st.st_size)
                 reply.headers.setHeader('Content-Type', type)

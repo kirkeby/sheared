@@ -20,13 +20,14 @@
 
 import unittest
 
-from sheared import database
+from sheared.database import pool
+from sheared.database import dummy
 
 class DatabaseConnectionPoolTestCase(unittest.TestCase):
     def setUp(self):
-        self.pool = database.pool.DatabaseConnectionPool(self.factory)
+        self.pool = pool.DatabaseConnectionPool(self.factory)
     def factory(self):
-        return database.dummy.DummyDatabaseClient()
+        return dummy.DummyDatabaseClient()
 
     def testLease(self):
         leased = self.pool.leaseConnection()
@@ -51,3 +52,5 @@ suite.addTests([unittest.makeSuite(DatabaseConnectionPoolTestCase, "test")])
 
 __all__ = ['suite']
 
+if __name__ == '__main__':
+    unittest.main()

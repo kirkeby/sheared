@@ -16,7 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-from sheared.python import coroutine
+from sheared.python import queue
 
 class DatabaseConnectionPool:
     def __init__(self, factory, max=4):
@@ -24,33 +24,22 @@ class DatabaseConnectionPool:
         self.max = max
 
         self.connected = []
-        self.available = []
-        self.waiting = 0
-        self.fifo = coroutine.FIFO()
+        self.available = queue.StacklessQueue()
 
     def leaseConnection(self):
-        if self.available:
-            conn = self.available.pop()
-        
-        elif len(self.connected) < self.max:
+        if not len(self.available) and len(self.connected) < self.max:
             conn = self.factory()
             self.connected.append(conn)
 
         else:
-            self.waiting = self.waiting + 1
-            conn = self.fifo.take()
-            self.waiting = self.waiting - 1
+            conn = self.available.dequeue()
 
         return conn
 
     def releaseConnection(self, conn):
         assert conn in self.connected
-        assert not conn in self.available
-
-        if self.waiting:
-            self.fifo.give(conn)
-        else:
-            self.available.append(conn)
+        #assert not conn in self.available
+        self.available.enqueue(conn)
 
     def query(self, sql):
         conn = self.leaseConnection()

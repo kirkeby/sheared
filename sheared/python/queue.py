@@ -16,9 +16,33 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-"""Simpleminded implementation of min-queue."""
+
+import stackless
+
+class StacklessQueue:
+    def __init__(self):
+        self.queue = []
+        self.channel = stackless.channel()
+        self.waiting = 0
+
+    def enqueue(self, thing):
+        self.queue.append(thing)
+        if self.waiting:
+            self.channel.send(None)
+            
+    def dequeue(self):
+        self.waiting = self.waiting + 1
+        while not self.queue:
+            self.channel.receive()
+        self.waiting = self.waiting - 1
+        return self.queue.pop(0)
+
+    def __len__(self):
+        return len(self.queue)
+
 
 class MinQueue:
+    """Simpleminded implementation of min-queue."""
     def __init__(self):
         self.queued = []
 
@@ -38,4 +62,4 @@ class MinQueue:
     def empty(self):
         return len(self.queued) == 0
 
-__all__ = ['MinQueue']
+__all__ = ['MinQueue', 'StacklessQueue']

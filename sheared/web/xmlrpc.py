@@ -61,7 +61,7 @@ def parse_value(tree):
 def call(host, port, uri, method, params):
     content = format_request(method, params)
 
-    transport = reactor.current.connectTCP((host, port))
+    transport = reactor.connectTCP((host, port))
     transport.write('POST %s HTTP/1.0\r\n' % uri)
     transport.write('Host: %s\r\n' % host)
     transport.write('User-Agent: Sheared/XMLRPC\r\n')

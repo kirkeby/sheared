@@ -25,9 +25,8 @@ setup(name = "Sheared", version = "0.1",
       author_email = "sune@mel.interspace.dk",
       url = "http://mel.interspace.dk/~sune/sheared/",
       packages = [
-        'sheared', 'sheared.database', 'sheared.internet',
-        'sheared.protocol', 'sheared.python', 'sheared.reactor',
-        'sheared.web'
+        'sheared', 'sheared.database', 'sheared.protocol',
+        'sheared.python', 'sheared.reactors', 'sheared.web'
       ],
       ext_modules = [
         Extension("sheared.python.fdpass",

@@ -24,8 +24,6 @@ import string
 import array
 import crypt
 
-from sheared.python import coroutine
-
 from sheared.database import error
 from sheared.database import dummy
 
@@ -354,6 +352,8 @@ class PostgresqlClient:
                     result = int(words[1])
                 elif words[0] == 'UPDATE':
                     result = int(words[1])
+                elif words[0] == 'CREATE':
+                    result = None
                 else:
                     err = error.InterfaceError, 'got CompletedResponsePacket with unexpected text "%s"' % packet.command
 

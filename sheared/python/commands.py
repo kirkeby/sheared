@@ -33,13 +33,10 @@ def spawn(cmd, argv, with_stderr=0):
     if pid:
         os.close(stdin_r)
         os.close(stdout_w)
-        if reactor.current.started:
-            stdin = reactor.current.prepareFile(stdin_w)
-            stdout = reactor.current.prepareFile(stdout_r)
-        else:
-            stdin = stdin_w
-            stdout = stdout_r
-        stderr = reactor.current.prepareFile(stderr_r)
+        stdin = reactor.openfd(stdin_w, '<%r stdin>' % cmd)
+        stdout = reactor.openfd(stdout_r, '<%r stdout>' % cmd)
+        if with_stderr:
+            stderr = reactor.openfd(stderr_r, '<%r stderr>' % cmd)
 
     else:
         try:
@@ -61,17 +58,10 @@ def spawn(cmd, argv, with_stderr=0):
 
 def getstatusoutput(cmd, argv):
     pid, stdin, stdout = spawn(cmd, argv)
-    if reactor.current.started:
-        reactor.current.close(stdin)
-    else:
-        os.close(stdin)
     
     out = ''
     while 1:
-        if reactor.current.started:
-            d = reactor.current.read(stdout, 4096)
-        else:
-            d = os.read(stdout, 4096)
+        d = stdout.read()
         if d == '':
             break
         out = out + d

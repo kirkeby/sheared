@@ -21,7 +21,6 @@
 import os, stat, errno, mimetypes, sys, pickle, re, types
 
 from sheared import error
-from sheared import reactor
 from sheared.protocol import http
 from sheared.python import fdpass
 from sheared.python import io
