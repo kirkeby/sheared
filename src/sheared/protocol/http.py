@@ -63,6 +63,7 @@ HTTP_BAD_REQUEST = 400
 HTTP_UNAUTHORIZED = 401
 HTTP_FORBIDDEN = 403
 HTTP_NOT_FOUND = 404
+HTTP_NOT_ACCEPTABLE = 406
 HTTP_INTERNAL_SERVER_ERROR = 500
 HTTP_NOT_IMPLEMENTED = 501
 HTTP_BAD_GATEWAY = 502
@@ -80,6 +81,7 @@ http_reason = {
     401: "Unauthorized",
     403: "Forbidden",
     404: "Not Found",
+    406: "Not Acceptable",
     500: "Internal Server Error",
     501: "Not Implemented",
     502: "Bad Gateway",

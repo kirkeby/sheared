@@ -21,6 +21,7 @@ from sheared.protocol.http import HTTP_NOT_FOUND, \
                                   HTTP_FORBIDDEN, \
                                   HTTP_MOVED_PERMANENTLY, \
                                   HTTP_NOT_MODIFIED, \
+                                  HTTP_NOT_ACCEPTABLE, \
                                   HTTP_BAD_REQUEST, \
                                   HTTP_INTERNAL_SERVER_ERROR, \
                                   HTTP_NOT_IMPLEMENTED
@@ -38,6 +39,9 @@ class ForbiddenError(WebServerError):
 
 class NotFoundError(WebServerError):
     statusCode = HTTP_NOT_FOUND
+
+class NotAcceptable(WebServerError):
+    statusCode = HTTP_NOT_ACCEPTABLE
 
 class Moved(WebServerError):
     pass
