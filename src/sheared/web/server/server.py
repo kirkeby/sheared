@@ -87,7 +87,14 @@ def send_http_error_page(reply, message):
                       "P.S. The numer of the error is %d." % reply.status
 
     for name in reply.headers.keys():
-        if not name == 'Date':
+        if not http.headerClass(name) in ['general', 'response']:
+            reply.headers.delHeader(name)
+        if name.lower() == 'location' and \
+           not reply.status in [ http.HTTP_MOVED_PERMANENTLY,
+                                 http.HTTP_MOVED_TEMPORARILY, ]:
+            reply.headers.delHeader(name)
+        if name.lower() == 'www-authenticate' and \
+           not reply.status in [ http.HTTP_UNAUTHORIZED, ]:
             reply.headers.delHeader(name)
 
     reply.headers.setHeader('Content-Type', 'text/plain')

@@ -166,6 +166,16 @@ class HTTPServerTestCase(unittest.TestCase):
         self.assertEquals(headers['Content-Length'], str(len(body)))
         self.assertEquals(headers.keys(), ['Date', 'Content-Type', 'Content-Length'])
 
+    def testRedirect(self):
+        self.transport.appendInput('''GET /moved HTTP/1.0\r\n\r\n''')
+        self.reactor.start()
+
+        status, headers, body = parseReply(self.transport.getOutput())
+        
+        self.assertEquals(status.version, (1, 0))
+        self.assertEquals(status.code, 301)
+        self.assertEquals(headers.has_key('Location'), 1)
+
 class HTTPSubServerTestCase(unittest.TestCase):
     def setUp(self):
         try:
