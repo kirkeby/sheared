@@ -64,6 +64,14 @@ class HTTPSubServer(server.HTTPServer):
             server_transport.close()
 
             request, reply, subpath = pickle.loads(data)
+            
+            # There must be a better way to do this
+            request.requestline.uri = list(request.requestline.uri)
+            request.requestline.uri[0] = ''
+            request.requestline.uri[1] = ''
+            request.requestline.uri[2] = subpath
+            request.requestline.uri = tuple(request.requestline.uri)
+
             reply.transport = client_transport
 
             self.handle(request, reply)
