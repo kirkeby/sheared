@@ -23,19 +23,30 @@ import sha
 from entwine import entwine
 
 from sheared.python import io
+from sheared.web import accept
 from sheared.web import resource
 from sheared import error
 
 class Entwiner(resource.NormalResource):
     def __init__(self):
         resource.NormalResource.__init__(self)
-
+    
         if hasattr(self, 'template_page'):
             self.template_pages = [self.template_page]
         else:
             self.templates_pages = []
 
+        self.content_types = [
+            'application/html+xml',
+            'text/xml',
+            'text/html',
+        ]
+
     def handle(self, request, reply, subpath):
+        # Accept support
+        ct = accept.chooseContentType(request, self.content_types)
+        reply.headers.setHeader('Content-Type', ct)
+    
         self.context = {}
         if hasattr(request, 'context'):
             self.context.update(request.context)
