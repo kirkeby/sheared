@@ -2,7 +2,7 @@
 
 static PyObject* cabml_lex_outer(PyObject *self, PyObject *args)
 {
-    PyObject *l;
+    PyObject *l, *o;
     char *i, *j, *end;
     char quotes = 0;
     int  escaped = 0;
@@ -22,20 +22,19 @@ static PyObject* cabml_lex_outer(PyObject *self, PyObject *args)
             if(*j == '<')
                 break;
 
-        if(j == end) {
-            /* no more tags, done */
-            if(PyList_Append(l, Py_BuildValue("ss", "text", i))) {
-                Py_DECREF(l);
-                return NULL;
-            }
-            break;
-        } else if(j > i) {
+        if(j > i) {
             /* there is text between here and next tag */
-            if(PyList_Append(l, Py_BuildValue("ss#", "text", i, j-i))) {
+            o = Py_BuildValue("ss#", "text", i, j-i);
+            if(PyList_Append(l, o)) {
+                Py_DECREF(o);
                 Py_DECREF(l);
                 return NULL;
             }
+            Py_DECREF(o);
         }
+        if(j == end)
+            /* no more tags, done */
+            break;
         i = j + 1;
 
         /* search for end of tag */
@@ -64,10 +63,13 @@ static PyObject* cabml_lex_outer(PyObject *self, PyObject *args)
             return NULL;
         }
 
-        if(PyList_Append(l, Py_BuildValue("ss#", "tag", i, j-i))) {
+        o = Py_BuildValue("ss#", "tag", i, j-i);
+        if(PyList_Append(l, o)) {
+            Py_DECREF(o);
             Py_DECREF(l);
             return NULL;
         }
+        Py_DECREF(o);
         i = j + 1;
     }
 
