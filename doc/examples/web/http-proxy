@@ -1,0 +1,28 @@
+#!/usr/bin/env python-stackless
+
+import os
+
+from sheared.web.application import WebserverApplication
+from sheared.web.proxy import DumbProxy
+from sheared.web.server import HTTPServer
+from sheared.python.log import Log
+from sheared import reactor
+
+class Application(WebserverApplication):
+    def __init__(self):
+        WebserverApplication.__init__(self, 'http-proxy')
+
+    def setup(self):
+        self.webserver = HTTPServer()
+        self.webserver.addVirtualHost(self.hostname, DumbProxy())
+        self.webserver.setDefaultHost(self.hostname)
+
+        if self.accesslog:
+            self.webserver.setAccessLog(Log(self.accesslog))
+        if self.errorlog:
+            self.webserver.setErrorLog(Log(self.errorlog))
+
+        reactor.listen(self.webserver, self.address)
+
+if __name__ == '__main__':
+    Application().main()
