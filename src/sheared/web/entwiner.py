@@ -16,9 +16,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-import warnings
 import os
+import sys
 import sha
+import warnings
+import traceback
 
 from entwine import entwine
 
@@ -26,6 +28,9 @@ from sheared.python import io
 from sheared.web import accept
 from sheared.web import resource
 from sheared import error
+
+class TemplateError(Exception):
+    pass
 
 class Entwiner(resource.NormalResource):
     macro_pages = []
@@ -78,7 +83,11 @@ class Entwiner(resource.NormalResource):
             path = [root] + path.split('/')
             path = os.sep.join(path)
 
-        result = entwine(io.readfile(path), self.context)
+        try:
+            result = entwine(io.readfile(path), self.context)
+        except:
+            etype, value, tb = sys.exc_info()
+            raise TemplateError, '%s: %s' % (path, traceback.format_exception_only(etype, value))
         if not throwaway:
             self.result = result
         if result and throwaway:
