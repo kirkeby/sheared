@@ -242,6 +242,8 @@ class Application:
 
         daemonize.closeall(min=3)
 
+        os.umask(0)
+
         self.setup()
         self.start()
 
