@@ -37,7 +37,7 @@ class Entwiner(resource.NormalResource):
             self.templates_pages = []
 
         self.content_types = [
-            'application/html+xml',
+            'application/xhtml+xml',
             'text/xml',
             'text/html',
         ]
