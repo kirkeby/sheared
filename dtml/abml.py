@@ -255,6 +255,9 @@ def parse(text):
         what, value = event
         
         if what == 'text':
+            #value = value.strip()
+            #if value:
+            #    yield Element(what, raw=value)
             yield Element(what, raw=value)
 
         elif what in ('doctype', 'processing-instruction', 'start-tag'):
@@ -289,6 +292,28 @@ def format_name(name):
         return '%s:%s' % name
     else:
         return name[1]
+
+def clean_cdata(str):
+    """clean_cdata(str) -> str
+    
+    Removes CDATA sections from XML documents, quoting the text they
+    contain."""
+    i = str.find('<![CDATA[')
+    while not i < 0:
+        before = str[:i]
+        j = str.index(']]>', i)
+        cdata = str[i+9:j]
+        after = str[j+3:]
+
+        cdata = cdata.replace('&', '&amp;')
+        cdata = cdata.replace('<', '&lt;')
+        cdata = cdata.replace('>', '&gt;')
+        cdata = cdata.replace('"', '&quot;')
+
+        str = before + cdata + after
+
+        i = str.find('<![CDATA[')
+    return str
 
 if __name__ == '__main__':
     xml = '''<!doctype foo><?xml fisk?><baz><tag name="value \\"\\'\\\\" />text</baz>'''

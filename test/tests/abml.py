@@ -25,7 +25,11 @@ from dtml import abml
 class ABMLParseTestCase(unittest.TestCase):
     def testEmpty(self):
         """Test against an empty document."""
-        self.assertEquals(list(abml.parse('')), [])
+        self.assertEquals(len(list(abml.parse(''))), 0)
+
+    def testText(self):
+        """Test against a document with text."""
+        self.assertEquals(len(list(abml.parse('Hello, World!'))), 1)
 
     def testOneTag(self):
         """Test against a document with just one empty tag."""
@@ -35,8 +39,16 @@ class ABMLParseTestCase(unittest.TestCase):
         """Test against a document with just one empty, suicidal tag."""
         self.assertEquals(len(list(abml.parse('<a />'))), 2)
 
+class CDATATestCase(unittest.TestCase):
+    def testSimple(self):
+        """Test with a simple CDATA section."""
+        cdata = '<xml><![CDATA[<foo bar> &blech;]]>'
+        cleaned = abml.clean_cdata(cdata)
+        self.assertEquals(cleaned, '<xml>&lt;foo bar&gt; &amp;blech;')
+
 suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(ABMLParseTestCase, 'test')])
+suite.addTests([unittest.makeSuite(CDATATestCase, 'test')])
 
 __all__ = ['suite']
 
