@@ -47,10 +47,10 @@ app_options = [
    [ 'set_str',      1, 'pidfile',   'p', 'pid-file',   'application.pid-file',
      'Write pid-file.' ],
 
-   [ 'set_int',      1, 'user',      'u', 'user',       'application.chuid',
+   [ 'set_int',      1, 'user',      'u', 'user',       'application.user',
      'Change to this uid after configuring application.' ],
      
-   [ 'set_int',      1, 'group',     'g', 'group',      'application.chgid',
+   [ 'set_int',      1, 'group',     'g', 'group',      'application.group',
      'Change to this gid after configuring application.' ],
      
    [ 'opt_conf',     1, '',          'c', 'conf-file',  '',
