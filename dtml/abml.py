@@ -255,8 +255,10 @@ def parse(text):
 
         elif what == 'end-tag':
             name, raw = value
-            if not stack.pop() == name:
-                raise ParseError, 'overlapping nested tags'
+            name = parse_name(name)
+            other = stack.pop()
+            if not other == name:
+                raise ParseError, 'overlapping nested tags: %s vs %s' % (name, other)
             yield Element(what, name=name, raw=raw)
             
         else:
