@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys, traceback, types, errno, time
+import sys, traceback, types, errno
 
 from sheared import error
 from sheared.protocol import http
@@ -35,9 +35,6 @@ class HTTPServer:
         self.oh_nine = oh_nine.Server()
         self.one_oh = one_oh.Server()
 
-        # FIXME -- use requestCallbacks and refactor logger into a class
-        # of it's own.
-        self.accesslog = None
         self.errorlog = None
 
         self.requestCallbacks = [self.logCompletedRequest]
@@ -48,8 +45,6 @@ class HTTPServer:
     def setDefaultHost(self, name):
         self.default_host = name
 
-    def setAccessLog(self, l):
-        self.accesslog = l
     def setErrorLog(self, l):
         self.errorlog = l
 
@@ -158,35 +153,6 @@ class HTTPServer:
                        "while processing your request.\r\n" % e.statusCode)
             self.logInternalError(sys.exc_info())
         
-    def logCompletedRequest(self, request, reply):
-        if self.accesslog:
-            ip, port = reply.transport.other
-            ident = '-'
-            auth = request.authentication()
-            if auth:
-                user = auth[1]
-            else:
-                user = '-'
-            date = time.strftime('%d/%m/%Y:%H:%M:%S %z')
-            req = request.requestline.raw
-            code = reply.status
-            length = 0
-
-            if request.headers.has_key('Referer'):
-                referer = request.headers.get('Referer')
-            else:
-                referer = ''
-
-            if request.headers.has_key('User-Agent'):
-                agent = request.headers.get('User-Agent')
-            else:
-                agent = ''
-
-            fmt = '%s %s %s [%s] "%s" %d %d "%s" "%s"\n'
-            self.accesslog.write(fmt % (ip, ident, user, date,
-                                        req, code, length,
-                                        referer, agent))
-
     def logInternalError(self, ex):
         if self.errorlog:
             self.errorlog.exception(ex)
