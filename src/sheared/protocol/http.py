@@ -225,6 +225,13 @@ class HTTPHeaders:
     def items(self):
         return map(self.item, self.keys())
 
+    def __getstate__(self):
+        return self.items()
+    def __setstate__(self, items):
+        self.__init__()
+        for k, v in items:
+            self.addHeader(k, v)
+
 class HTTPRequestLine:
     def __init__(self, s):
         self.raw = s
