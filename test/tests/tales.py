@@ -3,12 +3,13 @@
 import unittest
 
 from dtml import tales
+from dtml import context
 
 # FIXME -- need separate testcases for context, compiler and interpreter
 
 class TALESContextTestCase(unittest.TestCase):
     def testFoo(self):
-        self.context = tales.Context()
+        self.context = context.Context()
         self.context.setGlobal('author', {'name': 'Sune Kirkeby'})
         self.context.setGlobal('year', 2001)
         self.context.setGlobal('now', 'just this minute')
@@ -17,7 +18,7 @@ class TALESContextTestCase(unittest.TestCase):
 
 class TALESInterpreterTestCase(unittest.TestCase):
     def setUp(self):
-        self.context = tales.Context()
+        self.context = context.Context()
         self.context.setGlobal('author', {'name': 'Sune Kirkeby'})
         self.context.setGlobal('year', 2001)
         self.context.setGlobal('now', 'just this minute')

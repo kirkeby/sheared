@@ -4,13 +4,14 @@ import unittest
 
 from dtml import tal
 from dtml import tales
+from dtml import context
 
 # FIXME -- we should probably look at the document-tree rather than it's
 # textual representation here...
 class TALInterpreterTestCase(unittest.TestCase):
     def setUp(self):
-        self.context = tales.Context()
-        self.builtins = tales.BuiltIns({})
+        self.context = context.Context()
+        self.builtins = context.BuiltIns({})
         self.context.setDefaults(self.builtins)
 
     def execute(self, xml):
