@@ -1,0 +1,4 @@
+#!/bin/sh
+python setup.py install --prefix=$PWD/install
+cd $PWD/install/lib/python*/site-packages
+exec env PYTHONPATH=$PYTHONPATH:. py.test "$@"

@@ -68,8 +68,13 @@ class HTTPReply:
         self.decapitated = 1
 
         self.transport.write('HTTP/%d.%d ' % self.version)
-        reason = http.http_reason.get(self.status, 'Unknown Status')
-        self.transport.write('%d %s\r\n' % (self.status, reason))
+        if isinstance(self.status, int):
+            reason = http.http_reason.get(self.status, 'Unknown Status')
+            self.transport.write('%d %s\r\n' % (self.status, reason))
+        elif isinstance(self.status, str):
+            self.transport.write(self.status + '\r\n')
+        else:
+            raise AssertionError('HTTP status is not int or str: %r' % self.status)
 
         for item in self.headers.items():
             self.transport.write('%s: %s\r\n' % item)
