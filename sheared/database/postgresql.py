@@ -5,16 +5,8 @@ import struct
 import string
 import array
 
-from sheared.protocol import basic
-
-class AuthenticationError(Exception):
-    pass
-
-class ProtocolError(Exception):
-    pass
-
-class BackendError(Exception):
-    pass
+from sheared.database import error
+from sheared.database import dummy
 
 class IncompletePacket(Exception):
     pass
@@ -121,6 +113,10 @@ class ErrorPacket:
     def __init__(self, message):
         self.message = message
 
+class NoticeResponsePacket:
+    def __init__(self, message):
+        self.message = message
+
 class UnknownPacket(Exception):
     pass
 
@@ -134,6 +130,10 @@ def parsePacket(client, data, columns=None):
         if tag == 'E':
             error, data = parseString(data)
             return ErrorPacket(error), data
+
+        if tag == 'N':
+            error, data = parseString(data)
+            return NoticeResponsePacket(error), data
 
         if tag == 'R':
             auth, data = parseInt32(data)
@@ -202,9 +202,27 @@ def parsePacket(client, data, columns=None):
 
     raise UnknownPacket(orig_data)
 
-class PostgresqlClient(basic.Protocol):
+# FIXME -- From the Postgresql Developers Manual section 4.2.1:
+#
+# A frontend must be prepared to accept ErrorResponse and NoticeResponse
+# messages whenever it is expecting any other type of message.
+#
+# Actually, it is possible for NoticeResponse to arrive even when the frontend
+# is not expecting any kind of message, that is, the backend is nominally idle.
+# (In particular, the backend can be commanded to terminate by its postmaster.
+# In that case it will send a NoticeResponse before closing the connection.) It
+# is recommended that the frontend check for such asynchronous notices just
+# before issuing any new command.
+#
+# Also, if the frontend issues any listen(l) commands then it must be prepared
+# to accept NotificationResponse messages at any time; see below.
+
+class PostgresqlClient:
     def __init__(self, reactor, transport, user, password='', database='', args='', tty=''):
-        basic.Protocol.__init__(self, reactor, transport)
+        # gratitous argument, but it lets us treat this like a normal Protocol, which
+        # is kind of nice...
+        #self.reactor = reactor
+        self.transport = transport
 
         self.user = user
         self.password = password
@@ -214,122 +232,103 @@ class PostgresqlClient(basic.Protocol):
 
         self.buffer = ''
 
-        self.sendPacket(StartupPacket(self.user, self.database))
-        reply = self.readPacket(AuthenticationPacket)
+        self._sendPacket(StartupPacket(self.user, self.database))
+        reply = self._readPacket(AuthenticationPacket)
         if not reply.authentication == 0:
             s = 'Got request for unsupported authentication: %d' % reply.authentication
-            raise AuthenticationError, s
-        reply = self.readPacket(BackendKeyDataPacket)
-        reply = self.readPacket(ReadyForQueryPacket)
-          
-    def query(self, query):
-        self.sendPacket(QueryPacket(query))
+            raise error.ProtocolError, s
+        reply = self._readPacket(BackendKeyDataPacket)
+        reply = self._readPacket(ReadyForQueryPacket)
 
+    def begin(self):
+        self._sendPacket
+
+    def query(self, query):
+        self._sendPacket(QueryPacket(query))
+
+        result = None
+        err = None
         columns = None
         while 1:
-            packet = self.readPacket(columns=columns)
+            packet = self._readPacket(columns=columns)
             type = packet.__class__
 
             if type is CursorResponsePacket:
                 pass
 
+            elif type is ReadyForQueryPacket:
+                if err:
+                    raise err[0], err[1]
+                return result
+
+            elif type is NoticeResponsePacket:
+                if packet.message.startswith('NOTICE:  COMMIT: no transaction in progress'):
+                    err = error.ProgrammingError, 'no transaction in progress'
+                elif packet.message.startswith('NOTICE:  ROLLBACK: no transaction in progress'):
+                    err = error.ProgrammingError, 'no transaction in progress'
+
+            elif type is CompletedResponsePacket:
+                words = packet.command.split()
+                if words[0] == 'SELECT':
+                    result = dummy.DummyCursor(columns, rows)
+                elif len(words) == 1:
+                    result = None
+                elif words[0] == 'INSERT':
+                    oid, rows = map(int, words[1:])
+                    if oid == 0:
+                        oid = None
+                    result = oid, rows
+                elif words[0] == 'DELETE':
+                    result = int(words[1])
+                elif words[0] == 'UPDATE':
+                    result = int(words[1])
+                else:
+                    err = error.InterfaceError, 'got CompletedResponsePacket with unexpected text "%s"' % packet.command
+
             elif type is RowDescriptionPacket:
                 columns = packet.columns
                 rows = []
-
             elif type is AsciiRowPacket:
                 rows.append(packet.columns)
 
-            elif type is CompletedResponsePacket:
-                self.readPacket(ReadyForQueryPacket)
-                break
-
             elif type is EmptyQueryResponsePacket:
-                self.readPacket(CompletedResponsePacket)
+                self._readPacket(CompletedResponsePacket)
                 return
             
-            elif type is ErrorPacket:
-                self.readPacket(CompletedResponsePacket)
-                raise BackendError, packet.message
-
             else:
                 self.transport.close()
-                raise ProtocolError, 'got unexpected %s' % `packet`
-                
-        return columns, rows
+                raise error.InterfaceError, 'got unexpected %s' % `packet`
 
-    def terminate(self):
-        self.sendPacket(TerminatePacket())
+    def begin(self):
+        self.query('BEGIN TRANSACTION')
+    def commit(self):
+        self.query('COMMIT')
+    def rollback(self):
+        self.query('ROLLBACK')
+
+    def close(self):
+        self._sendPacket(TerminatePacket())
         self.transport.close()
 
-    def sendPacket(self, p, force=0):
+    def _sendPacket(self, p):
         p.send(self.transport)
 
-    def readPacket(self, expected=None, columns=None):
+    def _readPacket(self, expected=None, columns=None):
         while 1:
             packet, self.buffer = parsePacket(self, self.buffer, columns)
-            if not packet is None:
-                break
+    
+            if packet:
+                if packet.__class__ is ErrorPacket:
+                    raise error.ProgrammingError, packet.message
+                else:
+                    break
+
             self.buffer = self.buffer + self.transport.read()
-        if packet.__class__ is ErrorPacket:
-            print packet.message
+
         if expected and not packet.__class__ is expected:
             self.transport.close()
-            raise ProtocolError, 'got unexpected %s when we wanted %s' % (`packet`, `expected`)
+            raise error.InterfaceError, 'got unexpected %s when we wanted %s' % (`packet`, `expected`)
+
         return packet
 
-#        while len(self.buffer) > 0:
-#            try:
-#                packet, self.buffer = parsePacket(self, self.buffer)
-#                
-#                if packet is None:
-#                    break
-#
-#                type = packet.__class__
-#                if type is AuthenticationPacket:
-#                    if packet.authentication == 0:
-#                        self.observer.connectionMade(self)
-#                    else:
-#                        s = 'Got request for unsupported ' + \
-#                            'authentication: %d' % packet.authentication
-#                        self.observer.protocolError(self, s)
-#                        self.terminate()
-#
-#                elif type is BackendKeyDataPacket:
-#                    self.backend_key = packet
-#
-#                elif type is ReadyForQueryPacket:
-#                    self.ready = 1
-#                    self.observer.readyForQuery(self)
-#
-#                elif type is RowDescriptionPacket:
-#                    self.row_description = packet.columns
-#                    self.observer.receivedHead(self, self.row_description)
-#                
-#                elif type is ErrorPacket:
-#                    self.observer.backendError(self, packet.message)
-#
-#                elif type is CursorResponsePacket:
-#                    pass
-#
-#                elif type is AsciiRowPacket:
-#                    self.observer.receivedRow(self, packet.columns)
-#
-#                elif type is CompletedResponsePacket:
-#                    self.observer.queryDone(self)
-#
-#                elif type is EmptyQueryResponsePacket:
-#                    self.observer.queryDone(self)
-#
-#                else:
-#                    s = 'Got a "%s" I do not know what to do with!' % \
-#                        packet.__class__.__name__
-#                    self.observer.protocolError(self, s)
-#
-#            except UnknownPacket, e:
-#                s = 'Unknown packet: %s' % `e.args[0]`
-#                self.observer.protocolError(self, s)
-#                self.terminate()
-#                self.buffer = ''
-
-__all__ = ['PostgresqlClient', 'PostgresqlClientFactory']
+__all__ = ['PostgresqlClient']

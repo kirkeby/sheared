@@ -51,6 +51,19 @@ class StringTransportTestCase(unittest.TestCase):
 
         self.assertEquals(t.getOutput(), 'Hello, World!')
         
+class FileTransportTestCase(unittest.TestCase):
+    def testRead(self):
+        t = transport.FileTransport(open('tests/http-docroot/hello.txt', 'r'))
+        data = ''
+        while 1:
+            r = t.read()
+            if r == '':
+                break
+            data = data + r
+        t.close()
+    
+        self.assertEquals(data, 'Hello, World!\n')
+
 suite = unittest.makeSuite(StringTransportTestCase, 'test')
 
 __all__ = ['suite']

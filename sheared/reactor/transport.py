@@ -1,6 +1,6 @@
 # vim:nowrap:textwidth=0
 
-import random
+import random, os, types
 
 class StringTransport:
     def __init__(self):
@@ -29,6 +29,23 @@ class StringTransport:
         self.input = self.input + data
     def getOutput(self):
         return self.output
+
+class FileTransport:
+    def __init__(self, reactor, file, other):
+        self.file = file
+        if isinstance(file, types.IntType):
+            self.fileno = file
+        else:
+            self.fileno = file.fileno()
+
+    def read(self, max=4096):
+        return os.read(self.fileno, max)
+    def write(self, data):
+        while data:
+            cnt = os.write(self.fileno, data)
+            data = data[cnt:]
+    def close(self):
+        os.close(self.fileno)
 
 class ReactorTransport:
     def __init__(self, reactor, file, other):

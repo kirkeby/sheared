@@ -1,4 +1,4 @@
-def ConnectionPool:
+class ConnectionPool:
     def __init__(self, factory, max=4):
         self.factory = factory
         self.max = max
@@ -13,4 +13,4 @@ def ConnectionPool:
         if len(self.connected) < self.max:
             conn = self.factory()
             self.connected.append()
-            self.conn
+            
