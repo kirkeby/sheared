@@ -282,6 +282,7 @@ class Reactor(base.Reactor):
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         sock.bind(addr)
+        os.chmod(addr, 0777)
         sock.listen(backlog)
 
         name = '<UNIX listener for %r>' % factory
