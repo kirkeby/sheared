@@ -50,7 +50,6 @@ class WebserverApplication(Application):
             self.webserver = HTTPSubServer()
         else:
             self.webserver = HTTPServer()
-        self.webserver.setDefaultHost(self.hostname)
 
         if self.accesslog:
             accesslog = CombinedLog(LogFile(self.accesslog))
