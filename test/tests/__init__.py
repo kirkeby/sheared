@@ -19,7 +19,7 @@
 __all__ = [
     'reactor', 'database', 'pool', 'commands',
     'time_since',
-    'rfc822',
+    'rfc822', 'rfc1521',
     'http', 'querystring', 'cookie', 'virtualhost', 'accept',
     'webresource', 'webcollections', 'webentwiner',
     'webserver', 'webclient', 'web',
