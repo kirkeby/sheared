@@ -231,6 +231,13 @@ class Reactor:
     def write(self, file, data):
         return self.wait(file, self.handlewrite, (data))
 
+    def sendfile(self, i, o):
+        while 1:
+            d = self.read(i, 4096)
+            if d == '':
+                break
+            self.write(o, d)
+
     def close(self, file):
         file.close()
 
