@@ -150,6 +150,8 @@ class HTTPServerTestCase(unittest.TestCase):
         
         self.assertEquals(status.code, 200)
         self.assertEquals(body, 'Welcome to foo.com!\r\n')
+        self.assertEquals(headers['Content-Length'], str(len(body)))
+        self.assertEquals(headers['Content-Type'], 'text/plain')
         self.assertEquals(headers['Foo'], 'fubar')
 
 class HTTPSubServerTestCase(unittest.TestCase):
