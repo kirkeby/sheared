@@ -79,6 +79,7 @@ class Server:
                 break
             lines = lines + line
             
+            # FIXME
             if len(lines) > 1024:
                 raise error.web.BadRequestError
 
@@ -87,7 +88,8 @@ class Server:
         # read body
         if headers.has_key('Content-Length'):
             cl = int(headers.get('Content-Length'))
-            if cl > 1024:
+            # FIXME
+            if cl > 1024 * 100:
                 raise error.web.BadRequestError
             body = transport.read(cl)
         else:
