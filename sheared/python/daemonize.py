@@ -1,15 +1,17 @@
 from __future__ import nested_scopes
 import os, sys, errno
 
-def background():
+def background(chdir=1):
     # do the UNIX double-fork magic, see Stevens' "Advanced 
     # Programming in the UNIX Environment" for details (ISBN 0201563177)
     if os.fork():
         # exit first parent
         sys.exit(0) 
 
+    if chdir:
+        os.chdir("/") 
+
     # decouple from parent environment
-    os.chdir("/") 
     os.setsid() 
     os.umask(0) 
 
