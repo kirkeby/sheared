@@ -19,12 +19,40 @@
 
 """Sheared top-level module.
 
-Sheared is a low-level network (I/O in general, really, but it makes
-most sense in networked programs) programming library for Python. It is
-built on top of Stackless Python, and instead of threads and blocking
-I/O Sheared uses Stackless tasklets and asynchronous I/O. But, apart
-from other asynchronous network libraries, programming Sheared is almost
-entirely like programming a normal blocking network library."""
+FIXME -- I am not entirely pleased with this text.
+
+This module contains all the different components of Sheared, right now
+this includes:
+
+- sheared.reactor and sheared.reactors
+
+The reactor is a low-level network programming library for Python (in
+general it should be able to do any I/O you need, but it makes most
+sense in networked programs).  It is built on top of Stackless Python,
+and instead of threads and blocking I/O Sheared uses Stackless
+tasklets and asynchronous I/O. But, apart from other asynchronous
+network libraries, programming the Sheared reactor is almost
+entirely like programming a normal blocking network library.
+
+- sheared.web
+
+A web-server programming library built on the Sheared reactor. The
+design is meant to be general enough that you could write for instance a
+WebDAV server on top of it, but at the same time you can just point it
+at a directory, and it will happily serve up all files underneeth (see
+doc/examples/web/filesystem in the source tree). Of course you can also
+serve up dynamic resources.
+
+- sheared.protocol
+
+All manner of helpers for writing clients and servers for various
+networking protocols, currently the HTTP/1.0 and PostgreSQL protocols
+are implmented.
+
+- sheared.python
+
+Helpers for various things related to network and daemon programming
+with Sheared (e.g. a logging infrastructure and helpers for daemonizing)."""
 
 from sheared import reactors
 reactor = reactors.default.Reactor()
