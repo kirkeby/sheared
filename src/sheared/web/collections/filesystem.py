@@ -27,55 +27,126 @@ from sheared.web import resource
 
 from entwine import abml
 
+def htaccess_authenticator(request, reply, collection, walker):
+    htaccess = walker.root + os.sep + '.htaccess'
+    if os.access(htaccess, os.R_OK):
+        authname = ''
+        htpasswd = ''
+        require = ''
+
+        f = io.BufferedReader(reactor.open(htaccess, 'r'))
+        for line in f.readlines():
+            op, arg = line.strip().split(' ', 1)
+            if op == 'AuthName':
+                authname = arg
+            elif op == 'AuthUserFile':
+                htpasswd = arg
+            elif op == 'require':
+                require = arg
+        
+        if authname:
+            good = 0
+            auth = request.authentication()
+            if auth:
+                scheme, login, password = auth
+                
+                if scheme == 'Basic':
+                    f = io.BufferedReader(reactor.open(htpasswd, 'r'))
+                    for line in f.readlines():
+                        u, p = line.strip().split(':', 1)
+                        if u == login and p == password:
+                            good = 1
+                            break
+
+            if not good:
+                hdr = 'Basic realm=%s' % authname
+                reply.headers.setHeader('WWW-Authenticate', hdr)
+                raise error.web.UnauthorizedError
+
+def normal_handler(request, reply, collection, walker):
+    type, encoding = collection.mimetypes.guess_type(walker.root)
+    if not type:
+        type = 'application/octet-stream'
+
+    last_modified = http.HTTPDateTime(walker.stat.st_mtime)
+
+    reply.headers.setHeader('Last-Modified', last_modified)
+    reply.headers.setHeader('Content-Length', walker.stat.st_size)
+    reply.headers.setHeader('Content-Type', type)
+    if encoding:
+        reply.headers.setHeader('Content-Encoding', encoding)
+
+    file = reactor.open(walker.root, 'r')
+    reply.sendfile(file)
+    reply.done()
+
+def index_handler(request, reply, collection, walker):
+    reply.header.setHeader('Content-Type', 'text/html')
+    reply.transport.write('<html>\r\n'
+                '<head><title>Some directory index</title></head>\r\n'
+                '<body>\r\n')
+    for file in os.listdir(walker.root):
+        reply.transport.write('<a href="%s">%s</a><br />\r\n' % (
+            file.replace('"', '\\"'),
+            abml.quote(file),
+        ))
+    reply.transport.write('</body></html>\r\n')
+    reply.transport.close()
+
 class FilesystemCollection(resource.NormalResource):
-    def __init__(self, root, path_info='', mt=None):
+    def __init__(self, root):
         resource.NormalResource.__init__(self)
 
-        self.root = root
-        self.path_info = path_info
-        if mt:
-            self.mimetypes = mt
-        else:
-            self.mimetypes = mimetypes.MimeTypes()
+        self.walker = FilesystemWalker(self, root, '')
+        self.mimetypes = mimetypes.MimeTypes()
 
         self.index_files = ['index.html']
 
+        self.authenticator = htaccess_authenticator
+        self.normal_handler = normal_handler
+        self.index_handler = index_handler
+        self.exec_handler = None
+
     def authenticate(self, request, reply):
-        htaccess = self.root + os.sep + '.htaccess'
-        if os.access(htaccess, os.R_OK):
-            authname = ''
-            htpasswd = ''
-            require = ''
+        return self.walker.authenticate(request, reply)
+    def handle(self, request, reply, subpath):
+        return self.walker.handle(request, reply, subpath)
+    def getChild(self, request, reply, subpath):
+        return self.walker.getChild(request, reply, subpath)
 
-            f = io.BufferedReader(reactor.open(htaccess, 'r'))
-            for line in f.readlines():
-                op, arg = line.strip().split(' ', 1)
-                if op == 'AuthName':
-                    authname = arg
-                elif op == 'AuthUserFile':
-                    htpasswd = arg
-                elif op == 'require':
-                    require = arg
-            
-            if authname:
-                good = 0
-                auth = request.authentication()
-                if auth:
-                    scheme, login, password = auth
-                    
-                    if scheme == 'Basic':
-                        f = io.BufferedReader(reactor.open(htpasswd, 'r'))
-                        for line in f.readlines():
-                            u, p = line.strip().split(':', 1)
-                            if u == login and p == password:
-                                good = 1
-                                break
+    def handle_normal(self, request, reply, walker):
+        if self.normal_handler:
+            self.normal_handler(request, reply, self, walker)
+        else:
+            raise error.web.ForbiddenError, 'No handler for this type ' \
+                                            'of resource %s' % self.root
+    def handle_exec(self, request, reply, walker):
+        if self.exec_handler:
+            self.exec_handler(request, reply, self, walker)
+        else:
+            raise error.web.ForbiddenError, 'No handler for this type ' \
+                                            'of resource %s' % self.root
+    def handle_index(self, request, reply, walker):
+        if self.index_handler:
+            self.index_handler(request, reply, self, walker)
+        else:
+            raise error.web.ForbiddenError, 'No handler for this type ' \
+                                            'of resource %s' % self.root
 
-                if not good:
-                    hdr = 'Basic realm=%s' % authname
-                    reply.headers.setHeader('WWW-Authenticate', hdr)
-                    raise error.web.UnauthorizedError
 
+class FilesystemWalker(resource.NormalResource):
+    def __init__(self, collection, root, path_info):
+        resource.NormalResource.__init__(self)
+
+        self.collection = collection
+
+        self.root = root
+        self.path_info = path_info
+
+    def authenticate(self, request, reply):
+        if self.collection.authenticator:
+            self.collection.authenticator(request, reply, self.collection, self)
+        
     def getChild(self, request, reply, subpath):
         try:
             st = os.stat(self.root)
@@ -83,15 +154,15 @@ class FilesystemCollection(resource.NormalResource):
                 if subpath:
                     subpaths = [subpath]
                 else:
-                    subpaths = self.index_files
+                    subpaths = self.collection.index_files
                 for subpath in subpaths:
                     abs_path = self.root + os.sep + subpath
                     if os.access(abs_path, os.F_OK):
-                        return FilesystemCollection(abs_path, self.path_info, self.mimetypes)
+                        return self.createChild(abs_path, self.path_info)
                 raise error.web.NotFoundError
             elif stat.S_ISREG(st.st_mode):
                 path_info = self.path_info + '/' + subpath
-                return FilesystemCollection(self.root, path_info, self.mimetypes)
+                return self.createChild(self.root, path_info)
             else:
                 raise error.web.ForbiddenError, 'not a file or directory'
 
@@ -113,7 +184,7 @@ class FilesystemCollection(resource.NormalResource):
                         index.handle(request, reply, subpath)
                     except error.web.NotFoundError:
                         if os.access(self.root, os.X_OK):
-                            self.handle_index(request, reply, subpath)
+                            self.collection.handle_index(request, reply, self)
                         else:
                             raise error.web.ForbiddenError, 'directory not listable'
                 else:
@@ -121,10 +192,10 @@ class FilesystemCollection(resource.NormalResource):
                     raise error.web.MovedPermanently
             elif stat.S_ISREG(st.st_mode):
                 if os.access(self.root, os.X_OK):
-                    self.handle_exec(request, reply, subpath)
+                    self.collection.handle_exec(request, reply, self)
                 elif os.access(self.root, os.R_OK):
                     self.stat = st
-                    self.handle_normal(request, reply, subpath)
+                    self.collection.handle_normal(request, reply, self)
                 else:
                     raise error.web.ForbiddenError, 'not X or R'
             else:
@@ -136,34 +207,8 @@ class FilesystemCollection(resource.NormalResource):
             else:
                 raise error.web.ForbiddenError, 'other OSError'
 
-    def handle_normal(self, request, reply, subpath):
-        type, encoding = self.mimetypes.guess_type(self.root)
-        if not type:
-            type = 'application/octet-stream'
+    def createChild(self, root, path_info):
+        return self.__class__(self.collection, root, path_info)
 
-        last_modified = http.HTTPDateTime(self.stat.st_mtime)
-
-        reply.headers.setHeader('Last-Modified', last_modified)
-        reply.headers.setHeader('Content-Length', self.stat.st_size)
-        reply.headers.setHeader('Content-Type', type)
-        if encoding:
-            reply.headers.setHeader('Content-Encoding', encoding)
-
-        file = reactor.open(self.root, 'r')
-        reply.sendfile(file)
-        reply.done()
-
-    def handle_exec(self, request, reply, subpath):
-        raise error.web.ForbiddenError, 'cgi-scripts not allowed: %s' % self.root
-
-    def handle_index(self, request, reply, subpath):
-        reply.transport.write('<html>\r\n'
-                    '<head><title>Some directory index</title></head>\r\n'
-                    '<body>\r\n')
-        for file in os.listdir(self.root):
-            reply.transport.write('<a href="%s">%s</a><br />\r\n' % (
-                file.replace('"', '\\"'),
-                abml.quote(file),
-            ))
-        reply.transport.write('</body></html>\r\n')
-        reply.transport.close()
+__all__ = ['FilesystemCollection', 'htaccess_authenticator',
+           'normal_handler', 'index_handler']
