@@ -1,6 +1,7 @@
 # vim:nowrap:textwidth=0
-import stackless, sys, fcntl, socket, os, errno, select, types, traceback
+import stackless, sys, fcntl, socket, os, errno, select, types, traceback, time
 
+from sheared.python import queue
 from sheared.reactor import transport
 
 class ReactorFile:
@@ -77,13 +78,19 @@ class Reactor:
             while 1:
                 fd, addr = self.wait(sock, self.handleaccept, ())
                 t = transport.ReactorTransport(self, fd, addr)
-                self.createtasklet(factory.startup, (t,))
+                self.createtasklet(self.startup, (factory, t))
 
         finally:
             try:
                 self.close(sock)
             except:
                 traceback.print_exc()
+
+    def startup(self, factory, transport):
+        try:
+            factory.startup(transport)
+        finally:
+            transport.close()
 
     def connectSocket(self, family, type, addr):
         sock = socket.socket(family, type)
@@ -107,6 +114,7 @@ class Reactor:
         self.tasklet_channel = {}
 
         self.waiting = {}
+        self.sleeping = queue.MinQueue()
 
         self.started = 0
         self.stopped = 0
@@ -122,13 +130,25 @@ class Reactor:
                     stackless.schedule()
 
                 r, w, e = self.buildselectable()
-                if not (r or w or e):
-                    break
+                if self.sleeping.empty():
+                    if not (r or w or e):
+                        break
+
+                if not self.sleeping.empty():
+                    now = self.time()
+                    timeout = max(0.0, self.sleeping.minkey() - now)
+                else:
+                    timeout = None
 
                 try:
-                    r, w, e = select.select(r, w, e)
+                    r, w, e = select.select(r, w, e, timeout)
                 except select.error, (eno, emsg):
                     self.flushunselectabels(r, w)
+
+                now = self.time()
+                while (not self.sleeping.empty()) and (self.sleeping.minkey() <= now):
+                    channel = self.sleeping.getmin()
+                    channel.send(None)
 
                 fds = r + w
                 for fd in e:
@@ -190,6 +210,14 @@ class Reactor:
 
     def close(self, file):
         file.close()
+
+    def sleep(self, seconds):
+        channel = self.tasklet_channel[stackless.getcurrent()]
+        self.sleeping.insert(self.time() + seconds, channel)
+        return channel.receive()
+
+    def time(self):
+        return time.time()
 
     def connectTCP(self, addr):
         return self.connectSocket(socket.AF_INET, socket.SOCK_STREAM, addr)
