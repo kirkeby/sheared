@@ -39,6 +39,8 @@ def parse_accepts_header(value):
     widgets.sort(lambda a, b: cmp(a[1], b[1]))
     return widgets
     
+def is_explorer(environ):
+    return environ.get('HTTP_USER_AGENT', '').startswith('Mozilla/4.0 (compatible; MSIE ')
 def choose_widget(environ, widgets, default=None):
     """choose_widget(environ, widgets) -> widget
     
@@ -46,7 +48,9 @@ def choose_widget(environ, widgets, default=None):
     request, among a list of possible (widget, headers dict) pairs. Or, if
     none of the possible widgets are acceptable return default."""
 
-    if environ.has_key('HTTP_ACCEPT'):
+    if is_explorer(environ):
+        accepts = 'text/html, */*'
+    elif environ.has_key('HTTP_ACCEPT'):
         accepts = environ['HTTP_ACCEPT']
     else:
         accepts = '*/*'
