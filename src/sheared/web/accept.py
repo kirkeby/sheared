@@ -1,6 +1,14 @@
 from sheared import error
 from sheared.protocol.http import splitHeaderList
 
+import re
+
+# Overrides for Accept-header.
+user_agent_overrides = [
+    (re.compile('^Mozilla/4.0 \\(compatible; MSIE '),
+                'text/html, */*; q=0.1'),
+]
+
 def parse_accepts_header(value):
     """parse_accepts_header(header_value) -> widgets
 
@@ -39,8 +47,16 @@ def chooseContentType(request, content_types):
 
     def is_acceptable(widget, gizmo):
         return (widget == gizmo) or \
+               (gizmo.endswith('/*') and widget.startswith(gizmo[:-1])) or \
                (gizmo == '*/*') or \
-               (gizmo.endswith('/*') and widget.startswith(gizmo[:-1]))
+               (gizmo == '*')
+
+    ua = request.headers.get('User-Agent', '')
+    if ua:
+        for ex, val in user_agent_overrides:
+            if ex.match(ua):
+                request.headers.setHeader('Accept', val)
+                break
 
     if request.headers.has_key('Accept'):
         chosen = None

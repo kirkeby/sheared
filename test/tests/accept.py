@@ -43,11 +43,38 @@ class ChooseContentTypeTestCase(unittest.TestCase):
                           accept.chooseContentType(request,
                             ['text/plain', 'text/html']))
 
+        request.headers.setHeader('Accept', 'text/html, */*; q=0.1')
+        self.assertEquals('text/html',
+                          accept.chooseContentType(request,
+                            ['application/xhtml+xml', 'text/html']))
+
     def testUnacceptable(self):
         request = FakeRequest()
         request.headers.setHeader('Accept', 'text/plain')
         self.assertRaises(error.web.NotAcceptable,
                           accept.chooseContentType, request, ['text/html'])
+
+    def testWithUserAgent(self):
+        request = FakeRequest()
+        request.headers.setHeader('User-Agent',
+                                  'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)')
+        self.assertEquals('text/html',
+                          accept.chooseContentType(request,
+                            ['application/xhtml+xml', 'text/html']))
+
+        request.headers.setHeader('Accept',
+                                  'image/gif, */*')
+        self.assertEquals('text/html',
+                          accept.chooseContentType(request,
+                            ['application/xhtml+xml', 'text/html']))
+
+    def testCollision(self):
+        request = FakeRequest()
+        request.headers.setHeader('Accept',
+                                  'application/xhtml+xml,text/html')
+        self.assertEquals('application/xhtml+xml',
+                          accept.chooseContentType(request,
+                            ['application/xhtml+xml', 'text/html']))
 
 suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(ChooseContentTypeTestCase, 'test')])
