@@ -8,6 +8,7 @@ import logging
 import entwine
 
 from sheared.web.querystring import HTTPQueryString
+from sheared.web import cookie
 
 from skewed.wsgi.misc import relative
 from skewed.wsgi.misc import choose_widget
@@ -130,6 +131,14 @@ class Request:
                 self.query = HTTPQueryString(qs)
         else:
             self.query = HTTPQueryString('')
+
+        self.cookies = {}
+        baked = self.environ.get('HTTP_COOKIE', '')
+        if baked:
+            for b in baked.split(';'):
+                c = cookie.parse(b)
+                self.cookies[c.name] = c
+
 class Reply:
     def __init__(self, status, headers):
         self.status = status
@@ -151,7 +160,6 @@ class ZPTView:
             ct = 'Content-Type', 'application/xhtml+xml; charset=utf-8'
             reply.headers.append(ct)
 
-            context = {}
             page_template = os.path.join(self.application.templates_path,
                                          self.application.page_template_path)
             if os.access(page_template, os.R_OK):
