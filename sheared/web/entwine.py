@@ -3,7 +3,6 @@ import warnings
 from dtml import tal, metal, tales, context
 
 from sheared.python import io
-from sheared.python import benchmark
 
 class Entwiner:
     def __init__(self):
