@@ -69,14 +69,20 @@ def notFoundErrorHandler(server, exc_info, request, reply):
 
 def internalServerErrorHandler(server, exc_info, request, reply):
     send_http_error_page(reply, None)
-    server.logInternalError(exc_info)
+    if isinstance(exc_info[1].args, tuple) and len(exc_info[1].args) == 3:
+        server.logInternalError(exc_info[1].args)
+    else:
+        server.logInternalError(exc_info)
 
 def defaultErrorHandler(server, exc_info, request, reply):
     if len(exc_info[1].args) == 1 and isinstance(exc_info[1].args[0], types.StringTypes):
         send_http_error_page(reply, exc_info[1].args[0])
     else:
         send_http_error_page(reply, None)
-        log.default.exception(exc_info)
+        if isinstance(exc_info[1].args, tuple) and len(exc_info[1].args) == 3:
+            server.logInternalError(exc_info[1].args)
+        else:
+            server.logInternalError(exc_info)
 
 def send_http_error_page(reply, message):
     if not message:
