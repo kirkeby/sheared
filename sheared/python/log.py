@@ -37,8 +37,15 @@ def escape_dangerous(s):
 class Log:
     def __init__(self, path):
         self.path = path
-        self.file = reactor.open(path, 'w')
-        self.file.seek(0, 2)
+
+    def write(self, s):
+        if not self.file:
+            self._open()
+        try:
+            self.file.write(s)
+        except error.reactor.ReactorRunningError:
+            self._open()
+            self.file.write(s)
     
     def timestamped(self, s):
         s = escape_dangerous(s)
@@ -66,11 +73,9 @@ class Log:
             return '[%s] [%s] ' % (time.ctime(), cls)
         else:
             return '[%s] ' % time.ctime()
-    def write(self, s):
-        try:
-            self.file.write(s)
-        except error.reactor.ReactorRunningError:
+
+    def _open(self):
+        if self.file():
             self.file.close()
-            self.file = reactor.open(self.path, 'w')
-            self.file.seek(0, 2)
-            self.file.write(s)
+        self.file = reactor.open(self.path, 'w')
+        self.file.seek(0, 2)
