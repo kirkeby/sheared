@@ -4,11 +4,8 @@ from sheared.web.virtualhost import VirtualHost
 from sheared import reactor
 
 webserver_options = [
-    ['set_str', 1, 'interface', '', 'interface', 'webserver.interface',
-     'Bind web server to this interface.'],
-
-    ['set_int', 1, 'port', '', 'port', 'webserver.port',
-     'Bind web server to this port.'],
+    ['set_str', 1, 'address', '', 'bind', 'webserver.bind',
+     'Bind web server to this place.'],
 
     ['set_str', 1, 'hostname', '', 'hostname', 'webserver.hostname',
      'Externally visible name of web server.'],
@@ -41,4 +38,4 @@ class WebserverApplication(Application):
         self.webserver.addVirtualHost(self.hostname, self.vhost)
         self.webserver.setDefaultHost(self.hostname)
 
-        reactor.listenTCP(self.webserver, (self.interface, self.port))
+        reactor.listen(self.webserver, self.address)
