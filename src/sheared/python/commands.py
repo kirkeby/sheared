@@ -47,7 +47,7 @@ def spawn(cmd, argv, with_stderr=0):
             os.dup2(stdout_w, 1)
             os.dup2(stderr_w, 2)
             daemonize.closeall(3)
-            os.execv(cmd, argv)
+            os.execvp(cmd, argv)
         except:
             os._exit(1)
         
@@ -59,12 +59,8 @@ def spawn(cmd, argv, with_stderr=0):
 def getstatusoutput(cmd, argv):
     pid, stdin, stdout = spawn(cmd, argv)
     
-    out = ''
-    while 1:
-        d = stdout.read()
-        if d == '':
-            break
-        out = out + d
+    stdin.close()
+    out = stdout.read() ; stdout.close()
 
     return waitpid(pid)[1], out
 
@@ -90,4 +86,15 @@ def isok(status):
     else:
         return 0
 
+def filter(cmd, argv, data):
+    def writer(pid, file, data):
+        file.write(data) ; file.close()
+        waitpid(pid)
+ 
+    pid, stdin, stdout, stderr = spawn(cmd, argv, with_stderr=1)
+    reactor.createtasklet(writer, (pid, stdin, data))
+    out = stdout.read() ; stdout.close()
+    err = stderr.read() ; stderr.close()
+
+    return out, err
 

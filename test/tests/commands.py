@@ -125,10 +125,37 @@ class SpawnTestCase(unittest.TestCase):
 
         self.assertEquals(self.result, '')
 
+class FilterTestCase(unittest.TestCase):
+    def setUp(self):
+        self.result = None
+        self.error = None
+
+    def testCat(self):
+        def run():
+            self.result, self.error = \
+                commands.filter('cat', ['cat'], 'Hello,\nWorld!\n')
+        reactor.createtasklet(run)
+        reactor.start()
+
+        self.assertEquals(self.error, '')
+        self.assertEquals(self.result, 'Hello,\nWorld!\n')
+
+    def testTac(self):
+        def run():
+            self.result, self.error = \
+                commands.filter('tac', ['tac'], 'Hello,\nWorld!\n')
+        reactor.createtasklet(run)
+        reactor.start()
+
+        self.assertEquals(self.error, '')
+        self.assertEquals(self.result, 'World!\nHello,\n')
+
+
 suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(GetoutputTestCase, 'test')])
 suite.addTests([unittest.makeSuite(GetstatusoutputTestCase, 'test')])
 suite.addTests([unittest.makeSuite(SpawnTestCase, 'test')])
+suite.addTests([unittest.makeSuite(FilterTestCase, 'test')])
 
 __all__ = ['suite']
 
