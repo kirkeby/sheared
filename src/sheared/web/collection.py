@@ -18,7 +18,8 @@
 #
 import warnings
 warnings.warn('use sheared.web.collections instead of sheared.web.collection',
-              DeprecationWarning)
+              DeprecationWarning,
+              stacklevel=2)
 
 from sheared.web.collections.shadow import ShadowCollection
 from sheared.web.collections.tilde import TildeUserCollection
