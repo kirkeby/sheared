@@ -153,10 +153,10 @@ class UnvalidatedInput:
 
         Equivalent to as_str('\\t\\n\\r\\x20-\\x7e')."""
         return self.as_str('\t\n\r\x20-\x7e')
-    
-class HTTPQueryString:
-    def __init__(self, qs):
-        self.dict = parse_querystring(qs)
+
+class Form:
+    def __init__(self, dict):
+        self.dict = dict
 
     def get_one(self, name, *default):
         assert len(default) <= 1
@@ -182,3 +182,7 @@ class HTTPQueryString:
 
     def has_key(self, name):
         return self.dict.has_key(name)
+    
+class HTTPQueryString(Form):
+    def __init__(self, qs):
+        Form.__init__(self, parse_querystring(qs))

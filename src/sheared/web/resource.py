@@ -20,6 +20,8 @@
 
 from sheared import error
 from sheared.web import querystring
+from sheared.python.rfc1521 import parse_plist_header
+from sheared.python.rfc1521 import parse_content_type
 
 class Resource:
     method_parsers = None
@@ -57,12 +59,30 @@ class PostableResource(Resource):
 
     def parsePost(self, request, reply):
         if not request.headers.has_key('Content-Type'):
-            raise error.web.BadRequestError
+            raise error.web.BadRequestError, \
+                  "can't POST without a Content-Type"
 
-        ct = request.headers.get('Content-Type')
+        ct, params = parse_content_type(request.headers.get('Content-Type'))
         if ct == 'application/x-www-form-urlencoded':
             qs = request.body.lstrip()
             request.args = querystring.HTTPQueryString(qs)
+
+        elif ct == 'multipart/form-data':
+            parts = request.body.split('--' + params['boundary'])
+            if len(parts) < 2:
+                raise ValueError, 'what kind of degenerate madness is this?!'
+            if not parts[-1][:2] == '--':
+                raise ValueError, 'bad end-boundary'
+            parts = map(RFC822Message, parts[1:-1])
+
+            args = {}
+            for part in parts:
+                # FIXME -- handle encodings and other funkiness
+                cd = part.headers['Content-Disposition'][0]
+                disp, params = parse_plist_header(cd)
+                val = querystring.UnvalidatedInput(params['name'], part.body)
+                args[params['name']] = [val]
+            request.args = querystring.Form(args)
 
         else:
             raise error.web.NotImplementedError, \

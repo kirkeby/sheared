@@ -42,13 +42,34 @@ class HTTPServerTestCase(unittest.TestCase):
         self.reactor = reactor
         self.reactor.createtasklet(self.server.startup, (self.transport,))
 
-    def testPostRequest(self):
+    def testPostUrlencodedRequest(self):
         self.transport.appendInput('POST /post HTTP/1.0\r\n'
                                    'Host: foo.com\r\n'
                                    'Content-Length: 12\r\n'
                                    'Content-Type: application/x-www-form-urlencoded\r\n'
                                    '\r\n'
                                    'q=fortytwo\r\n')
+        self.reactor.start()
+
+        status, headers, body = parseReply(self.transport.getOutput())
+
+        self.assertEquals(body, 'Welcome to foo.com!\r\n')
+        self.assertEquals(status.version, (1, 0))
+        self.assertEquals(status.code, 200)
+
+    def testPostFormdataRequest(self):
+        self.transport.appendInput('POST /post HTTP/1.0\r\n'
+                                   'Host: foo.com\r\n'
+                                   'Content-Length: 89\r\n'
+                                   'Content-Type: multipart/form-data; '
+                                   '              boundary=foo\r\n'
+                                   '\r\n'
+                                   '--foo\r\n'
+                                   'Content-Disposition: form-data; '
+                                   '                     name=q\r\n'
+                                   '\r\n'
+                                   'fortytwo\r\n'
+                                   '--foo--\r\n')
         self.reactor.start()
 
         status, headers, body = parseReply(self.transport.getOutput())
