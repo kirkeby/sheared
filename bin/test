@@ -1,4 +1,4 @@
-#!/usr/bin/env stackless-python
+#!/usr/bin/env python-stackless
 
 import unittest, sys, traceback, os
 
