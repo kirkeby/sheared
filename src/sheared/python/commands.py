@@ -33,6 +33,9 @@ def spawn(cmd, argv, with_stderr=0):
     if pid:
         os.close(stdin_r)
         os.close(stdout_w)
+        if with_stderr:
+            os.close(stderr_w)
+
         stdin = reactor.fdopen(stdin_w, '<%r stdin>' % cmd)
         stdout = reactor.fdopen(stdout_r, '<%r stdout>' % cmd)
         if with_stderr:

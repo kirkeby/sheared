@@ -93,9 +93,42 @@ class GetstatusoutputTestCase(unittest.TestCase):
         reactor.start()
         self.assertEquals(reactor.result, (0, 'Hello, World\n'))
 
+class SpawnTestCase(unittest.TestCase):
+    def tearDown(self):
+        if hasattr(self, 'result'):
+            del self.result
+        if hasattr(self, 'error'):
+            del self.error
+
+    def testCatDevNull(self):
+        def run():
+            argv = ['/bin/cat', '/dev/null']
+            pid, stdin, stdout = commands.spawn(argv[0], argv)
+            stdin.close()
+            self.result = stdout.read() ; stdout.close()
+
+        reactor.createtasklet(run)
+        reactor.start()
+
+        self.assertEquals(self.result, '')
+
+    def testCatDevNullWithStderr(self):
+        def run():
+            argv = ['/bin/cat', '/dev/null']
+            pid, stdin, stdout, stderr = commands.spawn(argv[0], argv, with_stderr=1)
+            stdin.close()
+            self.result = stdout.read() ; stdout.close()
+            self.error = stderr.read() ; stderr.close()
+
+        reactor.createtasklet(run)
+        reactor.start()
+
+        self.assertEquals(self.result, '')
+
 suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(GetoutputTestCase, 'test')])
 suite.addTests([unittest.makeSuite(GetstatusoutputTestCase, 'test')])
+suite.addTests([unittest.makeSuite(SpawnTestCase, 'test')])
 
 __all__ = ['suite']
 
