@@ -40,10 +40,10 @@ class StaticCollection:
 
     def handle(self, request, reply, subpath):
         if request.path.endswith('/'):
+            self.getChild(request, reply, '').handle(request, reply, subpath)
+        else:
             reply.headers.setHeader('Location', request.path + '/')
             raise error.web.MovedPermanently
-        else:
-            self.getChild(request, reply, '').handle(request, reply, subpath)
 
 class FilesystemCollection:
     def __init__(self, root, path_info='', mt=None):
