@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys, traceback, types, errno
+import sys, traceback, types, errno, time
 
 from sheared import error
 from sheared.protocol import http
@@ -34,11 +34,19 @@ class HTTPServer:
         self.oh_nine = oh_nine.Server()
         self.one_oh = one_oh.Server()
 
+        self.accesslog = None
+        self.errorlog = None
+
     def addVirtualHost(self, name, vhost):
         self.hosts[name] = vhost
 
     def setDefaultHost(self, name):
         self.default_host = name
+
+    def setAccessLog(self, l):
+        self.accesslog = l
+    def setErrorLog(self, l):
+        self.errorlog = l
 
     def startup(self, transport):
         try:
@@ -119,18 +127,8 @@ class HTTPServer:
                 reply.headers.setHeader('Content-Type', 'text/plain')
                 self.handleWebServerError(e, request, reply)
 
-        self.handleCompletedRequest(request, reply)
+        self.logCompletedRequest(request, reply)
      
-    def handleCompletedRequest(self, request, reply):
-        print reply.status,
-        print '<%s>' % request.requestline.wire_uri,
-        if request.headers.has_key('Referer'):
-           print '<%s>' % request.headers.get('Referer'),
-        else:
-            print '<>',
-        print reply.transport.other,
-        print
-
     def handleWebServerError(self, e, request, reply):
         if isinstance(e, error.web.Moved):
             reply.send("This page has moved. You can now find it here:\r\n"
@@ -148,9 +146,36 @@ class HTTPServer:
         else:
             reply.send("I am terribly sorry, but an error (%d) occured "
                        "while processing your request.\r\n" % e.statusCode)
-            traceback.print_exc()
+            self.logInternalError()
         
-    def logInternalError(self, (tpe, val, tb)):
-        traceback.print_exception(tpe, val, tb)
+    def logCompletedRequest(self, request, reply):
+        if self.accesslog:
+            ip, port = reply.transport.other
+            ident = '-'
+            user, _ = request.authentication(require=0)
+            user = user or '-'
+            date = time.strftime('%d/%m/%Y:%H:%M:%S %z')
+            req = request.requestline.raw
+            code = reply.status
+            length = 0
+
+            if request.headers.has_key('Referer'):
+                referer = request.headers.get('Referer')
+            else:
+                referer = ''
+
+            if request.headers.has_key('User-Agent'):
+                agent = request.headers.get('User-Agent')
+            else:
+                agent = ''
+
+            fmt = '%s %s %s [%s] "%s" %d %d "%s" "%s"\n'
+            self.accesslog.write(fmt % (ip, ident, user, date,
+                                        req, code, length,
+                                        referer, agent))
+
+    def logInternalError(self, ex):
+        if self.errorlog:
+            self.errorlog.exception(ex)
 
 __all__ = ['HTTPServer']
