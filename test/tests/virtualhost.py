@@ -42,7 +42,7 @@ class VirtualHostTestCase(unittest.TestCase):
         reply = FakeReply()
         self.assertRaises(error.web.Moved,
                           self.virtualhost.handle, request, reply)
-        self.assertEquals(reply.headers['Location'], '/')
+        self.assertEquals(reply.headers['Location'], 'http://foo.com/')
 
     def testRedirectWithHostHeader(self):
         request = FakeRequest('GET /moved HTTP/1.0', 'Host: foo.com\r\n')

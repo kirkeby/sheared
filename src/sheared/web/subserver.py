@@ -72,6 +72,15 @@ class HTTPSubServer(server.HTTPServer):
                 reply.server = self
                 reply.transport = client_transport
 
+                if 0:
+                    class WriteLogger:
+                        def __init__(self, tr):
+                            self.real_write = tr.write
+                        def write(self, *args):
+                            print `args`
+                            self.real_write(*args)
+                    client_transport.write = WriteLogger(client_transport).write
+
                 self.handle(request, reply)
 
             finally:

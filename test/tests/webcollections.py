@@ -241,7 +241,7 @@ class StaticCollectionTestCase(unittest.TestCase):
         vh = VirtualHost(coll)
         
         self.assertRaises(error.web.Moved, vh.handle, request, reply)
-        self.assertEquals(reply.headers['location'], '/foo/')
+        self.assertEquals(reply.headers['location'], 'http://foo.com/foo/')
 
 suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(StaticCollectionTestCase, 'test')])

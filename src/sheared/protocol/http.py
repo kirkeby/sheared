@@ -54,6 +54,7 @@ HTTP_ACCEPTED = 202
 HTTP_NO_CONTENT = 204
 HTTP_MOVED_PERMANENTLY = 301
 HTTP_MOVED_TEMPORARILY = 302
+HTTP_SEE_OTHER = 303 # HTTP/1.1
 HTTP_NOT_MODIFIED = 304
 HTTP_BAD_REQUEST = 400
 HTTP_UNAUTHORIZED = 401
@@ -72,6 +73,7 @@ http_reason = {
     204: "No Content",
     301: "Moved Permanently",
     302: "Moved Temporarily",
+    303: "See Other",
     304: "Not Modified",
     400: "Bad Request",
     401: "Unauthorized",
