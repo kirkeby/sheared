@@ -1,0 +1,12 @@
+<span metal:define-macro='document-content'>
+<h1>article index</h1>
+
+<ul>
+<li tal:repeat='article articles'>
+    <a href='./article?id=0'
+       tal:content='article/title'
+       tal:attributes='href string:./article?id=${article/id}'>article
+       title goes here</a>
+</li>
+</ul>
+</span>
