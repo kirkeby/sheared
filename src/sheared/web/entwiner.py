@@ -28,19 +28,17 @@ from sheared.web import resource
 from sheared import error
 
 class Entwiner(resource.NormalResource):
+    macro_pages = []
+    template_pages = []
+    content_types = [
+        'application/xhtml+xml',
+        'text/html',
+        'text/xml',
+    ]
+    
     def __init__(self):
         resource.NormalResource.__init__(self)
-    
-        if hasattr(self, 'template_page'):
-            self.template_pages = [self.template_page]
-        else:
-            self.templates_pages = []
-
-        self.content_types = [
-            'application/xhtml+xml',
-            'text/xml',
-            'text/html',
-        ]
+        self.result = None
 
     def handle(self, request, reply, subpath):
         # Accept support
@@ -51,18 +49,19 @@ class Entwiner(resource.NormalResource):
         if hasattr(request, 'context'):
             self.context.update(request.context)
 
+        for template in self.macro_pages:
+            self.execute(template, throwaway=1)
         self.entwine(request, reply, subpath)
-    
         for i in range(len(self.template_pages)):
             last = i == range(len(self.template_pages))
-            r = self.execute(self.template_pages[i], throwaway=last)
-
-        reply.headers.setHeader('Content-Length', str(len(r)))
+            self.execute(self.template_pages[i], throwaway=last)
+    
+        reply.headers.setHeader('Content-Length', str(len(self.result)))
 
         # Conditional GET support
         if not reply.headers.has_key('ETag') and \
            not reply.headers.has_key('Last-Modified'):
-            etag = '"%s"' % sha.sha(r).hexdigest()
+            etag = '"%s"' % sha.sha(self.result).hexdigest()
             reply.headers.setHeader('ETag', etag)
 
             if not request.head_only and \
@@ -70,17 +69,16 @@ class Entwiner(resource.NormalResource):
                 if etag == request.headers['If-None-Match']:
                     raise error.web.NotModified
 
-        reply.send(r)
+        reply.send(self.result)
 
-    def execute(self, path, throwaway=1):
+    def execute(self, path, throwaway=0):
         root = getattr(self, 'template_root', '')
         if root:
             path = [root] + path.split('/')
             path = os.sep.join(path)
 
-        r = entwine(io.readfile(path), self.context)
-
-        if throwaway and r.strip():
+        result = entwine(io.readfile(path), self.context)
+        if not throwaway:
+            self.result = result
+        if result and throwaway:
             warnings.warn('%s: ignored non-macro content' % path)
-
-        return r
