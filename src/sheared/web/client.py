@@ -61,7 +61,8 @@ def get(url, headers=None):
     
     try:
         tr.write('GET %s HTTP/1.0\r\n' % uri)
-        tr.write('Host: %s:%d\r\n' % (host, port))
+        for key, value in headers.items():
+            tr.write('%s: %s\r\n' % (key, value))
         tr.write('\r\n')
 
         l = tr.readline()
