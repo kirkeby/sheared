@@ -302,16 +302,11 @@ def addCoroutine(coroutine, args):
     else:
         coroutines.append((coroutine, args))
 
-def connectSocket(factory, address, from_addr, klass):
-    try:
-        client = klass(reactor, address, from_addr)
-        transport = client.connect()
-        coroutine = factory.buildCoroutine(transport)
-        reactor.addCoroutine(coroutine, (None,))
-    except socket.error:
-        reactor.addCoroutine(coroutine, (sys.exc_info(),))
+def connectSocket(klient, address, from_addr, klass):
+    transport = klass(reactor, address, from_addr).connect()
+    return klient.connected(transport)
 
-def connectTCP(address):
+def connectTCP(factory, address):
     return connectSocket(factory, address, None, shocket.TCPClient)
 
 def connectUNIX(factory, address):
