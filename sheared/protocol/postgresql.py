@@ -219,13 +219,6 @@ def parsePacket(client, data, columns=None):
         return None, orig_data
 
     raise UnknownPacket(orig_data)
-
-class PostgresqlClientFactory:
-    def connected(self, transport):
-        cl = PostgresqlClient(transport)
-        cl.factory = self
-        cl.connected()
-        return cl
     
 # FIXME -- From the Postgresql Developers Manual section 4.2.1:
 #
