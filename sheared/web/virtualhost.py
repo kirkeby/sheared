@@ -22,8 +22,9 @@ from sheared import error
 from sheared.python import path
 
 class VirtualHost:
-    def __init__(self, collection):
+    def __init__(self, collection, location=None):
         self.collection = collection
+        self.location = location
 
     def walkPath(self, request, reply, pth):
         child = self.collection
@@ -32,7 +33,7 @@ class VirtualHost:
         while pieces:
             if getattr(child, 'authenticate', None):
                 child.authenticate(request, reply)
-            if not getattr(child, 'isLeaf', getattr(child, 'getChild', None)):
+            if not getattr(child, 'getChild', None):
                 break
             piece = pieces.pop(0)
             child = child.getChild(request, reply, piece)
@@ -42,8 +43,25 @@ class VirtualHost:
     def handle(self, request, reply, path):
         child, subpath = self.walkPath(request, reply, path)
 
-        if not getattr(child, 'handle', None):
-            raise error.web.ForbiddenError
+        try:
+            if not getattr(child, 'handle', None):
+                raise error.web.ForbiddenError
 
-        child.handle(request, reply, subpath)
+            child.handle(request, reply, subpath)
 
+        except error.web.MovedPermanently, e:
+            self.massageLocationHeader(request, reply)
+            raise
+
+    def massageLocationHeader(self, request, reply):
+        if not reply.headers.has_key('Location'):
+            raise error.web.InternalServerError
+
+        loc = reply.headers.get('Location')
+        if loc.find('://') < 0:
+            if not self.location:
+                raise error.web.InternalServerError
+            if not loc.startswith('/'):
+                loc = request.path + '/' + loc
+            loc = self.location + loc[1:]
+            reply.headers.setHeader('Location', loc)
