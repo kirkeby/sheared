@@ -29,11 +29,11 @@ else:
 
     # Receive filedescriptor. Will block until descriptor is sent.
     sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    try:
-        os.unlink(sys.argv[2])
-    except:
-        pass
-    sock.bind(sys.argv[2])
+#    try:
+#        os.unlink(sys.argv[2])
+#    except:
+#        pass
+#    sock.bind(sys.argv[2])
     sock.connect(sys.argv[1])
 
     fd, path = fdpass.recv(sock.fileno())
