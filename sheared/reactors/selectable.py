@@ -223,18 +223,22 @@ class Reactor(base.Reactor):
             del self.tasklet_name[id(t)]
 
     def sleep(self, seconds):
-        assert self.running
+        if self.running:
+            channel = self.tasklet_channel[id(stackless.getcurrent())]
+            self.sleeping.insert(time.time() + seconds, channel)
+            channel.receive()
 
-        channel = self.tasklet_channel[id(stackless.getcurrent())]
-        self.sleeping.insert(time.time() + seconds, channel)
-        return channel.receive()
+        else:
+            time.sleep(seconds)
+        
 
     def schedule(self):
-        assert self.running
+        if self.running:
+            self.sleep(0)
 
-        channel = self.tasklet_channel[id(stackless.getcurrent())]
-        self.sleeping.insert(0, channel)
-        return channel.receive()
+        else:
+            stackless.schedule()
+            
 
     def fdopen(self, file, mode='r', other=None):
         if isinstance(file, types.IntType):
