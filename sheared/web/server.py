@@ -1,14 +1,14 @@
 # vim:nowrap:textwidth=0
 
-import os, stat, errno, mimetypes, sys, pickle, re
+import os, stat, errno, mimetypes, sys, pickle, re, types
 
+from sheared import error
+from sheared import reactor
 from sheared.protocol import basic
 from sheared.protocol import http
 from sheared.internet import shocket
 from sheared.python import fdpass
-
-class InputError(Exception):
-    pass
+from sheared.python import io
 
 def unscape_querystring(qs):
     qs = qs.replace('+', ' ')
@@ -19,10 +19,10 @@ def unscape_querystring(qs):
             break
 
         if len(after) < 2:
-            raise InputError, 'percent near end of query-string'
+            raise error.web.InputError, 'percent near end of query-string'
         hex, after = after[0:2], after[2:]
         if re.findall('[^0-9a-fA-F]', hex):
-            raise InputError, 'malformed hex-number in query-string'
+            raise error.web.InputError, 'malformed hex-number in query-string'
         qs = before + chr(int(hex, 16)) + after
     return qs
 
@@ -31,14 +31,14 @@ def parse_querystring(qs):
     if not len(qs):
         return args
     for part in qs.split('&'):
-        thing = part.split('=', 1)
+        thing = map(unscape_querystring, part.split('=', 1))
         if len(thing) == 1:
             thing = thing[0], ''
         name, value = thing
         if len(name) == 0:
-            raise InputError, 'zero-length name not allowed'
+            raise error.web.InputError, 'zero-length name not allowed'
         if re.findall('[^a-zA-Z0-9-_]', name):
-            raise InputError, 'invalid name in query-string'
+            raise error.web.InputError, 'invalid name in query-string'
         if not args.has_key(name):
             args[name] = []
         if len(value):
@@ -53,42 +53,58 @@ class UnvalidatedInput:
         try:
             return int(self.__str, radix)
         except ValueError:
-            raise InputError, '%r: invalid integer' % self.__str
-    
-    def as_name(self):
-        if re.findall('[^a-zA-Z0-9_-]', self.__str):
-            raise InputError, '%r: invalid name' % self.__str
-        return self.__str
+            raise error.web.InputError, '%r: invalid integer' % self.__str
 
+    def as_bool(self):
+        return bool(self.__str)
+    
     def as_str(self, valid):
         if re.findall('[^%s]' % valid, self.__str):
-            raise InputErrer, '%r: invalid characters in value' % self.__str
+            raise error.web.InputError, '%r: invalid characters in value' % self.__str
         return self.__str
+
+    def as_name(self):
+        return self.as_str('a-zA-Z0-9_-')
+
+    def as_word(self):
+        return self.as_str('\x21-\x7e')
+
+    def as_text(self):
+        return self.as_str('\t\n\r\x20-\x7e')
     
 class HTTPQueryString:
     def __init__(self, qs):
         self.dict = parse_querystring(qs)
 
-    def get_one(self, name, *args):
-        v = apply(self.get_many, (name,) + args)
-        if not len(v) == 1:
-            raise InputError, '%s: expected scalar-arg' % name
-        return v[0]
+    def get_one(self, name, *default):
+        assert len(default) <= 1
+        v = self.get_many(name, list(default))
+        if len(v) == 0 and default:
+            v = UnvalidatedInput(default[0])
+        elif len(v) == 1:
+            v = v[0]
+        else:
+            raise error.web.InputError, '%s: expected scalar-arg, ' \
+                                             'got %r' % (name, v)
+        return v
 
-    def get_many(self, name, *args):
+    def get_many(self, name, default=[]):
         try:
-            return apply(self.dict.get, (name,) + args)
+            return self.dict[name]
         except KeyError:
-            raise InputError, '%s: required argument missing' % name
+            if default:
+                return map(UnvalidatedInput, default)
+            else:
+                raise error.web.InputError, '%s: required argument missing' % name
 
 class HTTPRequest:
-    def __init__(self, requestline, headers):
+    def __init__(self, requestline, querystring, headers):
         self.method = requestline.method
         self.version = requestline.version
         self.scheme = requestline.uri[0]
         self.host = requestline.uri[1]
         self.path = requestline.uri[2]
-        self.querystring = requestline.uri[3]
+        self.querystring = querystring
         self.fragment = requestline.uri[4]
         self.args = HTTPQueryString(self.querystring)
         self.headers = headers
@@ -156,6 +172,9 @@ class HTTPReply:
             self.send("""I am terribly sorry, but an error occured while processing your request.\n""")
         self.done()
 
+    def isdone(self):
+        return self.transport.closed
+
     def done(self):
         if not self.transport.closed:
             self.transport.close()
@@ -176,8 +195,6 @@ class HTTPServerFactory(basic.ProtocolFactory):
 class HTTPServer(basic.LineProtocol):
     def __init__(self, reactor, transport):
         basic.LineProtocol.__init__(self, reactor, transport, '\n')
-        self.where = 'request-line'
-        self.collected = ''
 
     def handle(self, request, reply):
         try:
@@ -197,7 +214,7 @@ class HTTPServer(basic.LineProtocol):
                 else:
                     reply.sendErrorPage(http.HTTP_NOT_FOUND, 'No such host.')
                     
-            except InputError, e:
+            except error.web.InputError, e:
                 if not reply.decapitated and not reply.transport.closed:
                     reply.sendErrorPage(http.HTTP_BAD_REQUEST, e)
                 
@@ -209,24 +226,29 @@ class HTTPServer(basic.LineProtocol):
         finally:
             reply.done()
 
-    def receivedLine(self, line):
-        self.collected = self.collected + line
+    def run(self):
+        reader = io.RecordReader(self.transport, '\r\n')
+        requestline = http.HTTPRequestLine(reader.readline().rstrip())
+        querystring = requestline.uri[3]
 
-        if self.where == 'request-line':
-            self.requestline = http.HTTPRequestLine(line.strip())
-            self.collected = ''
-            self.where = 'headers'
-            if self.requestline.version == (0,9):
-                self.receivedLine('\r\n')
-    
-        elif self.where == 'headers':
-            if line == '\r\n':
-                request = HTTPRequest(self.requestline, http.HTTPHeaders(self.collected))
-                reply = HTTPReply(request.version, self.transport)
-                self.handle(request, reply)
+        if requestline.version[0] == 0:
+            pass
+        elif requestline.version[0] == 1:
+            reader = io.RecordReader(reader, '\r\n\r\n')
+            headers = reader.readline()
+            headers = http.HTTPHeaders(headers)
 
-    def lastLineReceived(self):
-        pass
+            if headers.has_key('Content-Type'):
+                ct = headers.get('Content-Type')
+                if ct == 'application/x-www-form-urlencoded':
+                    querystring = io.Drainer(reader).read().lstrip()
+                else:
+                    # FIXME -- need logging
+                    print 'need handler for Content-Type %r' % ct
+
+            request = HTTPRequest(requestline, querystring, headers)
+            reply = HTTPReply(request.version, self.transport)
+            self.handle(request, reply)
 
 class HTTPSubServerAdapter:
     def __init__(self, reactor, path):
@@ -281,8 +303,7 @@ class VirtualHost:
         self.bindings.append((root, thing))
 
 class StaticCollection:
-    def __init__(self, reactor, root):
-        self.reactor = reactor
+    def __init__(self, root):
         self.root = root
 
     def handle(self, request, reply, subpath):
@@ -306,7 +327,7 @@ class StaticCollection:
 
             elif stat.S_ISREG(st.st_mode):
                 file = open(path, 'r')
-                file = self.reactor.prepareFile(file)
+                file = reactor.current.prepareFile(file)
                 reply.headers.setHeader('Last-Modified', http.HTTPDateTime(st.st_mtime))
                 reply.headers.setHeader('Content-Length', st.st_size)
                 reply.headers.setHeader('Content-Type', type)

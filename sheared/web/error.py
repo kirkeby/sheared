@@ -1,10 +1,15 @@
 from sheared.protocol.http import HTTP_NOT_FOUND, \
                                   HTTP_UNAUTHORIZED, \
                                   HTTP_FORBIDDEN, \
-                                  HTTP_MOVED_PERMANENTLY
+                                  HTTP_MOVED_PERMANENTLY, \
+                                  HTTP_BAD_REQUEST, \
+                                  HTTP_INTERNAL_SERVER_ERROR
 
 class WebServerError(Exception):
-    pass
+    statusCode = HTTP_INTERNAL_SERVER_ERROR
+
+class InputError(WebServerError):
+    statusCode = HTTP_BAD_REQUEST
 
 class UnauthorizedError(WebServerError):
     statusCode = HTTP_UNAUTHORIZED
