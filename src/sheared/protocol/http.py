@@ -195,8 +195,15 @@ class HTTPHeaders:
             self.order.append(name)
         self.headers[key] = (name, value)
         
-    def get(self, name):
-        return self.headers[headerKey(name)][1]
+    def get(self, name, *argv):
+        assert len(argv) < 2, 'get takes one or two arguments'
+
+        if self.headers.has_key(headerKey(name)):
+            return self.headers[headerKey(name)][1]
+        elif len(argv):
+            return argv[0]
+        else:
+            raise KeyError, name
     def __getitem__(self, name):
         return self.get(name)
     def has_key(self, name):
