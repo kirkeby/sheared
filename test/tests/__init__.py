@@ -16,6 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-__all__ = ['reactor', 'http', 'web', 'webclient', 'database', 'pool',
-    'commands', 'cookie', 'webentwiner', 'webcollections',
-    'time_since']
+__all__ = [
+    'reactor', 'database', 'pool', 'commands',
+    'time_since',
+    'http', 'cookie',
+    'web', 'webresource', 'webcollections', 'webentwiner',
+    'webclient',
+]

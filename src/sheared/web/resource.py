@@ -67,3 +67,16 @@ class NormalResource(GettableResource, PostableResource):
     def __init__(self):
         GettableResource.__init__(self)
         PostableResource.__init__(self)
+
+class MovedResource(NormalResource):
+    def __init__(self, dst):
+        NormalResource.__init__(self)
+        self.destination = dst
+
+    def getChild(self, request, reply, subpath):
+        return MovedResource(self.destination + '/' + subpath)
+    
+    def handle(self, request, reply, subpath):
+        assert not subpath
+        reply.headers.setHeader('Location', self.destination)
+        raise error.web.MovedPermanently
