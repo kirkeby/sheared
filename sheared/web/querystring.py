@@ -68,6 +68,12 @@ class UnvalidatedInput:
         except ValueError:
             raise error.web.InputError, (self.name, 'invalid integer')
 
+    def as_float(self):
+        try:
+            return float(self.__str)
+        except ValueError:
+            raise error.web.InputError, (self.name, 'invalid floateger')
+
     def as_bool(self):
         return bool(self.__str)
     
