@@ -27,18 +27,23 @@ class DumbProxy:
         self.port = port
 
     def handle(self, request, reply):
-        version = request.requestline.version[0]
-        transport = reactor.connectTCP((self.host, self.port))
-        
-        if version == 0:
-            transport.write('GET %s\r\n' % request.requestline.wire_uri)
+        try:
+            version = request.requestline.version[0]
+            transport = reactor.connectTCP((self.host, self.port))
+            
+            if version == 0:
+                transport.write('GET %s\r\n' % request.requestline.wire_uri)
 
-        elif version == 1:
-            transport.write('GET %s HTTP/1.0\r\n' % request.requestline.wire_uri)
-            for k, v in request.headers.items():
-                transport.write('%s: %s\r\n' % (k, v))
-            transport.write('\r\n')
-            transport.write(request.body)
+            elif version == 1:
+                transport.write('GET %s HTTP/1.0\r\n' % request.requestline.wire_uri)
+                for k, v in request.headers.items():
+                    transport.write('%s: %s\r\n' % (k, v))
+                transport.write('\r\n')
+                transport.write(request.body)
 
-        reply.transport.sendfile(transport)
+            reply.transport.sendfile(transport)
+
+        except OSError:
+            pass
+
         transport.close()
