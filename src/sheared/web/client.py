@@ -52,7 +52,10 @@ def get(url, headers=None):
     
     if headers is None:
         headers = http.HTTPHeaders()
-    headers.setHeader('Host', '%s:%d' % (host, port))
+    if port == 80:
+        headers.setHeader('Host', '%s' % host)
+    else:
+        headers.setHeader('Host', '%s:%d' % (host, port))
     if not headers.has_key('User-Agent'):
         headers.setHeader('User-Agent', 'Sheared/%s' % version_string)
 
