@@ -9,9 +9,12 @@ from sheared.protocol import basic
 from sheared.protocol import echo
 
 class ProtocolFactoryTestCase(unittest.TestCase):
+    def setUp(self):
+        self.reactor = reactor
+
     def testBuildCoroutine(self):
         """Test that the basic.ProtocolFactory can build Coroutines."""
-        f = basic.ProtocolFactory(basic.Protocol)
+        f = basic.ProtocolFactory(self.reactor, basic.Protocol)
         t = transport.StringTransport()
         self.failUnless(isinstance(f.buildCoroutine(t), coroutine.Coroutine))
 
@@ -20,7 +23,7 @@ class EchoServerTestCase(unittest.TestCase):
         self.reactor = reactor
         self.reactor.reset()
         self.protocol = echo.EchoServer
-        self.factory = basic.ProtocolFactory(self.protocol)
+        self.factory = basic.ProtocolFactory(self.reactor, self.protocol)
 
     def testWithStringTransport(self):
         """Test that the EchoServer works correctly then attached to a StringTransport."""

@@ -1,5 +1,7 @@
 # vim:nowrap:textwidth=0
 
+import os, stat, errno, mimetypes
+
 from sheared.protocol import basic
 
 from sheared.protocol.http import http
@@ -54,8 +56,8 @@ class HTTPReply:
         self.transport.close()
 
 class HTTPServer(basic.ProtocolFactory):
-    def __init__(self):
-        basic.ProtocolFactory.__init__(self, HTTPSubServer)
+    def __init__(self, reactor):
+        basic.ProtocolFactory.__init__(self, reactor, HTTPSubServer)
         
         self.hosts = { }
         self.default_host = None
@@ -67,12 +69,15 @@ class HTTPServer(basic.ProtocolFactory):
         self.default_host = name
 
 class HTTPSubServer(basic.LineProtocol):
-    def __init__(self, transport):
-        basic.LineProtocol.__init__(self, transport, '\n')
+    def __init__(self, reactor, transport):
+        basic.LineProtocol.__init__(self, reactor, transport, '\n')
         self.where = 'request-line'
         self.collected = ''
 
     def handle(self, request, reply):
+        if request.uri[0]:
+            reply.sendErrorPage(http.HTTP_FORBIDDEN)
+
         if request.headers.has_key('Host'):
             vhost = self.factory.hosts.get(request.headers['Host'], None)
         else:
@@ -81,7 +86,7 @@ class HTTPSubServer(basic.LineProtocol):
             vhost = self.factory.hosts[self.factory.default_host]
 
         if vhost:
-            vhost.handle(request, reply)
+            vhost.handle(request, reply, request.uri[2])
         else:
             reply.sendErrorPage(http.HTTP_NOT_FOUND)
 
@@ -110,5 +115,67 @@ class HTTPSubServer(basic.LineProtocol):
 
     def lastLineReceived(self):
         pass
- 
-__all__ = ['HTTPServer']
+
+class VirtualHost:
+    def __init__(self):
+        self.bindings = []
+
+    def handle(self, request, reply, subpath):
+        for root, thing in self.bindings:
+            if path == root or path.startswith(root + '/'):
+                sub = path[ len(root) - 1 : ]
+                thing.handle(request, reply, sub)
+        reply.sendErrorPage(http.HTTP_NOT_FOUND)
+
+    def bind(self, root, thing):
+        self.bindings.append((root, thing))
+
+class StaticCollection:
+    def __init__(self, reactor, root):
+        self.reactor = reactor
+        self.root = root
+
+    def handle(self, request, reply, subpath):
+        path = [self.root]
+        for piece in subpath.split('/'):
+            if piece == '..':
+                if len(path) > 1:
+                    path.pop()
+            else:
+                path.append(piece)
+
+        path = '/'.join(path)
+        type, encoding = mimetypes.guess_type(path)
+        if not type:
+            type = 'application/octet-stream'
+
+        try:
+            st = os.stat(path)
+            if stat.S_ISDIR(st.st_mode):
+                reply.sendErrorPage(http.HTTP_FORBIDDEN)
+
+            elif stat.S_ISREG(st.st_mode):
+                file = open(path, 'r')
+                self.reactor.prepareFile(file)
+                reply.headers.setHeader('Last-Modified', http.HTTPDateTime(st.st_mtime))
+                reply.headers.setHeader('Content-Length', st.st_size)
+                reply.headers.setHeader('Content-Type', type)
+                if encoding:
+                    reply.headers.setHeader('Content-Encoding', encoding)
+                while 1:
+                    dat = self.reactor.read(file, 4096)
+                    if dat == '':
+                        break
+                    reply.send(dat)
+                reply.done()
+
+            else:
+                reply.sendErrorPage(http.HTTP_FORBIDDEN)
+
+        except OSError, ex:
+            if ex.errno == errno.ENOENT:
+                reply.sendErrorPage(http.HTTP_NOT_FOUND)
+            else:
+                reply.sendErrorPage(http.HTTP_FORBIDDEN)
+
+__all__ = ['HTTPServer', 'VirtualHost', 'StaticCollection']

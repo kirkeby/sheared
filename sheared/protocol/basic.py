@@ -5,16 +5,18 @@ from sheared.python import coroutine
 from sheared.internet import error
 
 class ProtocolFactory:
-    def __init__(self, protocol):
+    def __init__(self, reactor, protocol):
+        self.reactor = reactor
         self.protocol = protocol
 
     def buildCoroutine(self, transport):
-        p = self.protocol(transport)
+        p = self.protocol(self.reactor, transport)
         p.factory = self
         return coroutine.Coroutine(p._run, '%s._run' % `p`)
 
 class Protocol:
-    def __init__(self, transport):
+    def __init__(self, reactor, transport):
+        self.reactor = reactor
         self.transport = transport
 
     def dataReceived(self, data):
@@ -38,8 +40,8 @@ class Protocol:
         self.connectionClosed()
 
 class LineProtocol(Protocol):
-    def __init__(self, transport, newline='\n'):
-        Protocol.__init__(self, transport)
+    def __init__(self, reactor, transport, newline='\n'):
+        Protocol.__init__(self, reactor, transport)
         self.buffered = ''
         self.newline = '\n'
 

@@ -2,7 +2,7 @@
 
 from __future__ import generators
 
-import time, urlparse
+import time, urlparse, types
 
 def headerKey(n):
     return n.lower()
@@ -92,7 +92,9 @@ http_reason = {
 
 class HTTPDateTime:
     def __init__(self, s=None):
-        if not s is None:
+        if isinstance(s, types.IntType):
+            self.unixtime = time.gmtime(s)
+        elif s:
             self.unixtime = self.parseString(s)
         else:
             self.unixtime = time.gmtime(time.time())
@@ -215,4 +217,4 @@ class HTTPStatusLine:
             raise ValueError('"%s" is not a valie HTTP status-line' % s)
         self.code = int(status)
 
-__all__ = ['HTTPDateTime', 'HTTPHeaders', 'HTTPRequestLine', 'HTTPStatusLine', 'splitHeaderList']
+#__all__ = ['HTTPDateTime', 'HTTPHeaders', 'HTTPRequestLine', 'HTTPStatusLine', 'splitHeaderList']
