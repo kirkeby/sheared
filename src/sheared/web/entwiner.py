@@ -51,7 +51,7 @@ class Entwiner(resource.NormalResource):
         # Conditional GET support
         if not reply.headers.has_key('ETag') and \
            not reply.headers.has_key('Last-Modified'):
-            etag = sha.sha(r).hexdigest()
+            etag = '"%s"' % sha.sha(r).hexdigest()
             reply.headers.setHeader('ETag', etag)
 
             if not request.head_only and \
