@@ -16,15 +16,12 @@ class ParameterListLexer(lex.Lexer):
         self.addPattern(r'=', Equal)
 plist_lexer = ParameterListLexer()
 
-def parse_content_type(ct):
-    all = ct.split(';', 1)
-    content_type, parameters = all[0], {}
-    content_type = content_type.strip()
-    if not content_type:
+def parse_plist_header(hdr):
+    all = hdr.split(';', 1)
+    header, parameters = all[0], {}
+    header = header.strip()
+    if not header:
         raise ValueError, 'no content-type'
-    t, st = content_type.split('/')
-    if not t and st:
-        raise ValueError, 'type and/or subtype missing'
     
     if len(all) > 1:
         tokens = list(plist_lexer.lex(';'+all[1]))
@@ -50,4 +47,13 @@ def parse_content_type(ct):
 
             parameters[name] = value
 
-    return content_type, parameters
+    return header, parameters
+
+def parse_content_type(ct):
+    content_type, params = parse_plist_header(ct)
+
+    t, st = content_type.split('/')
+    if not t and st:
+        raise ValueError, 'type and/or subtype missing'
+    
+    return content_type, params
