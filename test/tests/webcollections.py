@@ -96,6 +96,17 @@ class EntwinedCollectionTestCase(unittest.TestCase):
         coll = EntwinedCollection([], './test/http-docroot',
                 allow_indexing=1)
 
+    def testSimple(self):
+        coll = EntwinedCollection(['./test/http-docroot/page.html'],
+                                  './test/http-docroot')
+        
+        request = FakeRequest('/index.html')
+        reply = FakeReply()
+
+        child = coll.getChild(request, reply, 'index.html')
+        child.handle(request, reply, '')
+        self.assertEquals(reply.sent, '<body>index.html</body>\n')
+
 class Gadget:
     def handle(self, request, reply, subpath):
         reply.headers.setHeader('gadget', 'gadget')

@@ -25,31 +25,25 @@ from entwine import entwine
 from sheared.python import io
 from sheared.python import log
 from sheared.web.collections.filesystem import *
+from sheared.web.entwiner import Entwiner
 
 def entwined_handler(request, reply, collection, walker):
     if walker.root.endswith(collection.template_ext):
-        templates = [walker.root]
-        templates.extend(collection.page_templates)
-    
-        ctx = {}
+        class EntwinedFile(Entwiner):
+            path = walker.root
+            template_pages = collection.template_pages
+            def entwine(self, request, reply, subpath):
+                self.execute(self.path)
 
-        for i in range(len(templates)):
-            last = i == len(templates) - 1
-            r = entwine(io.readfile(templates[i]), ctx)
-            if (not last) and r.strip():
-                warnings.warn('ignored generated content from %s' % template,
-                              UserWarning, stacklevel=2)
-        
-        reply.headers.setHeader('Content-Type', 'text/html')
-        reply.headers.setHeader('Content-Length', len(r))
-        reply.send(r)
+        entwined = EntwinedFile()
+        entwined.handle(request, reply, walker.path_info)
     
     else:
-        return normal_handler(request, reply, collection, walker)
+        normal_handler(request, reply, collection, walker)
 
 class EntwinedCollection(FilesystemCollection):
-    def __init__(self, page_templates, *a, **kw):
+    def __init__(self, template_pages, *a, **kw):
         FilesystemCollection.__init__(self, *a, **kw)
-        self.page_templates = page_templates
+        self.template_pages = template_pages
         self.normal_handler = entwined_handler
         self.template_ext = '.html'
