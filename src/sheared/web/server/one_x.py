@@ -60,11 +60,10 @@ class HTTPReply:
         reason = http.http_reason.get(self.status, 'Unknown Status')
         self.transport.write('%d %s\r\n' % (self.status, reason))
 
-        for c in self.cookies:
-            self.headers.addHeader('Set-Cookie', cookie.format(c))
-
         for item in self.headers.items():
             self.transport.write('%s: %s\r\n' % item)
+        for c in self.cookies:
+            self.transport.write('Set-Cookie: ' + cookie.format(c) + '\r\n')
 
         self.transport.write('\r\n')
 
