@@ -32,9 +32,16 @@ else:
 #        runner.run(module.suite)
 
 for test in tests:
-    cmd = 'PYTHONPATH=%s:test %s %s' % (pythonpath,
-                                        sys.executable,
-                                        'test/tests/%s.py' % test)
+    if '.' in test:
+        cmd = 'PYTHONPATH=%s %s %s/%s.py' % (pythonpath,
+                                             sys.executable,
+                                             pythonpath,
+                                             test.replace('.', '/'))
+    else:
+        cmd = 'PYTHONPATH=%s:test %s %s' % (pythonpath,
+                                            sys.executable,
+                                            'test/tests/%s.py' % test)
+
     print 'Running tests in %s . . .' % test
     st = os.system(cmd)
     if not os.WIFEXITED(st) or os.WEXITSTATUS(st):
