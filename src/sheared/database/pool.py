@@ -27,10 +27,9 @@ class DatabaseConnectionPool:
         self.available = queue.StacklessQueue()
 
     def leaseConnection(self):
-        if not len(self.available) and len(self.connected) < self.max:
+        if (len(self.available) == 0) and (len(self.connected) < self.max):
             conn = self.factory()
             self.connected.append(conn)
-
         else:
             conn = self.available.dequeue()
 
@@ -38,7 +37,6 @@ class DatabaseConnectionPool:
 
     def releaseConnection(self, conn):
         assert conn in self.connected
-        #assert not conn in self.available
         self.available.enqueue(conn)
 
     def query(self, sql):
