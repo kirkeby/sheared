@@ -120,6 +120,12 @@ class HTTPHeadersTestCase(unittest.TestCase):
         h = http.HTTPHeaders("Foo: value\r\nBar: and this too")
         self.assertEquals(h.keys(), ['Foo', 'Bar'])
 
+    def testDel(self):
+        """Test HTTPHeaders.delHeader."""
+        h = http.HTTPHeaders("Foo: value\r\nBar: and this too")
+        h.delHeader('Bar')
+        self.assertEquals(h.keys(), ['Foo'])
+
 class HTTPRequestLineTestCase(unittest.TestCase):
     def testSimpleRequest(self):
         """Test HTTPRequestLine against a simple HTTP request (version 0.9)."""

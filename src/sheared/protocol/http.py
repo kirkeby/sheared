@@ -189,7 +189,7 @@ class HTTPHeaders:
     def addHeader(self, name, value):
         key = headerKey(name)
         if not self.headers.has_key(key):
-            self.order.append(name)
+            self.order.append(key)
             self.headers[key] = (name, value)
         else:
             self.headers[key] = (self.headers[key][0], self.headers[key][1] + ', ' + value)
@@ -197,8 +197,13 @@ class HTTPHeaders:
     def setHeader(self, name, value):
         key = headerKey(name)
         if not self.headers.has_key(key):
-            self.order.append(name)
+            self.order.append(key)
         self.headers[key] = (name, value)
+
+    def delHeader(self, name):
+        key = headerKey(name)
+        del self.headers[key]
+        self.order.remove(key)
         
     def get(self, name, *argv):
         assert len(argv) < 2, 'get takes one or two arguments'
@@ -212,13 +217,13 @@ class HTTPHeaders:
     def __getitem__(self, name):
         return self.get(name)
     def keys(self):
-        return [ name for name, value in self.headers.values() ]
+        return [ self.headers[key][0] for key in self.order ]
     def has_key(self, name):
         return self.headers.has_key(headerKey(name))
     def item(self, name):
         return name, self.get(name)
     def items(self):
-        return map(self.item, self.order)
+        return map(self.item, self.keys())
 
 class HTTPRequestLine:
     def __init__(self, s):
