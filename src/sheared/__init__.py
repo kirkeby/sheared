@@ -57,5 +57,7 @@ with Sheared (e.g. a logging infrastructure and helpers for daemonizing)."""
 from sheared import reactors
 reactor = reactors.default.Reactor()
 
+version_string = '0.1'
+
 __all__ = ['python', 'reactor', 'reactors', 'protocol',
-           'database', 'web', 'error']
+           'database', 'web', 'error', 'version_string']
