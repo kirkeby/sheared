@@ -280,8 +280,18 @@ class Application:
 
         self.setup()
         self.start()
+        try:
+            self.teardown()
+        except:
+            log.default.exception(sys.exc_info())
+
+        if self.do_restart:
+            self.restart()
 
     def setup(self):
+        pass
+
+    def teardown(self):
         pass
 
     def start(self):
@@ -316,7 +326,6 @@ class Application:
             log.default.close()
             if self.do_restart:
                 log.default.normal('%s restarting' % self.name)
-                self.restart()
             else:
                 log.default.normal('%s done' % self.name)
 
