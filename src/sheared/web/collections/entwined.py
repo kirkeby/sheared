@@ -29,21 +29,22 @@ from sheared.web.entwiner import Entwiner
 
 def entwined_handler(request, reply, collection, walker):
     if walker.root.endswith(collection.template_ext):
-        class EntwinedFile(Entwiner):
-            path = walker.root
-            template_pages = collection.template_pages
-            def entwine(self, request, reply, subpath):
-                self.execute(self.path)
-
-        entwined = EntwinedFile()
-        entwined.handle(request, reply, walker.path_info)
-    
+        entwiner = collection.entwiner(walker.root)
+        entwiner.handle(request, reply, walker.path_info)
     else:
         normal_handler(request, reply, collection, walker)
 
+class EntwinedFile(Entwiner):
+    def __init__(self, path):
+        self.path = path
+    def entwine(self, request, reply, subpath):
+        self.execute(self.path)
 class EntwinedCollection(FilesystemCollection):
-    def __init__(self, template_pages, *a, **kw):
+    def __init__(self, entwiner=None, *a, **kw):
         FilesystemCollection.__init__(self, *a, **kw)
-        self.template_pages = template_pages
+        if entwiner is None:
+            self.entwiner = EntwinedFile
+        else:
+            self.entwiner = entwiner
         self.normal_handler = entwined_handler
         self.template_ext = '.html'
