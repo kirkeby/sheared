@@ -226,15 +226,16 @@ class Reactor(base.Reactor):
         self.sleeping.insert(0, channel)
         return channel.receive()
 
-    def openfd(self, file, other=None):
-        assert self.running
-
+    def fdopen(self, file, mode='r', other=None):
         if isinstance(file, types.IntType):
             fd = file
         else:
             fd = file.fileno()
-        fcntl.fcntl(fd, fcntl.F_SETFL, os.O_NONBLOCK)
-        return base.ReactorFile(file, other, self)
+        if self.running:
+            fcntl.fcntl(fd, fcntl.F_SETFL, os.O_NONBLOCK)
+            return base.ReactorFile(file, other, self)
+        else:
+            return os.fdopen(file, mode)
 
     def connectTCP(self, addr):
         assert self.running

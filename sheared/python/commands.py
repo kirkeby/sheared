@@ -33,10 +33,10 @@ def spawn(cmd, argv, with_stderr=0):
     if pid:
         os.close(stdin_r)
         os.close(stdout_w)
-        stdin = reactor.openfd(stdin_w, '<%r stdin>' % cmd)
-        stdout = reactor.openfd(stdout_r, '<%r stdout>' % cmd)
+        stdin = reactor.fdopen(stdin_w, 'w', '<%r stdin>' % cmd)
+        stdout = reactor.fdopen(stdout_r, 'r', '<%r stdout>' % cmd)
         if with_stderr:
-            stderr = reactor.openfd(stderr_r, '<%r stderr>' % cmd)
+            stderr = reactor.fdopen(stderr_r, 'r', '<%r stderr>' % cmd)
 
     else:
         try:

@@ -118,9 +118,9 @@ class Reactor:
             mode = os.O_WRONLY
         else:
             raise ValueError, 'unknown mode %r' % mode
-        return self.openfd(os.open(path, mode), path)
+        return self.fdopen(os.open(path, mode), mode, path)
 
-    def openfd(self, file, other=None):
+    def fdopen(self, file, mode='r', other=None):
         raise NotImplementedError
 
     def connectTCP(self, addr):

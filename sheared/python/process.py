@@ -27,7 +27,7 @@ def runInChildProcess(f, args=(), kwargs={}):
     pid = os.fork()
     if pid:
         os.close(w)
-        rv = io.readall(reactor.openfd(r, '<%r pipe>' % f))
+        rv = io.readall(reactor.fdopen(r, 'r', '<%r pipe>' % f))
         while not os.waitpid(pid, os.WNOHANG)[0] == pid:
             reactor.sleep(1)
 
