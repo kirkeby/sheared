@@ -63,9 +63,11 @@ def getstatusoutput(cmd, argv):
             break
         out = out + d
 
-    # FIXME -- just because a process closes stdout does not mean
-    # it is done
-    status = os.waitpid(pid, os.WNOHANG)
+    while 1:
+        status = os.waitpid(pid, os.WNOHANG)
+        if status[0]:
+            break
+    assert status[0] == pid, '%d is not %d' % (status[0], pid)
     return status[1], out
 
 def getoutput(cmd, argv):
