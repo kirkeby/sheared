@@ -16,5 +16,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-__all__ = ['coroutine', 'fdpass', 'aio', 'daemonize', 'commands', 'io',
-           'benchmark', 'queue', 'path', 'application', 'conffile']
+
+from __future__ import generators
+
+def parsefd(file):
+    for line in file.readlines():
+        if '#' in line:
+            line, _ = line.split('#', 1)
+        if '=' in line:
+            opt, val = line.split('=', 1)
+        else:
+            opt, val = line, None
+        
+        yield opt.strip(), val.strip()
