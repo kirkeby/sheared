@@ -102,6 +102,7 @@ class Pages:
         code = compile(src, pywidget, 'exec')
         namespace = {
             'ZPTView': ZPTView,
+            'Cookie': cookie.Cookie,
         }
         eval(code, namespace)
 
