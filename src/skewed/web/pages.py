@@ -32,16 +32,22 @@ class Pages:
     
     def __call__(self, environ, start_response):
         path_info = environ['PATH_INFO']
-        if path_info == '/':
-            start_response('301 Moved permanently',
-                           [('Content-Type', 'text/plain'),
-                            ('Location', relative(self.index, environ))])
-            return ['Moved permanently.\r\n']
+        if path_info.endswith('/'):
+            path_info = environ['PATH_INFO'] = path_info + self.index
 
         if not re_good_path_info.match(path_info):
             start_response('403 Forbidden',
                            [('Content-Type', 'text/plain')])
             return ['Malformed path requested.']
+
+        static = self.as_static(environ, start_response)
+        if not static is None:
+            return static
+
+        return self.as_pypage(environ, start_response)
+
+    def as_static(self, environ, start_response):
+        path_info = environ['PATH_INFO']
 
         static = self.static_path + path_info
         if os.access(static, os.R_OK):
@@ -54,6 +60,12 @@ class Pages:
             
             start_response('200 Ok', headers)
             return open(static).read()
+
+        else:
+            return None
+
+    def as_pypage(self, environ, start_response):
+        path_info = environ['PATH_INFO']
 
         pywidget = self.pages_path + path_info + '.py'
         if not os.access(pywidget, os.R_OK):
