@@ -78,9 +78,13 @@ def normal_handler(request, reply, collection, walker):
 
     # Conditional GET support
     if not request.head_only and request.headers.has_key('If-Modified-Since'):
-        when = http.HTTPDateTime(request.headers['If-Modified-Since'])
-        if not last_modified.unixtime > when.unixtime:
-            raise error.web.NotModified
+        try:
+            when = http.HTTPDateTime(request.headers['If-Modified-Since'])
+        except ValueError:
+            pass
+        else:
+            if not last_modified.unixtime > when.unixtime:
+                raise error.web.NotModified
 
     file = reactor.open(walker.root, 'r')
     reply.sendfile(file)
