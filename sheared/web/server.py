@@ -93,6 +93,13 @@ class HTTPRequest:
         self.args = HTTPQueryString(self.querystring)
         self.headers = headers
 
+    def parent(self):
+        # FIXME -- need to return absolute urls
+        return self.path[self.path.rfind('/') : ]
+    
+    def sibling(self, uri):
+        return self.parent() + '/' + uri
+
 class HTTPReply:
     def __init__(self, version, transport):
         self.transport = transport
