@@ -24,8 +24,6 @@ from sheared import reactor
 from sheared import error
 from sheared.protocol import http
 from sheared.web import server, subserver, querystring, virtualhost, resource
-from sheared.web.collections.filesystem import FilesystemCollection
-from sheared.web.collections.static import StaticCollection
 from sheared.python import commands
 
 from tests import transport
@@ -158,105 +156,6 @@ class HTTPSubServerTestCase(unittest.TestCase):
         self.reactor.createtasklet(f)
         self.reactor.start()
 
-class FilesystemCollectionTestCase(unittest.TestCase):
-    def setUp(self):
-        self.reactor = reactor
-        
-        self.server = server.HTTPServer()
-        root = FilesystemCollection('./test/http-docroot')
-        vhost = virtualhost.VirtualHost(root)
-        self.server.addVirtualHost('foo.com', vhost)
-
-        self.transport = transport.StringTransport()
-        def startup():
-            self.server.startup(self.transport)
-            self.reactor.stop()
-        self.reactor.createtasklet(startup)
-
-    def doRequest(self, path):
-        self.transport.appendInput('''GET %s HTTP/1.0\r\nHost: foo.com\r\n\r\n''' % path)
-        self.reactor.start()
-        return parseReply(self.transport.getOutput())
-    
-    def testRegularFile(self):
-        status, headers, body = self.doRequest('/hello.py')
-        self.assertEquals(status.code, 200)
-        self.assertEquals(headers['content-type'], 'text/x-python')
-        self.assertEquals(body, 'print "Hello, World!"\n')
-    
-    def testTarball(self):
-        status, headers, body = self.doRequest('/all.tar.gz')
-        self.assertEquals(status.code, 200)
-        self.assertEquals(headers['content-type'], 'application/x-tar')
-        self.assertEquals(headers['content-encoding'], 'gzip')
-    
-    def testNonexsistantFile(self):
-        status, headers, body = self.doRequest('/no-such-file')
-        self.assertEquals(status.code, 404)
-    
-    def testNonexsistantPath(self):
-        status, headers, body = self.doRequest('/no-such-path/this-is-also-not-here')
-        self.assertEquals(status.code, 404)
-    
-    def testListing(self):
-        status, headers, body = self.doRequest('/sub/')
-        self.assertEquals(status.code, 403)
-
-class Gadget:
-    def handle(self, request, reply, subpath):
-        reply.headers.setHeader('gadget', 'gadget')
-        raise NotImplementedError
-class StaticCollectionTestCase(unittest.TestCase):
-    def testOneLevel(self):
-        gadget = Gadget()
-        coll = StaticCollection()
-        coll.bind('foo', gadget)
-        self.assertEquals(coll.lookup('foo'), gadget)
-
-    def testMultiLevel(self):
-        g1 = Gadget()
-        g2 = Gadget()
-        g3 = Gadget()
-        coll = StaticCollection()
-        coll.bind('foo', g1)
-        coll.bind('bar/foo', g1)
-        coll.bind('bar/bar', g2)
-        coll.bind('bar/baz', g3)
-        self.assertEquals(coll.lookup('foo'), g1)
-        self.assertEquals(coll.lookup('bar/foo'), g1)
-        self.assertEquals(coll.lookup('bar/bar'), g2)
-        self.assertEquals(coll.lookup('bar/baz'), g3)
-
-    def testHandleIndex(self):
-        gadget = Gadget()
-        class FakeRequest:
-            path = '/'
-        request = FakeRequest()
-        class FakeReply:
-            headers = http.HTTPHeaders()
-        reply = FakeReply()
-    
-        coll = StaticCollection()
-        coll.bind('index', gadget)
-        
-        self.assertRaises(NotImplementedError, coll.handle, request, reply, '')
-        self.assertEquals(reply.headers['gadget'], 'gadget')
-
-    def testHandleRedirect(self):
-        gadget = Gadget()
-        class FakeRequest:
-            path = 'foo'
-        request = FakeRequest()
-        class FakeReply:
-            headers = http.HTTPHeaders()
-        reply = FakeReply()
-    
-        coll = StaticCollection()
-        coll.bind('foo/bar', gadget)
-        
-        self.assertRaises(error.web.Moved, coll.handle, request, reply, 'foo')
-        self.assertEquals(reply.headers['location'], 'foo/')
-
 class HTTPQueryStringTestCase(unittest.TestCase):
     def setUp(self):
         qs = 'int=1&hex=babe&str=foo&flag&many=1&many=2'
@@ -291,8 +190,6 @@ class UnvalidatedInputTestCase(unittest.TestCase):
 suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(HTTPServerTestCase, 'test')])
 suite.addTests([unittest.makeSuite(HTTPSubServerTestCase, 'test')])
-suite.addTests([unittest.makeSuite(FilesystemCollectionTestCase, 'test')])
-suite.addTests([unittest.makeSuite(StaticCollectionTestCase, 'test')])
 suite.addTests([unittest.makeSuite(HTTPQueryStringTestCase, 'test')])
 suite.addTests([unittest.makeSuite(UnvalidatedInputTestCase, 'test')])
 
