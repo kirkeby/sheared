@@ -49,9 +49,10 @@ class VirtualHost:
             raise error.web.ForbiddenError
 
         path = request.requestline.uri[2]
-        child, subpath = self.walkPath(request, reply, path)
 
         try:
+            child, subpath = self.walkPath(request, reply, path)
+
             if child is None:
                 raise error.web.NotFoundError, path
             if not getattr(child, 'handle', None):
@@ -64,7 +65,7 @@ class VirtualHost:
             
             child.handle(request, reply, subpath)
 
-        except error.web.MovedPermanently, e:
+        except error.web.Moved, e:
             self.massageLocationHeader(request, reply)
             raise
 
@@ -73,7 +74,7 @@ class VirtualHost:
             raise error.web.InternalServerError
 
         loc = reply.headers.get('Location')
-        if loc.find('://') < 0:
+        if loc.find('://') < 0 and request.headers.has_key('Host'):
             if not loc.startswith('/'):
                 loc = request.path + '/' + loc
             loc = 'http://' + request.headers['Host'] + loc
