@@ -47,11 +47,11 @@ app_options = [
    [ 'set_str',      1, 'pidfile',   'p', 'pid-file',   'application.pid-file',
      'Write pid-file.' ],
 
-   [ 'set_int',      1, 'user',      'u', 'chuid',       'application.chuid',
-     'Change to this uid after configuring application.' ]
+   [ 'set_int',      1, 'user',      'u', 'user',       'application.chuid',
+     'Change to this uid after configuring application.' ],
      
-   [ 'set_int',      1, 'group',     'g', 'chgid',       'application.chgid',
-     'Change to this gid after configuring application.' ]
+   [ 'set_int',      1, 'group',     'g', 'group',      'application.chgid',
+     'Change to this gid after configuring application.' ],
      
    [ 'opt_conf',     1, '',          'c', 'conf-file',  '',
      'Read configuration file (may be given multiple\n'
@@ -231,9 +231,12 @@ class Application:
         def stop(signum, frame):
             if signum == signal.SIGQUIT:
                 sys.exit(0)
+            elif signum == signal.SIGHUP:
+                self.restart()
             else:
                 self.stop()
         signal.signal(signal.SIGINT, stop)
+        signal.signal(signal.SIGHUP, stop)
         signal.signal(signal.SIGTERM, stop)
         signal.signal(signal.SIGQUIT, stop)
 
@@ -263,14 +266,17 @@ class Application:
             daemonize.writepidfile(self.pidfile)
 
         if not self.group is None:
-            os.chgid(self.group)
+            os.setgid(self.group)
         if not self.user is None:
-            os.chuid(self.user)
+            os.setuid(self.user)
 
         if hasattr(self, 'run'):
             name = '<Main for %r>' % self
             self.reactor.createtasklet(self.run, name=name)
         self.reactor.start()
+
+    def restart(self):
+        self.reactor.stop()
 
     def stop(self):
         self.reactor.stop()
