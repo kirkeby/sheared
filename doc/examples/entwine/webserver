@@ -1,0 +1,60 @@
+#!/usr/bin/env python
+
+import sys
+
+from sheared import reactor
+from sheared.web import server
+
+from dtml import tal, tales, context
+
+def readfile(path):
+    f = reactor.open(path, 'r')
+    all = ''
+    while 1:
+        read = reactor.read(f, 4096)
+        if read == '':
+            break
+        all += read
+    reactor.close(f)
+    return all
+
+class Template:
+    def __init__(self, path):
+        self.path = path
+
+    def execute(self, context, builtins):
+        compiled = tal.compile(readfile(self.path), tales.compile)
+        return tal.execute(compiled, context, builtins, tales.execute)
+
+class Entwiner:
+    def __init__(self):
+        self.context = context.Context()
+        self.builtins = context.BuiltIns({})
+        self.context.setDefaults(self.builtins)
+
+articles = {
+    1: {'title': 'First post!',
+          'text': 'Ha! This is the first post!'},
+    2: {'title': 'All...',
+          'text': 'All your posts are belong to us!'},
+}
+class ArticleEntwiner(Entwiner):
+    def __init__(self):
+        Entwiner.__init__(self)
+        self.template = Template('article.html')
+
+    def handle(self, request, reply, subpath):
+        self.context.pushContext()
+        article = articles[request.args.get_one('article-id').as_int()]
+        self.context.setLocal('article', article)
+        reply.send(self.template.execute(self.context, self.builtins))
+        self.context.popContext()
+
+vhost = server.VirtualHost()
+vhost.bind('/article', ArticleEntwiner())
+
+server = server.HTTPServerFactory(reactor, server.HTTPServer)
+server.addVirtualHost('localhost', vhost)
+server.setDefaultHost('localhost')
+reactor.listenTCP(server, ('127.0.0.1', int(sys.argv[1])))
+reactor.run()

@@ -1,6 +1,6 @@
 # vim:nowrap:textwidth=0
 
-import os, stat, errno, mimetypes, sys, traceback, pickle
+import os, stat, errno, mimetypes, sys, traceback, pickle, re
 
 from sheared.protocol import basic
 from sheared.protocol import http
@@ -28,6 +28,8 @@ def unscape_querystring(qs):
 
 def parse_querystring(qs):
     args = {}
+    if not len(qs):
+        return args
     for part in qs.split('&'):
         thing = part.split('=', 1)
         if len(thing) == 1:
@@ -40,21 +42,44 @@ def parse_querystring(qs):
         if not args.has_key(name):
             args[name] = []
         if len(value):
-            args[name].append(value)
+            args[name].append(UnvalidatedInput(value))
     return args
 
+class UnvalidatedInput:
+    def __init__(self, str):
+        self.__str = str
+
+    def as_int(self, radix=10):
+        try:
+            return int(self.__str, radix)
+        except ValueError:
+            raise InputError, '%r: invalid integer' % self.__str
+    
+    def as_name(self):
+        if re.findall('[^a-zA-Z0-9_-]', self.__str):
+            raise InputError, '%r: invalid name' % self.__str
+        return self.__str
+
+    def as_str(self, valid):
+        if re.findall('[^%s]' % valid, self.__str):
+            raise InputErrer, '%r: invalid characters in value' % self.__str
+        return self.__str
+    
 class HTTPQueryString:
     def __init__(self, qs):
         self.dict = parse_querystring(qs)
 
-    def get_int(self, name):
-        return int(self.get_scalar(name))
-
-    def get_scalar(self, name):
-        v = self.dict[name]
-        if len(v) > 1:
-            raise ValueError, 'found list-arg where scalar-arg was expected'
+    def get_one(self, name, *args):
+        v = apply(self.get_many, (name,) + args)
+        if not len(v) == 1:
+            raise InputError, '%s: expected scalar-arg' % name
         return v[0]
+
+    def get_many(self, name, *args):
+        try:
+            return apply(self.dict.get, (name,) + args)
+        except KeyError:
+            raise InputError, '%s: required argument missing' % name
 
 class HTTPRequest:
     def __init__(self, requestline, headers):
@@ -108,6 +133,11 @@ class HTTPReply:
             self.sendHead()
         self.transport.write(data)
 
+    def sendfile(self, file):
+        if not self.decapitated:
+            self.sendHead()
+        self.transport.sendfile(file)
+
     def sendErrorPage(self, status, text=None):
         self.setStatusCode(status)
         self.headers.setHeader('Content-Type', 'text/plain')
@@ -159,10 +189,16 @@ class HTTPServer(basic.LineProtocol):
                     vhost.handle(request, reply, request.path)
                 else:
                     reply.sendErrorPage(http.HTTP_NOT_FOUND, 'No such host.')
+                    
+            except InputError, e:
+                if not reply.decapitated and not reply.transport.closed:
+                    reply.sendErrorPage(http.HTTP_BAD_REQUEST, e)
+                
             except:
                 if not reply.decapitated and not reply.transport.closed:
-                    reply.sendErrorPage(http.HTTP_INTERNAL_SERVER_ERROR, 'Exception.')
+                    reply.sendErrorPage(http.HTTP_INTERNAL_SERVER_ERROR, 'Internal error.')
                 raise
+
         finally:
             reply.done()
 
@@ -269,11 +305,7 @@ class StaticCollection:
                 reply.headers.setHeader('Content-Type', type)
                 if encoding:
                     reply.headers.setHeader('Content-Encoding', encoding)
-                while 1:
-                    dat = self.reactor.read(file, 4096)
-                    if dat == '':
-                        break
-                    reply.send(dat)
+                reply.sendfile(file)
                 reply.done()
 
             else:

@@ -58,6 +58,8 @@ class ReactorTransport:
         return self.reactor.read(self.file, max)
     def write(self, data):
         self.reactor.write(self.file, data)
+    def sendfile(self, file):
+        self.reactor.sendfile(file, self.file)
 
     def fileno(self):
         return self.reactor.getfd(self.file)

@@ -1,1 +1,1 @@
-__all__ = ['coroutine', 'fdpass']
+__all__ = ['coroutine', 'fdpass', 'aio', 'daemonize']

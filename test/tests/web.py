@@ -173,10 +173,43 @@ class StaticCollectionTestCase(unittest.TestCase):
         status, headers, body = self.doRequest('/')
         self.assertEquals(status.code, 403)
 
+class HTTPQueryStringTestCase(unittest.TestCase):
+    def setUp(self):
+        qs = 'int=1&hex=babe&str=foo&flag&many=1&many=2'
+        self.qs = server.HTTPQueryString(qs)
+
+    def testGetOne(self):
+        self.assertEquals(self.qs.get_one('int').as_name(), '1')
+        self.assertEquals(self.qs.get_one('hex').as_name(), 'babe')
+        self.assertEquals(self.qs.get_one('str').as_name(), 'foo')
+        self.assertRaises(server.InputError, self.qs.get_one, 'flag')
+        self.assertRaises(server.InputError, self.qs.get_one, 'many')
+
+    def testGetMany(self):
+        self.assertEquals(len(self.qs.get_many('int')), 1)
+        self.assertEquals(len(self.qs.get_many('hex')), 1)
+        self.assertEquals(len(self.qs.get_many('str')), 1)
+        self.assertEquals(len(self.qs.get_many('flag')), 0)
+        self.assertEquals(len(self.qs.get_many('many')), 2)
+
+class UnvalidatedInputTestCase(unittest.TestCase):
+    def setUp(self):
+        self.int = server.UnvalidatedInput('1')
+        self.hex = server.UnvalidatedInput('babe')
+        self.str = server.UnvalidatedInput('foo')
+
+    def testInteger(self):
+        self.assertEquals(self.int.as_int(), 1)
+        self.assertEquals(self.hex.as_int(16), 0xBABE)
+        self.assertEquals(self.hex.as_name(), 'babe')
+        self.assertRaises(server.InputError, self.str.as_int)
+
 suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(HTTPServerTestCase, 'test')])
 suite.addTests([unittest.makeSuite(HTTPSubServerTestCase, 'test')])
 suite.addTests([unittest.makeSuite(StaticCollectionTestCase, 'test')])
+suite.addTests([unittest.makeSuite(HTTPQueryStringTestCase, 'test')])
+suite.addTests([unittest.makeSuite(UnvalidatedInputTestCase, 'test')])
 
 __all__ = ['suite']
 

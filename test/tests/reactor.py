@@ -41,14 +41,17 @@ class ReactorTestCase(unittest.TestCase):
             self.assertEquals(lines[0], '# First line.')
         self.singleCoroutineRun(f)
         
-#    def testBadFile(self):
-#        """Test the reactor against a closed file-descriptor."""
-#        def f(reactor):
-#            fd = os.open('tests/reactor.py', os.O_RDONLY)
-#            fd = elf.reactor.prepareFile(fd)
-#            self.reactor.close(fd)
-#            self.reactor.read(fd, 1024)
-#        self.assertRaises(os.error, self.singleCoroutineRun, f)
+    def testBadWrite(self):
+        """Test that the reactor works given bad input to write."""
+        def f(reactor):
+            f = reactor.open('/dev/null', 'w')
+            try:
+                reactor.write(f, None)
+                reactor.shutdown('None')
+            except TypeError:
+                pass
+            reactor.shutdown('ok')
+        self.assertEquals(self.singleCoroutineRun(f), 'ok')
 
     def testImmediateStop(self):
         """Test that the reactor cleanly exits upon an immediate shutdown-command."""
@@ -114,29 +117,24 @@ class ReactorTestCase(unittest.TestCase):
             fd, addr = reactor.accept(sock)
             reactor.close(sock)
             d = reactor.read(fd, 4096)
+            reactor.shutdown(d)
             fd.close()
-            return d
 
         def g(reactor, port):
+            reactor.sleep(1)
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock = reactor.prepareFile(sock)
             reactor.connect(sock, ('127.0.0.1', port))
             reactor.write(sock, 'Hello, World\n')
             reactor.close(sock)
 
-        def h(reactor):
-            reactor.sleep(1.0)
-            reactor.shutdown(42)
-
         try:
             port = random.random() * 8192 + 22000
-            co = coroutine.Coroutine(f)
-            self.reactor.addCoroutine(co, (self.reactor, port))
-            self.reactor.addCoroutine(coroutine.Coroutine(g), (self.reactor, port))
-            self.reactor.addCoroutine(coroutine.Coroutine(h), (self.reactor,))
+            self.reactor.addCoroutine(coroutine.Coroutine(f, 'server'), (self.reactor, port))
+            self.reactor.addCoroutine(coroutine.Coroutine(g, 'client'), (self.reactor, port))
             self.reactor.run()
-            self.failUnless(hasattr(co, 'result'), 'return value missing')
-            self.assertEqual(co.result, "Hello, World\n", "return value is wrong")
+            self.failUnless(hasattr(self.reactor, 'result'), 'return value missing')
+            self.assertEqual(self.reactor.result, "Hello, World\n", "return value is wrong")
         except coroutine.CoroutineFailed, ex:
             raise ex[0].exc_info[0], ex[0].exc_info[1], ex[0].exc_info[2]
 
