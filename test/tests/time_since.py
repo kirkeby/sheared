@@ -1,6 +1,7 @@
 import unittest
 import time
 from sheared.python.time_since import time_since
+from sheared.python.time_since import strftime_since
 
 class TimeSinceTestCase(unittest.TestCase):
     def testCrossover(self):
@@ -47,8 +48,39 @@ class TimeSinceTestCase(unittest.TestCase):
         self.assertEquals(time_since(when, when + 12 * 30 * 24 * 60 * 60 + 1),
                           (1, 0, 0, 0, 0, 1))
 
+class StringFormatTimeSinceTestCase(unittest.TestCase):
+    def testThing(self):
+        self.assertEquals(strftime_since(0, 30),
+                          "less than a minute")
+        self.assertEquals(strftime_since(0, 60),
+                          "1 minute")
+        self.assertEquals(strftime_since(0, 90),
+                          "1 minute")
+        self.assertEquals(strftime_since(0, 120),
+                          "2 minutes")
+
+        self.assertEquals(strftime_since(0, 60 * 60),
+                          "1 hour")
+        self.assertEquals(strftime_since(0, 60 * 90),
+                          "1 hour, 30 minutes")
+
+        self.assertEquals(strftime_since(0, 5 * 24 * 60 * 60),
+                          "5 days")
+        self.assertEquals(strftime_since(0, 7 * 24 * 60 * 60),
+                          "1 week")
+        self.assertEquals(strftime_since(0, 9 * 24 * 60 * 60),
+                          "1 week, 2 days")
+
+        self.assertEquals(strftime_since(0, 30 * 24 * 60 * 60),
+                          "1 month")
+        self.assertEquals(strftime_since(0, 31 * 24 * 60 * 60),
+                          "1 month, 1 day")
+        self.assertEquals(strftime_since(0, 40 * 24 * 60 * 60),
+                          "1 month, 10 days")
+
 suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(TimeSinceTestCase, 'test')])
+suite.addTests([unittest.makeSuite(StringFormatTimeSinceTestCase, 'test')])
 
 __all__ = ['suite']
 

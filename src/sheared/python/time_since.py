@@ -1,8 +1,61 @@
 import time
 
+def split_durations(duration, durations):
+    """\
+    split_durations(duration, durations) -> durations-tuple
+
+    Calculate how many of each of durations there are in duration, going
+    left-to-right removing already counted durations. Adding one extra
+    element to the result-tuple with the remainder.
+
+    For example:
+    
+      split_durations(42, (40,)) is (40, 2)
+      split_durations(12, (5, 3)) is (2, 0, 1)
+
+    See sheared.python.time_since.time_since and s.p.t_s.strftime_since
+    for actual uses.
+    """
+    result = [0] * (len(durations) + 1)
+    for i in range(len(durations)):
+        while duration >= durations[i]:
+            duration = duration - durations[i]
+            result[i] = result[i] + 1
+    result[-1] = duration
+
+    return tuple(result)
+
+def strftime_since(when, now=None):
+    """\
+    strftime_since(when[, now]) -> string
+
+    Format difference between now and when as a human-friendly string
+    (e.g. "1 month, 2 hours")."""
+
+    years, months, days, hours, minutes, _ = time_since(when, now)
+    if months:
+        weeks = 0
+    else:
+        weeks, days = split_durations(days, (7,))
+
+    fragments = [(years, 'year'), (months, 'month'), (weeks, 'week'),
+                 (days, 'day'), (hours, 'hour'), (minutes, 'minute'),]
+
+    stringses = [] # preeecious stringses
+    for i, w in fragments:
+        if i > 1:
+            stringses.append('%d %ss' % (i, w))
+        elif i > 0:
+            stringses.append('%d %s' % (i, w))
+
+    if stringses:
+        return ', '.join(stringses)
+    else:
+        return 'less than a minute'
+    
 def time_since(when, now=None, multipliers=(12, 30, 24, 60, 60)):
     """\
-    time_since(when, now) -> (years, months, days, hours, minutes, seconds)
+    time_since(when[, now]) -> (years, months, days, hours, minutes, seconds)
     
     Return a tuple of the time that has passed since when; now is
     optional, time.time() is used if not given. Only works for
@@ -20,12 +73,4 @@ def time_since(when, now=None, multipliers=(12, 30, 24, 60, 60)):
     for i in range(len(durations) - 1, 0, -1):
         durations[i - 1] = durations[i - 1] * durations[i]
 
-    diff = now - when
-    result = [0] * (len(durations) + 1)
-    for i in range(len(durations)):
-        while diff >= durations[i]:
-            diff = diff - durations[i]
-            result[i] = result[i] + 1
-    result[-1] = diff
-
-    return tuple(result)
+    return split_durations(now - when, durations)
