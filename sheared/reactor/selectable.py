@@ -17,7 +17,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-import stackless, sys, fcntl, socket, os, errno, select, types, traceback, time
+import stackless
+import sys
+import fcntl
+import socket
+import os
+import errno
+import select
+import types
+import traceback
+import time
+import warnings
 
 from sheared.python import queue
 from sheared.reactor import transport
@@ -45,7 +55,8 @@ class Reactor:
         if self.channel_tasklet.has_key(id(ch)):
             apply(ch.send, what)
         else:
-            print 'send to dead channel intercepted.'
+            warnings.warn('send to dead channel intercepted',
+                          stacklevel=2)
 
     def shutdown(self, err=None):
         self.stop = 1
@@ -76,6 +87,8 @@ class Reactor:
 
         if why:
             handler, file, channel, argv = self.waiting[fd]
+            warnings.warn('fd %d unselectable for %r/%r' % (fd, handler, argv),
+                          stacklevel=2)
             del self.waiting[fd]
             self.safe_send(channel, why)
         
