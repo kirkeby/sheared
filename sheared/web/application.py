@@ -1,4 +1,5 @@
 from sheared.python.application import Application
+from sheared.python.log import Log
 from sheared.web.server import HTTPServer
 from sheared.web.subserver import HTTPSubServer
 from sheared.web.virtualhost import VirtualHost
@@ -13,6 +14,12 @@ webserver_options = [
 
     ['set_str', 1, 'hostname', '', 'hostname', 'webserver.hostname',
      'Externally visible name of web server.'],
+
+    ['set_str', 1, 'accesslog', '', 'access-log', 'webserver.access-log',
+     'Path of web-server access log.'],
+
+    ['set_str', 1, 'errorlog', '', 'error-log', 'webserver.error-log',
+     'Path of web-server error log.'],
 ]
 
 class WebserverApplication(Application):
@@ -22,6 +29,9 @@ class WebserverApplication(Application):
         self.hostname = 'localhost'
 
         self.subserver = 0
+
+        self.accesslog = None
+        self.errorlog = None
 
         opts = []
         opts.extend(webserver_options)
@@ -46,5 +56,10 @@ class WebserverApplication(Application):
             self.webserver = HTTPServer()
         self.webserver.addVirtualHost(self.hostname, self.vhost)
         self.webserver.setDefaultHost(self.hostname)
+
+        if self.accesslog:
+            self.webserver.setAccessLog(Log(self.accesslog))
+        if self.errorlog:
+            self.webserver.setErrorLog(Log(self.errorlog))
 
         reactor.listen(self.webserver, self.address)
