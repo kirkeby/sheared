@@ -7,6 +7,9 @@ from sheared.protocol import http
 from sheared.internet import shocket
 from sheared.python import fdpass
 
+class InputError(Exception):
+    pass
+
 def unscape_querystring(qs):
     qs = qs.replace('+', ' ')
     while 1:
@@ -14,7 +17,12 @@ def unscape_querystring(qs):
             before, after = qs.split('%', 1)
         except ValueError:
             break
+
+        if len(after) < 2:
+            raise InputError, 'percent near end of query-string'
         hex, after = after[0:2], after[2:]
+        if re.findall('[^0-9a-fA-F]', hex):
+            raise InputError, 'malformed hex-number in query-string'
         qs = before + chr(int(hex, 16)) + after
     return qs
 
@@ -22,15 +30,17 @@ def parse_querystring(qs):
     args = {}
     for part in qs.split('&'):
         thing = part.split('=', 1)
-        if len(thing) == 2:
-            name, value = thing
-        else:
-            name, value = thing[0], None
+        if len(thing) == 1:
+            thing = thing[0], ''
+        name, value = thing
         if len(name) == 0:
-            continue
+            raise InputError, 'zero-length name not allowed'
+        if re.findall('[^a-zA-Z0-9-_]', name):
+            raise InputError, 'invalid name in query-string'
         if not args.has_key(name):
             args[name] = []
-        args[name].append(value)
+        if len(value):
+            args[name].append(value)
     return args
 
 class HTTPQueryString:
