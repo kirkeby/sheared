@@ -29,15 +29,20 @@ from sheared.python import commands
 from tests import transport
 
 class FakeRequest:
-    def __init__(self, uri):
+    def __init__(self, uri='/', head_only=0):
         self.path = uri
         self.headers = http.HTTPHeaders()
+        self.head_only = head_only
 
 class FakeReply:
-    def __init__(self):
+    def __init__(self, head_only=0):
         self.headers = http.HTTPHeaders()
         self.sent = ''
         self.status = 200
+        self.head_only = head_only
+
+    def setStatusCode(self, code):
+        self.status = code
 
     def send(self, data):
         self.sent = self.sent + data
@@ -53,8 +58,25 @@ class SimpleCollection(resource.GettableResource):
 
     def handle(self, request, reply, subpath):
         if subpath == '':
+            content = """Welcome to %s!\r\n""" % self.name
+            last_mod = http.HTTPDateTime(300229200)
+            
             reply.headers.setHeader('Content-Type', 'text/plain')
-            reply.send("""Welcome to %s!\r\n""" % self.name)
+            reply.headers.setHeader('Content-Length', len(content))
+            reply.headers.setHeader('Last-Modified', last_mod)
+            reply.headers.setHeader('ETag', 'abc')
+            
+            if not request.head_only:
+                if request.headers.has_key('If-None-Match'):
+                    if request.headers['If-None-Match'] == 'abc':
+                        raise error.web.NotModified
+                
+                if request.headers.has_key('If-Modified-Since'):
+                    when = http.HTTPDateTime(request.headers['If-Modified-Since'])
+                    if not last_mod > when:
+                        raise error.web.NotModified
+                
+            reply.send(content)
             reply.done()
 
         else:

@@ -22,6 +22,7 @@ import unittest, os, random
 
 from sheared import reactor
 from sheared.web import server, subserver, virtualhost
+from sheared.protocol import http
 from sheared.python import commands
 
 from tests import transport
@@ -81,10 +82,61 @@ class HTTPServerTestCase(unittest.TestCase):
         self.assertEquals(status.version, (1, 0))
         self.assertEquals(status.code, 404)
 
+    def testFullRequestWithoutHost(self):
+        self.transport.appendInput('''GET / HTTP/1.0\r\n\r\n''')
+        self.reactor.start()
+
+        status, headers, body = parseReply(self.transport.getOutput())
+        
+        self.assertEquals(status.version, (1, 0))
+        self.assertEquals(status.code, 200)
+        self.assertEquals(body, 'Welcome to bar.com!\r\n')
+
     def testSimpleRequest(self):
         self.transport.appendInput('''GET /''')
         self.reactor.start()
         self.assertEquals(self.transport.getOutput(), 'Welcome to bar.com!\r\n')
+
+    def testHeadRequest(self):
+        self.transport.appendInput('''HEAD / HTTP/1.0\r\n\r\n''')
+        self.reactor.start()
+    
+        status, headers, body = parseReply(self.transport.getOutput())
+        self.assertEquals(status.code, 200)
+        self.assertEquals(body, '')
+
+    def testOldConditionalRequest(self):
+        self.transport.appendInput('GET / HTTP/1.0\r\n'
+                                   'If-Modified-Since: Sat, 07 Jul 1979 20:00:00 GMT\r\n'
+                                   '\r\n')
+        self.reactor.start()
+    
+        status, headers, body = parseReply(self.transport.getOutput())
+        self.assertEquals(headers['Last-Modified'], 'Sat, 07 Jul 1979 21:00:00 GMT')
+        self.assertEquals(status.code, 200)
+        self.assertEquals(body, 'Welcome to bar.com!\r\n')
+
+    def testCurrentConditionalRequest(self):
+        self.transport.appendInput('GET / HTTP/1.0\r\n'
+                                   'If-Modified-Since: Sat, 07 Jul 1979 21:00:00 GMT\r\n'
+                                   '\r\n')
+        self.reactor.start()
+    
+        status, headers, body = parseReply(self.transport.getOutput())
+        self.assertEquals(headers['Last-Modified'], 'Sat, 07 Jul 1979 21:00:00 GMT')
+        self.assertEquals(status.code, 304)
+        self.assertEquals(body, '')
+
+    def testNewConditionalRequest(self):
+        self.transport.appendInput('GET / HTTP/1.0\r\n'
+                                   'If-Modified-Since: Sat, 07 Jul 1979 22:00:00 GMT\r\n'
+                                   '\r\n')
+        self.reactor.start()
+    
+        status, headers, body = parseReply(self.transport.getOutput())
+        self.assertEquals(headers['Last-Modified'], 'Sat, 07 Jul 1979 21:00:00 GMT')
+        self.assertEquals(status.code, 304)
+        self.assertEquals(body, '')
 
 class HTTPSubServerTestCase(unittest.TestCase):
     def setUp(self):
