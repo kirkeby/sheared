@@ -87,5 +87,6 @@ def init():
             self.channel = stackless.channel()
     dummy = DummyCoroutine()
     tasklet_coroutines[id(dummy.tasklet)] = dummy
+init()
 
 __all__ = ['Coroutine', 'CoroutineFailed', 'CoroutineReturned', 'init']
