@@ -420,7 +420,7 @@ class PostgresqlClient:
                 else:
                     break
 
-            self.buffer = self.buffer + self.transport.read()
+            self.buffer = self.buffer + self.transport.read(4096)
 
         if expected and not packet.__class__ is expected:
             self.transport.close()

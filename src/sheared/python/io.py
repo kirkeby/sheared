@@ -22,16 +22,7 @@ from sheared import reactor
 
 def readfile(path):
     f = reactor.open(path, 'r')
-    return readall(f)
-
-def readall(f):
-    all = ''
-    while 1:
-        read = f.read()
-        if read == '':
-            break
-        all += read
-    return all
+    return f.read()
 
 class BufferedReader:
     def __init__(self, file):
@@ -39,16 +30,14 @@ class BufferedReader:
         self.other = getattr(file, 'other', None)
         self.buffer = ''
 
-    def read(self, cnt=None):
-        if cnt is None:
-            if self.buffer:
-                d, self.buffer = self.buffer, ''
-                return d
-            else:
-                return self.file.read()
-
+    def read(self, max=None):
+        if max is None:
+            d = self.buffer + self.file.read()
+            self.buffer = ''
+            return d
+            
         while len(self.buffer) < cnt:
-            got = self.file.read()
+            got = self.file.read(cnt - len(self.buffer))
             if got == '':
                 break
             self.buffer = self.buffer + got
@@ -68,7 +57,7 @@ class BufferedReader:
             if i >= 0:
                 break
 
-            got = self.file.read()
+            got = self.file.read(80)
             if got == '':
                 break
             self.buffer = self.buffer + got

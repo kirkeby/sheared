@@ -78,12 +78,7 @@ def get(url, headers=None):
             head = head + l
         headers = http.HTTPHeaders(head)
         
-        content = ''
-        while 1:
-            d = tr.read()
-            if d == '':
-                break
-            content = content + d
+        content = tr.read()
         
         return status, headers, content
 

@@ -52,10 +52,19 @@ class NoReactorFile:
         return '<NoReactorFile %s>' % self.other
     def fileno(self):
         return self.fd
-    def read(self, max=4096):
+    def read(self, max=None):
         if self.reactor.running:
             raise error.reactor.ReactorRunningError, 'Reactor is running'
-        return os.read(self.fd, max)
+        if max is None:
+            d = ''
+            while 1:
+                r = os.read(self.fd, 4096)
+                if r == '':
+                    break
+                d = d + r
+        else:
+            d = os.read(self.fd, max)
+        return d
     def write(self, data):
         if self.reactor.running:
             raise error.reactor.ReactorRunningError, 'Reactor is running'

@@ -58,11 +58,11 @@ class HTTPSubServer(server.HTTPServer):
             client_transport = reactor.fdopen(sock, addr)
 
             try:
-                data = io.readall(server_transport)
+                data = server_transport.read()
                 request, reply, subpath = pickle.loads(data)
                 server_transport.close()
             
-            # FIXME -- There must be a better way to do this
+                # FIXME -- There must be a better way to do this
                 request.requestline.uri = list(request.requestline.uri)
                 request.requestline.uri[0] = ''
                 request.requestline.uri[1] = ''

@@ -71,7 +71,7 @@ def call(host, port, uri, method, params):
     transport.write('\r\n')
     transport.write(content)
 
-    reply = io.readall(transport)
+    reply = transport.read()
     http, content = reply.split('\r\n\r\n')
     status = http.split('\r\n')[0].split()[1]
     if not status == '200':
