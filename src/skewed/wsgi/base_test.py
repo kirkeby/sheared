@@ -44,7 +44,7 @@ def test_get():
         start_response('200 Ok', [])
         return ['Hello, World!\r\n']
     
-    assert __get(app) == '200 Ok\r\n\r\n' 'Hello, World!\r\n'
+    assert __get(app) == 'HTTP/1.0 200 Ok\r\n\r\n' 'Hello, World!\r\n'
 
 def test_exception():
     def app(env, start_response):
@@ -52,7 +52,7 @@ def test_exception():
 
     try:
         log.setLevel(100)
-        assert __get(app).startswith('500 Internal Server Error\r\n')
+        assert __get(app).startswith('HTTP/1.0 500 Internal Server Error\r\n')
     finally:
         log.setLevel(0)
         
@@ -62,5 +62,6 @@ def test_http_env():
         start_response('200 Ok', [])
         return ['HTTP_QUX: ' + env.get('HTTP_QUX', '')]
 
-    assert __get(app, ['Qux: FuBar']) == '200 Ok\r\n\r\n' 'HTTP_QUX: FuBar'
+    assert __get(app, ['Qux: FuBar']) == 'HTTP/1.0 200 Ok\r\n\r\n' \
+                                         'HTTP_QUX: FuBar'
 

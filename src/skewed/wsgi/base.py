@@ -58,7 +58,7 @@ class Response:
 
         if not self.decapitated:
             self.decapitated = 1
-            self.transport.write(self.status + '\r\n')
+            self.transport.write('HTTP/1.0 ' + self.status + '\r\n')
             for key, val in self.headers:
                 self.transport.write(key + ': ' + val + '\r\n')
             self.transport.write('\r\n')
@@ -69,7 +69,7 @@ class Response:
         if self.decapitated:
             return
 
-        self.transport.write(status + '\r\n')
+        self.transport.write('HTTP/1.0 ' + status + '\r\n')
         self.transport.write('Content-Type: text/plain\r\n')
         self.transport.write('\r\n')
         self.transport.write(why)
