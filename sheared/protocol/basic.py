@@ -12,7 +12,7 @@ class ProtocolFactory:
     def buildCoroutine(self, transport):
         p = self.protocol(self.reactor, transport)
         p.factory = self
-        return coroutine.Coroutine(p._run, '%s._run' % `p`)
+        return coroutine.Coroutine(p.run, '%s.run' % `p`)
 
 class Protocol:
     def __init__(self, reactor, transport):
@@ -32,7 +32,7 @@ class Protocol:
     def connectionLost(self, reason):
         raise NotImplementedError
 
-    def _run(self):
+    def run(self):
         while not self.transport.closed:
             data = self.transport.read()
             if data == '':

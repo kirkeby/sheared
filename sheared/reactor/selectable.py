@@ -28,16 +28,15 @@ def do_add(oco, nco, args):
 def do_done(co):
     co()
 
-#def do_open(co, path, mode):
-#    flags = os.O_NONBLOCK
-#    if mode == 'r':
-#        flags = flags | os.O_RDONLY
-#    elif mode == 'w':
-#        flags = flags | os.O_RDWR
-#    else:
-#        co.sendException(ValueError, 'bad flags')
-#    connecting = 
-#    os.open(path, flags)
+def do_open(co, path, mode):
+    flags = os.O_NONBLOCK
+    if mode == 'r':
+        flags = flags | os.O_RDONLY
+    elif mode == 'w':
+        flags = flags | os.O_RDWR
+    else:
+        co.sendException(ValueError, 'bad flags')
+    os.open(path, flags)
 
 def do_accept(co, fd):
     accepting[fd] = co
@@ -189,8 +188,8 @@ def run():
 def sleep(n):
     return main_co(do_sleep, (n,))
 
-#def open(fd, n):
-#    return main_co(do_open, (path,))
+def open(path):
+    return main_co(do_open, (path,))
 
 def getfd(file):
     if isinstance(file, types.IntType):
