@@ -2,6 +2,10 @@ H2PY=python $(shell pwd)/bin/h2py.py
 
 all: test/http-docroot/all.tar.gz
 
+clean:
+	rm -rf build/
+	find . -name \*.py[oc] | rm -f
+
 #sheared/python/stropts.py: /usr/include/bits/stropts.h
 #	cd $(dir $@) ; $(H2PY) $<
 
