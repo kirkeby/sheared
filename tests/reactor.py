@@ -1,7 +1,7 @@
 # vim:nowrap:textwidth=0
 
 import unittest
-import socket, os, time, errno, commands
+import socket, os, time, errno, commands, random
 
 from sheared.reactor import selectable
 from sheared.python import coroutine
@@ -67,7 +67,7 @@ class ReactorTestCase(unittest.TestCase):
             reactor.shutdown(1)
 
         try:
-            port = 9267
+            port = random.random() * 8192 + 22000
             self.reactor.addCoroutine(coroutine.Coroutine(g), (self.reactor, port))
             self.reactor.addCoroutine(coroutine.Coroutine(h), (self.reactor,))
             self.assertRaises(coroutine.CoroutineReturned, self.reactor.run)
@@ -101,7 +101,7 @@ class ReactorTestCase(unittest.TestCase):
             reactor.shutdown(42)
 
         try:
-            port = 9867
+            port = random.random() * 8192 + 22000
             co = coroutine.Coroutine(f)
             self.reactor.addCoroutine(co, (self.reactor, port))
             self.reactor.addCoroutine(coroutine.Coroutine(g), (self.reactor, port))
@@ -131,7 +131,7 @@ class ReactorTestCase(unittest.TestCase):
             reactor.shutdown(42)
 
         try:
-            port = 9679
+            port = random.random() * 8192 + 22000
             co = coroutine.Coroutine(f)
             self.reactor.addCoroutine(co, (self.reactor, port))
             self.reactor.addCoroutine(coroutine.Coroutine(g), (self.reactor, port))
@@ -141,6 +141,31 @@ class ReactorTestCase(unittest.TestCase):
         except coroutine.CoroutineFailed, ex:
             raise ex[0].exc_info[0], ex[0].exc_info[1], ex[0].exc_info[2]
 
+    def testTransport(self):
+        """Test that the reactor can working Transports."""
+        def read(reactor, file, count):
+            t = reactor.createTransport(open(file, 'r'), 'file://' + file)
+            v = t.read(count)
+            t.close()
+            return v
+        def write(reactor, file, data):
+            t = reactor.createTransport(open(file, 'w'), 'file://' + file)
+            t.write(data)
+            t.close()
+            return 1
+
+        readZero = coroutine.Coroutine(read)
+        readPasswd = coroutine.Coroutine(read)
+        writeNull = coroutine.Coroutine(write)
+        self.reactor.addCoroutine(readZero, (self.reactor, '/dev/zero', 1024))
+        self.reactor.addCoroutine(readPasswd, (self.reactor, '/etc/passwd', 1024))
+        self.reactor.addCoroutine(writeNull, (self.reactor, '/dev/null', 'Hello, World!'))
+        self.assertRaises(coroutine.CoroutineReturned, self.reactor.run)
+
+        self.assertEqual(readZero.result, '\0' * 1024)
+        self.failUnless(len(readPasswd.result))
+        self.assertEqual(writeNull.result, 1)
+            
 class SelectableReactorTestCase(ReactorTestCase):
     """Test-cases for the selectable reactor."""
     reactor = selectable

@@ -4,7 +4,7 @@ import socket, sys
 
 from sheared.python import coroutine
 
-class Port:
+class TCPPort:
     def __init__(self, reactor, factory, address, family=socket.AF_INET, backlog=5):
         self.factory = factory
         self.address = address

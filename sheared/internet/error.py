@@ -1,0 +1,2 @@
+class ConnectionDone:
+    pass

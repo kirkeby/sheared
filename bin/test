@@ -5,8 +5,14 @@ import unittest
 import sys
 sys.path.insert(0, '.')
 
-from tests import reactor, coroutine
+from tests import coroutine, reactor
 
+if len(sys.argv) == 1:
+    tests = 'coroutine', 'reactor', 'transport', 'protocol'
+else:
+    tests = sys.argv[1:]
+    
 runner = unittest.TextTestRunner()
-runner.run(reactor.suite)
-runner.run(coroutine.suite)
+for test in tests:
+    module = __import__('tests.%s' % test, globals(), locals(), (test,))
+    runner.run(module.suite)

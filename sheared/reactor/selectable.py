@@ -200,7 +200,7 @@ def listenTCP(factory, address):
     port.listen()
 
 def createTransport(fd, addr):
-    return transport.Transport(reactor, fd, addr)
+    return transport.ReactorTransport(reactor, fd, addr)
 
-__all__ = ['run', 'read', 'write', 'accept',
+__all__ = ['run', 'reset', 'read', 'write', 'accept',
            'prepareFile', 'addCoroutine', 'listenTCP']
