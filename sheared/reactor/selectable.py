@@ -63,12 +63,18 @@ class Reactor:
         return r, w, r + w
 
     def flushunselectabels(self, r, w):
+        why = None
         try:
             for fd in r:
                 select.select([fd], [], [], 0)
             for fd in w:
                 select.select([], [fd], [], 0)
         except select.error, why:
+            pass
+        except ValueError, why:
+            pass
+
+        if why:
             handler, file, channel, argv = self.waiting[fd]
             del self.waiting[fd]
             self.safe_send(channel, why)
@@ -186,6 +192,8 @@ class Reactor:
                 try:
                     r, w, e = select.select(r, w, e, timeout)
                 except select.error, (eno, emsg):
+                    self.flushunselectabels(r, w)
+                except ValueError:
                     self.flushunselectabels(r, w)
 
                 self.wake_sleepers()
