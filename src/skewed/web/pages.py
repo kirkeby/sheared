@@ -11,6 +11,7 @@ from sheared.web.querystring import HTTPQueryString
 
 from skewed.wsgi.misc import relative
 from skewed.wsgi.misc import choose_widget
+from skewed.wsgi.misc import accept
 
 mimes = mimetypes.MimeTypes([ path for path in mimetypes.knownfiles
                               if os.access(path, os.R_OK) ])
@@ -50,19 +51,38 @@ class Pages:
         path_info = environ['PATH_INFO']
 
         static = self.static_path + path_info
+        path, headers = None, None
+
+        # First, see if the exact path requested exists
         if os.access(static, os.R_OK):
-            ct, ce = mimes.guess_type(static)
-            headers = []
-            if ct:
-                headers.append(('Content-Type', ct))
-            if ce:
-                headers.append(('Content-Encoding', ce))
-            
-            start_response('200 Ok', headers)
-            return open(static).read()
+            path, headers = static, {}
+
+        # If not, do the multiview-dance
+        else:
+            widgets = {}
+            for possible in glob.glob(static + '*'):
+                ct, ce = mimes.guess_type(possible)
+                if not ct:
+                    continue
+                widgets[possible] = { 'Vary': 'Accept', 'Content-Type': ct }
+
+            path = accept.choose_widget(environ, widgets.items())
+            if path:
+                headers = widgets[path]
+
+        # Serve the chosen file (if any)
+        if path is None:
+            return None
 
         else:
-            return None
+            ct, ce = mimes.guess_type(path)
+            if ct and not headers.has_key('Content-Type'):
+                headers['Content-Type'] = ct
+            if ce and not headers.has_key('Content-Encoding'):
+                headers['Content-Encoding'] = ce
+            
+            start_response('200 Ok', headers.items())
+            return [open(path).read()]
 
     def as_pypage(self, environ, start_response):
         path_info = environ['PATH_INFO']
@@ -79,18 +99,20 @@ class Pages:
         # load, compile and execute Python-code
         src = open(pywidget).read()
         code = compile(src, pywidget, 'exec')
-        namespace = {}
+        namespace = {
+            'ZPTView': ZPTView,
+        }
         eval(code, namespace)
 
         # get controller and view for this page
-        controller = namespace.get('Controller', DefaultController)(self)
+        controller = namespace.get('Controller', DefaultController)()
         view = namespace.get('View', DefaultView)(self)
         
         # handle arguments
-        pass
+        context = controller.process(request)
 
         # render view
-        result = view.render(request, reply)
+        result = view.render(context, request, reply)
         start_response('200 Ok', reply.headers)
         return result
 
@@ -114,17 +136,15 @@ class Reply:
         self.headers = headers
 
 class DefaultController:
-    def __init__(self, application):
-        pass
     def process(self, request):
-        pass
+        return {}
 class ZPTView:
     def __init__(self, application):
         self.application = application
         self.model = self.application.model
     def massage(self, context):
         raise NotImplementedError, 'ZPTView.massage'
-    def render(self, request, reply):
+    def render(self, context, request, reply):
         path_info = request.environ['PATH_INFO']
         template = self.application.templates_path + path_info + '.xhtml'
         if os.access(template, os.R_OK):
