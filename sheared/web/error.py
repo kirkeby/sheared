@@ -38,7 +38,9 @@ class ForbiddenError(WebServerError):
 class NotFoundError(WebServerError):
     statusCode = HTTP_NOT_FOUND
 
-class MovedPermanently(WebServerError):
+class Moved(WebServerError):
+    pass
+class MovedPermanently(Moved):
     statusCode = HTTP_MOVED_PERMANENTLY
 
 class BadRequestError(WebServerError):
