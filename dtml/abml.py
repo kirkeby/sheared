@@ -71,7 +71,7 @@ def lex(text):
 
 def parse_attribute(str):
     try:
-        name, value = str.split('=')
+        name, value = str.split('=', 1)
         # Yes, we do the lexers work here and it is ugly, but it is easy
         # and it works.
         if len(value) > 0 and value[0] in "\'\"":
@@ -80,7 +80,7 @@ def parse_attribute(str):
     except ValueError:
         name, value = str, None
     try:
-        ns, name = name.split(':')
+        ns, name = name.split(':', 1)
     except:
         ns = None
     return ns, name, value
@@ -135,7 +135,11 @@ def parse(text):
                 
             else:
                 # this is a start-tag ...
-                attr = map(parse_attribute, value[1:])
+                attr = []
+                for a in map(parse_attribute, value[1:]):
+                    if a[1]:
+                        attr.append(a)
+
                 if len(attr) > 0 and attr[-1][1] == '/':
                     attr = attr[:-1]
                     suicidal = 1

@@ -1,7 +1,7 @@
 # vim:textwidth=0:nowrap
 
 class Context:
-    def __init__(self, defaults={}):
+    def __init__(self):
         self.__contexts = [{}]
         self.__defaults = {}
 
@@ -20,19 +20,29 @@ class Context:
         assert len(self.__contexts) > 1
         self.__contexts[-1][name] = value
 
+    def keys(self):
+        return self.dictify().keys()
+    def dictify(self):
+        ctx = {}
+        if self.__defaults:
+            ctx.update(self.__defaults.dictify())
+        for i in range(len(self.__contexts)):
+            ctx.update(self.__contexts[i])
+        return ctx
+
     def __getitem__(self, name):
         for i in range(len(self.__contexts)):
             if self.__contexts[-i-1].has_key(name):
                 return self.__contexts[-i-1][name]
         return self.__defaults[name]
         
-class Default:
-    pass
+#class Default:
+#    pass
 class BuiltIns:
     def __init__(self, options):
         self.__options = options
         self.__repeat = Context()
-        self.__default = Default()
+        self.__default = None
         self.__attrs = []
 
     def __getitem__(self, name):
@@ -50,6 +60,19 @@ class BuiltIns:
         if name == 'CONTEXTS':
             return self
         return self.__repeat[name]
+
+    def keys(self):
+        keys = ['nothing', 'default', 'options', 'repeat',
+                'CONTEXTS']
+        if len(self.__attrs):
+            keys.append('attrs')
+        keys = keys + self.__repeat.keys()
+        return keys
+    def dictify(self):
+        dict = {}
+        for k in self.keys():
+            dict[k] = self[k]
+        return dict
 
     def pushRepeatVariable(self, name, value):
         self.__repeat.pushContext()

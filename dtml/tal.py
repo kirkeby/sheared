@@ -20,9 +20,7 @@ def format_attribute(attr):
         s += '%s:' % ns
     s += name
     if not value is None:
-        v = value.replace('\\', '\\\\')
-        v = v.replace('\'', '\\\'')
-        s += "='%s'" % value
+        s += "=%r" % value
     return s
 
 def format_tag(name, attributes):
@@ -238,23 +236,30 @@ def execute(program, context, builtins, eval):
             if omit_tag:
                 omit_tag = eval(omit_tag, context)
 
+            replaced = 0
             if replace:
                 scope, with, expr = replace
-                block = [(with, eval(expr, context))]
+                val = eval(expr, context)
+                content = execute([(with, val)], context, builtins, eval)
+                replaced = 1
                 if scope == 'all':
                     omit_tag = 1
+
+            if not replaced:
+                content = execute(block, context, builtins, eval)
             
             if not omit_tag:
                 for attr in dyn_attrs:
                     for i in range(len(attrs)):
-                        if attrs[i][0] == attr[0]:
+                        # FIXME -- need namespace support
+                        if attrs[i][1] == attr[0]:
                             break
                     else:
                         i = len(attrs)
                         attrs.append(())
                     attrs[i] = attr[0], eval(attr[1], context)
                 result += format_tag(name, attrs)
-            result += execute(block, context, builtins, eval)
+            result += content
             if not omit_tag:
                 result += '</%s>' % name
 
@@ -287,7 +292,11 @@ def execute(program, context, builtins, eval):
 
         elif op == 'condition':
             expr = instruction[1]
-            if eval(expr, context):
+            try:
+                cond = eval(expr, context)
+            except:
+                cond = 0
+            if cond:
                 result += execute(instruction[2], context, builtins, eval)
 
         else:

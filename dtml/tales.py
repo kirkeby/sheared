@@ -72,6 +72,8 @@ def walkPath(context, path):
         try:
             context = context[step]
             continue
+        except TypeError:
+            pass
         except KeyError:
             pass
         try:
@@ -95,6 +97,6 @@ def execute((op, arg), context):
                 s = s + arg[i]
         return s
     if op == 'python':
-        return eval(arg, {})
+        return eval(arg, context.dictify())
 
     raise 'unknown op-code'
