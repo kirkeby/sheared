@@ -23,9 +23,17 @@ def parsefd(file):
     for line in file.readlines():
         if '#' in line:
             line, _ = line.split('#', 1)
-        if '=' in line:
-            opt, val = line.split('=', 1)
-        else:
-            opt, val = line, None
+        line = line.strip()
+    
+        if not line:
+            continue
         
-        yield opt.strip(), val.strip()
+        yield parsestmt(line)
+
+def parsestmt(stmt):
+    if '=' in stmt:
+        opt, val = stmt.split('=', 1)
+        val = val.strip()
+    else:
+        opt, val = stmt, None
+    return opt.strip(), val
