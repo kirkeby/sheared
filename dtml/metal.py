@@ -55,7 +55,7 @@ def compile(text, exp):
                 context.append([])
 
                 start = format_tag(element.name, other_attr)
-                end = '</%s>' % element.name
+                end = '</%s>' % abml.format_name(element.name)
                 context[-1].append(('start-tag', element.name, start, end, metal_attr))
 
             else:
