@@ -43,19 +43,20 @@ class WebserverApplication(Application):
         raise NotImplementedError
 
     def setup(self):
-        self.root = self.configure()
-        self.vhost = VirtualHost(self.root)
-
         if self.subserver:
             self.webserver = HTTPSubServer()
         else:
             self.webserver = HTTPServer()
-        self.webserver.addVirtualHost(self.hostname, self.vhost)
         self.webserver.setDefaultHost(self.hostname)
 
         if self.accesslog:
             self.webserver.setAccessLog(Log(self.accesslog))
         if self.errorlog:
             self.webserver.setErrorLog(Log(self.errorlog))
+
+        root = self.configure()
+        if root:
+            self.vhost = VirtualHost(root)
+            self.webserver.addVirtualHost(self.hostname, self.vhost)
 
         reactor.listen(self.webserver, self.address)
