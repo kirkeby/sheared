@@ -79,6 +79,9 @@ class UnvalidatedInput:
             raise error.web.InputError, '%r: invalid characters in value' % self.__str
         return self.__str
 
+    def as_unixstr(self):
+        return self.as_str('\x01-\xff')
+
     def as_name(self):
         return self.as_str('a-zA-Z0-9_-')
 
@@ -290,7 +293,7 @@ class VirtualHost:
 
     def handle(self, request, reply, path):
         child, subpath = self.walkPath(path)
-        if child is self.collection:
+        if child is self.collection and child.isWalkable:
             child = self.collection.getChild('')
         child.handle(request, reply, subpath)
 
