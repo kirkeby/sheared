@@ -42,8 +42,8 @@ class HTTPRequest:
         else:
             return self.path + '/' + uri
 
-    def authentication(self, require=1):
-        login, password = None, None
+    def authentication(self):
+        type, login, password = None, None, None
 
         if self.headers.has_key('authorization'):
             auth = self.headers['authorization']
@@ -59,9 +59,10 @@ class HTTPRequest:
             except:
                 pass
 
-        if require and login is None:
-            raise UnauthorizedException, 'authorization required'
+        if login is None:
+            return None
         else:
-            return login, password
+            return type, login, password
+        
 
 __all__ = ['HTTPRequest']
