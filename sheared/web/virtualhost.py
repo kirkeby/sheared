@@ -22,9 +22,8 @@ from sheared import error
 from sheared.python import path
 
 class VirtualHost:
-    def __init__(self, collection, location=None):
+    def __init__(self, collection):
         self.collection = collection
-        self.location = location
 
     def walkPath(self, request, reply, pth):
         child = self.collection
@@ -79,5 +78,5 @@ class VirtualHost:
                 raise error.web.InternalServerError
             if not loc.startswith('/'):
                 loc = request.path + '/' + loc
-            loc = self.location + loc[1:]
+            loc = 'http://' + request.headers['Host'] + loc
             reply.headers.setHeader('Location', loc)
