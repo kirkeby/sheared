@@ -28,7 +28,7 @@ class WSGIServer(BaseWSGIServer):
     def find_application(self, host, path_info):
         return self.__application, '', path_info
 
-def __get(app, headers=[]):
+def get_application(app, headers=[]):
     req = 'GET / HTTP/1.0\r\n'
     for header in headers:
         req = req + header + '\r\n'
@@ -44,7 +44,7 @@ def test_get():
         start_response('200 Ok', [])
         return ['Hello, World!\r\n']
     
-    assert __get(app) == 'HTTP/1.0 200 Ok\r\n\r\n' 'Hello, World!\r\n'
+    assert get_application(app) == 'HTTP/1.0 200 Ok\r\n\r\n' 'Hello, World!\r\n'
 
 def test_exception():
     def app(env, start_response):
@@ -52,7 +52,7 @@ def test_exception():
 
     try:
         log.setLevel(100)
-        assert __get(app).startswith('HTTP/1.0 500 Internal Server Error\r\n')
+        assert get_application(app).startswith('HTTP/1.0 500 Internal Server Error\r\n')
     finally:
         log.setLevel(0)
         
@@ -62,7 +62,7 @@ def test_http_env():
         start_response('200 Ok', [])
         return ['HTTP_QUX: ' + env.get('HTTP_QUX', '')]
 
-    assert __get(app, ['Qux: FuBar']) == 'HTTP/1.0 200 Ok\r\n\r\n' \
+    assert get_application(app, ['Qux: FuBar']) == 'HTTP/1.0 200 Ok\r\n\r\n' \
                                          'HTTP_QUX: FuBar'
 
 def test_http_headers():
@@ -70,6 +70,6 @@ def test_http_headers():
         start_response('200 Ok', [('Qux', 'quuuuux')])
         return ['']
 
-    assert __get(app, []) == 'HTTP/1.0 200 Ok\r\n' \
+    assert get_application(app, []) == 'HTTP/1.0 200 Ok\r\n' \
                              'Qux: quuuuux\r\n' \
                              '\r\n'
