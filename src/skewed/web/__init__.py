@@ -18,25 +18,3 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-
-from distutils.core import setup, Extension
-setup(name = "Sheared", version = "0.1",
-      author = "Sune Kirkeby",
-      url = "http://ibofobi.dk/stuff/sheared/",
-      packages = [
-        'sheared', 'sheared.database', 'sheared.protocol',
-        'sheared.python', 'sheared.reactors', 'sheared.web',
-        'sheared.web.server', 'sheared.web.collections',
-        'skewed', 'skewed.wcgi', 'skewed.web',
-      ],
-      package_dir = { '': 'src' },
-      ext_modules = [
-        Extension("sheared.python.fdpass",
-                  ["src/sheared/python/fdpass.c"]),
-        Extension("sheared.python.proctitle",
-                  ["src/sheared/python/proctitle.c"]),
-        Extension("sheared.python.aio",
-                  ["src/sheared/python/aio.c"],
-                  libraries = ['rt']),
-      ],
-    )
