@@ -1,5 +1,8 @@
 # vim:nowrap:textwidth=0
 
+import warnings
+warnings.warn('The s.p.basic module is deprecated.', DeprecationWarning)
+
 from sheared.python import coroutine
 
 from sheared.internet import error
