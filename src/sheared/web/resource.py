@@ -22,6 +22,7 @@ from sheared import error
 from sheared.web import querystring
 from sheared.python.rfc1521 import parse_plist_header
 from sheared.python.rfc1521 import parse_content_type
+from sheared.python.rfc822 import RFC822Message
 
 class Resource:
     method_parsers = None
