@@ -80,7 +80,7 @@ class HTTPServer:
             transport.write('Crashing in flames!\r\n')
 
         except OSError, e:
-            if e.errno == errno.ECONNRESET:
+            if e.errno in (errno.ECONNRESET, errno.EPIPE):
                 pass
             else:
                 raise
