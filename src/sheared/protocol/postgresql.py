@@ -307,11 +307,19 @@ class PostgresqlClient:
     def _quote(self, str, q):
         return q + str.replace('\\', '\\\\').replace(q, '\\' + q) + q
     def quote_str(self, str):
-        return self._quote(str, "'")
+        if str is None:
+            return 'NULL'
+        else:
+            return self._quote(str, "'")
     def quote_name(self, str):
-        return self._quote(str, '"')
+        if str is None:
+            return 'NULL'
+        else:
+            return self._quote(str, '"')
     def quote_bool(self, b):
-        if b:
+        if b is None:
+            return 'NULL'
+        elif b:
             return 'true'
         else:
             return 'false'
