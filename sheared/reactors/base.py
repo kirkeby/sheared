@@ -157,14 +157,15 @@ class Reactor:
     def schedule(self):
         raise NotImplementedError
 
-    def open(self, path, mode):
-        if mode == 'r':
-            mode = os.O_RDONLY
-        elif mode == 'w':
-            mode = os.O_WRONLY
+    def open(self, path, flags='r', mode=0600):
+        if flags == 'r':
+            flags = os.O_CREAT | os.O_RDONLY
+        elif flags == 'w':
+            flags = os.O_CREAT | os.O_WRONLY
         else:
-            raise ValueError, 'unknown mode %r' % mode
-        return self.fdopen(os.open(path, mode), mode, path)
+            raise ValueError, 'unknown flags %r' % flags
+        file = self.fdopen(os.open(path, flags, mode), other=path)
+        return file
 
     def fdopen(self, file, mode='r', other=None):
         raise NotImplementedError
