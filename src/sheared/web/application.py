@@ -12,7 +12,7 @@ webserver_options = [
     ['set_str', 1, 'address', '', 'bind', 'webserver.bind',
      'Bind web server to this place.'],
 
-    ['set_bool', 1, 'subserver', '', 'subserver', 'webserver.subserver',
+    ['set_bool', 0, 'subserver', '', 'subserver', 'webserver.subserver',
      'Build a HTTPSubServer instead of a normal HTTPServer.'],
 
     ['set_str', 1, 'hostname', '', 'hostname', 'webserver.hostname',
