@@ -1,3 +1,4 @@
+from __future__ import nested_scopes
 import os, sys, errno
 
 def daemonize():
@@ -18,6 +19,9 @@ def daemonize():
         sys.exit(0) 
 
     # close all open file-descriptors
+    closeall()
+
+def closeall():
     fdmax = os.sysconf('SC_OPEN_MAX')
     for fd in range(fdmax):
         try:
