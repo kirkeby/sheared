@@ -28,27 +28,20 @@ from sheared.web import cookie
 
 import oh_nine, one_oh
 
-def movedHandler(server, exc_info, request, reply):
-    reply.send("This page has moved. You can now find it here:\r\n"
-               "  %s\r\n" % reply.headers.get('Location'))
-
-def unauthorizedErrorHandler(server, exc_info, request, reply):
-    reply.send("I need to see some credentials.\r\n")
-
-def forbiddenErrorHandler(server, exc_info, request, reply):
-    reply.send("Forbidden.\r\n")
-
-def notFoundErrorHandler(server, exc_info, request, reply):
-    reply.send("Not found.\r\n")
+def notModifiedHandler(server, exc_info, request, reply):
+    reply.sendHead()
+    reply.done()
 
 def internalServerErrorHandler(server, exc_info, request, reply):
-    reply.send('Internal Server Error.\r\n')
+    reply.send(http.http_reason[reply.status] + '\r\n')
     server.logInternalError(exc_info[1].args)
 
 def defaultErrorHandler(server, exc_info, request, reply):
-    reply.send("I am terribly sorry, but an error (%d) occured "
-               "while processing your request.\r\n" % exc_info[1].statusCode)
-    server.logInternalError(exc_info)
+    if http.http_reason.has_key(reply.status):
+        reply.send(http.http_reason[reply.status] + '\r\n')
+    else:
+        reply.send("I am terribly sorry, but an error (%d) occured "
+                   "while processing your request.\r\n" % reply.status)
 
 class HTTPServer:
     def __init__(self):
@@ -63,18 +56,9 @@ class HTTPServer:
         self.massageRequestCallbacks = []
         self.requestCompletedCallbacks = []
         self.errorHandlers = [
-            (Exception,
-                defaultErrorHandler),
-            (error.web.InternalServerError,
-                internalServerErrorHandler),
-            (error.web.NotFoundError,
-                notFoundErrorHandler),
-            (error.web.ForbiddenError,
-                forbiddenErrorHandler),
-            (error.web.UnauthorizedError,
-                unauthorizedErrorHandler),
-            (error.web.Moved,
-                movedHandler),
+            (error.web.WebServerError, defaultErrorHandler),
+            (error.web.NotModified, notModifiedHandler),
+            (error.web.InternalServerError, internalServerErrorHandler),
         ]
 
     def addVirtualHost(self, name, vhost):
