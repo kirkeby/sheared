@@ -59,6 +59,8 @@ def call(co, *args):
         op, args = apply(co, args)
         #print 'returning from %s with %r' % (co.name, (op, args))
         apply(op, (main_co.caller,) + args)
+    except SystemExit:
+        raise
     except coroutine.CoroutineFailed, ex:
         co.done = 1
         print 'CoroutineFailed:', co.name

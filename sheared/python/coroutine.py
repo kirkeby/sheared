@@ -23,6 +23,8 @@ def bootstrapCoroutine(coroutine, f):
             creator.channel.send_exception(CoroutineReturned, ex[0])
         except CoroutineFailed, ex:
             creator.channel.send_exception(CoroutineFailed, ex[0])
+        except SystemExit:
+            raise
         except:
             coroutine.exc_info = sys.exc_info()
             creator.channel.send_exception(CoroutineFailed, coroutine)
