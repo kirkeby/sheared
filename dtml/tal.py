@@ -86,7 +86,7 @@ def parse_repeat(text):
     (name, expression), = re_repeat.findall(text)
     return name, expression
 
-def compile(text, compile_expression):
+def compile(text, exp):
     """compile(text) -> [TAL instructions]
     
     This is a compiler for the Template Attribute Language version
@@ -112,11 +112,11 @@ def compile(text, compile_expression):
 
     for element in abml.parse(text):
         if element.type == 'text':
-            context[-1].append(('structure', element.raw))
+            context[-1].append(('static', element.raw))
         elif element.type == 'doctype':
-            context[-1].append(('structure', element.raw))
+            context[-1].append(('static', element.raw))
         elif element.type == 'processing-instruction':
-            context[-1].append(('structure', element.raw))
+            context[-1].append(('static', element.raw))
 
         elif element.type == 'start-tag':
             tal_attr = {}
@@ -138,7 +138,7 @@ def compile(text, compile_expression):
 
             else:
                 has_ctx.append(0)
-                context[-1].append(('structure', element.raw))
+                context[-1].append(('static', element.raw))
 
         elif element.type == 'end-tag':
             if has_ctx.pop():
@@ -156,11 +156,11 @@ def compile(text, compile_expression):
                 attributes = []
                 replace = None
                 if tal_attr.get('omit-tag', ''):
-                    omit_tag = compile_expression(tal_attr['omit-tag'])
+                    omit_tag = exp.compile(tal_attr['omit-tag'])
                 if tal_attr.get('attributes', ''):
                     attributes = list(split_list(tal_attr['attributes']))
                     attributes = map(parse_attribute, attributes)
-                    attributes = [(x[0], compile_expression(x[1])) for x in attributes]
+                    attributes = [(x[0], exp.compile(x[1])) for x in attributes]
                 if tal_attr.get('replace', ''):
                     replace = 'all'
                     replace_ex = tal_attr['replace']
@@ -169,7 +169,7 @@ def compile(text, compile_expression):
                     replace_ex = tal_attr['content']
                 if replace:
                     replacer = parse_replace_expression(replace_ex)
-                    replace = replace, replacer[0], compile_expression(replacer[1])
+                    replace = replace, replacer[0], exp.compile(replacer[1])
 
                 if not (omit_tag or attributes or replace):
                     scopes.insert(0, ('static-tag', tag[1], tag[2]))
@@ -178,19 +178,19 @@ def compile(text, compile_expression):
 
                 if tal_attr.get('repeat', ''):
                     repeater = parse_repeat(tal_attr['repeat'])
-                    repeater = repeater[0], compile_expression(repeater[1])
+                    repeater = repeater[0], exp.compile(repeater[1])
                     scopes.insert(0, ('repeat', repeater))
                 if tal_attr.get('condition', ''):
-                    condition = compile_expression(tal_attr['condition'])
+                    condition = exp.compile(tal_attr['condition'])
                     scopes.insert(0, ('condition', condition))
                 if tal_attr.get('define', ''):
                     defines = list(split_list(tal_attr['define']))
                     defines = map(parse_define, defines)
-                    defines = [(x[0], x[1], compile_expression(x[2])) for x in defines]
+                    defines = [(x[0], x[1], exp.compile(x[2])) for x in defines]
                     scopes.insert(0, ('define', defines))
                 if tal_attr.get('on-error', ''):
                     replacer = parse_replace_expression(tal_attr['on-error'])
-                    replacer = replacer[0], compile_expression(replacer[1])
+                    replacer = replacer[0], exp.compile(replacer[1])
                     scopes.insert(0, ('on-error', replacer))
 
                 while scopes:
@@ -199,21 +199,54 @@ def compile(text, compile_expression):
                 context[-1].extend(thing)
 
             else:
-                context[-1].append(('structure', element.raw))
+                context[-1].append(('static', element.raw))
 
     assert len(context) == 1, 'internal compiler error'
-    for thing in context[0]:
-        yield thing
+    return optimize_tal(context[0], exp)
 
-def execute(program, context, builtins, eval):
+def optimize_tal(program, exp):
+    if not program:
+        return []
+    optimized = program
+
+    # recurse into tags that contain blocks
+    instruction = optimized[0]
+    opcode = instruction[0]
+    if opcode in ('static-tag', 'dynamic-tag', 'define', 'replace', 'repeat', 'condition'):
+        instruction = instruction[:-1] + \
+                      (optimize_tal(instruction[-1], exp),)
+    optimized = [instruction] + optimized[1:]
+
+    # optimize tags at head of program
+    if opcode == 'static-tag':
+        name, attrs, block = optimized[0][1:]
+        optimized[0:1] = [('static', format_tag(name, attrs))] + \
+                         optimized[0][3] + \
+                         [('static', '</%s>' % name)]
+
+    # FIXME -- this would look sooooo much better with pattern-matching :(
+    while len(optimized) > 1 and optimized[0][0] == 'static' and optimized[1][0] == 'static':
+        optimized[0:2] = [('static', optimized[0][1] + optimized[1][1])]
+
+    # optimize rest of program
+    if len(optimized) > 1:
+        optimized = [optimized[0]] + optimize_tal(optimized[1:], exp)
+
+    # done!
+    return optimized
+
+def execute(program, context, builtins, exp):
     result = ''
     for instruction in program:
         op = instruction[0]
-        if op == 'structure':
+        if op == 'static':
             result += instruction[1]
 
+        elif op == 'structure':
+            result += exp.execute(instruction[1], context)
+
         elif op == 'text':
-            s = instruction[1]
+            s = exp.execute(instruction[1], context)
             if isinstance(s, types.StringTypes):
                 s = s.replace('&', '&amp;')
                 s = s.replace('<', '&lt;')
@@ -224,11 +257,9 @@ def execute(program, context, builtins, eval):
                 raise ValueError, '%r is not string or number' % s
             result += s
 
-        elif op == 'static-tag':
-            name, attrs, block = instruction[1:]
-            result += format_tag(name, attrs)
-            result += execute(block, context, builtins, eval)
-            result += '</%s>' % name
+        elif op == 'replace':
+            (op, expr), block = instruction[1:]
+            result += execute([(op, expr)], context, builtins, exp)
 
         elif op == 'dynamic-tag':
             name, sta_attrs, dyn_attrs, omit_tag, replace, block = instruction[1:]
@@ -237,19 +268,18 @@ def execute(program, context, builtins, eval):
             attrs.extend(sta_attrs)
 
             if omit_tag:
-                omit_tag = eval(omit_tag, context)
+                omit_tag = exp.execute(omit_tag, context)
 
             replaced = 0
             if replace:
                 scope, with, expr = replace
-                val = eval(expr, context)
-                content = execute([(with, val)], context, builtins, eval)
+                content = execute([(with, expr)], context, builtins, exp)
                 replaced = 1
                 if scope == 'all':
                     omit_tag = 1
 
             if not replaced:
-                content = execute(block, context, builtins, eval)
+                content = execute(block, context, builtins, exp)
             
             if not omit_tag:
                 for attr in dyn_attrs:
@@ -260,47 +290,64 @@ def execute(program, context, builtins, eval):
                     else:
                         i = len(attrs)
                         attrs.append(())
-                    attrs[i] = attr[0], eval(attr[1], context)
+                    attrs[i] = attr[0], exp.execute(attr[1], context)
                 result += format_tag(name, attrs)
             result += content
             if not omit_tag:
                 result += '</%s>' % name
 
         elif op == 'define':
-            context.pushContext()
+            olv = {}
+
             for scope, name, exp in instruction[1]:
-                val = eval(exp, context)
+                val = exp.execute(exp, context)
                 if scope == 'local':
-                    context.setLocal(name, val)
+                    if context.has_key(name):
+                        olv[name] = context[name]
+                    context[name] = value
                 elif scope == 'global':
-                    context.setGlobal(name, val)
+                    raise NotImplementedError, 'global scope not implemented'
                 else:
                     raise 'unknown scope'
-            result += execute(instruction[2], context, builtins, eval)
-            context.popContext()
+
+            result += execute(instruction[2], context, builtins, exp)
+
+            for scope, name, exp in instruction[1]:
+                if scope == 'local':
+                    if olv.has_key(name):
+                        context[name] = olv[name]
+                    else:
+                        del context[name]
 
         elif op == 'repeat':
             (name, list), block = instruction[1:]
-            val = eval(list, context)
-            for elem in val:
-                # FIXME -- need RepeatVariable class here
-                builtins.pushRepeatVariable(name, elem)
-                result += execute(block, context, builtins, eval)
-                builtins.popRepeatVariable()
+            val = exp.execute(list, context)
 
-        elif op == 'replace':
-            (op, expr), block = instruction[1:]
-            instruction = op, eval(expr, context)
-            result += execute([instruction], context, builtins, eval)
+            if context.has_key(name):
+                has_ov, ov = 1, context[name]
+            else:
+                has_ov = 0
+
+            # FIXME -- need RepeatVariable class here
+            #builtins.pushRepeatVariable(name, elem)
+            for elem in val:
+                context[name] = elem
+                result += execute(block, context, builtins, exp)
+            #builtins.popRepeatVariable()
+
+            if has_ov:
+                context[name] = ov
+            else:
+                del context[name]
 
         elif op == 'condition':
             expr = instruction[1]
             try:
-                cond = eval(expr, context)
+                cond = exp.execute(expr, context)
             except:
                 cond = 0
             if cond:
-                result += execute(instruction[2], context, builtins, eval)
+                result += execute(instruction[2], context, builtins, exp)
 
         else:
             raise 'unknown op-code in %s' % `instruction`

@@ -129,6 +129,7 @@ class HTTPReply:
         
         self.headers = http.HTTPHeaders()
         self.headers.addHeader('Date', str(http.HTTPDateTime()))
+        self.headers.setHeader('Content-Type', 'text/html')
 
         self.decapitated = 0
 
@@ -169,7 +170,8 @@ class HTTPReply:
         if text:
             self.send(text)
         else:
-            self.send("""I am terribly sorry, but an error occured while processing your request.\n""")
+            self.send("I am terribly sorry, but an error (%d) occured "
+                      "while processing your request.\r\n" % status)
         self.done()
 
     def isdone(self):
@@ -192,33 +194,24 @@ class HTTPServer:
 
     def handle(self, request, reply):
         try:
-            try:
-                if request.scheme or request.host:
-                    reply.sendErrorPage(http.HTTP_FORBIDDEN, 'No HTTP proxying here.')
+            if request.scheme or request.host:
+                reply.sendErrorPage(http.HTTP_FORBIDDEN, 'No HTTP proxying here.')
 
-                if request.headers.has_key('Host'):
-                    vhost = self.hosts.get(request.headers['Host'], None)
-                else:
-                    vhost = None
-                if vhost is None and self.default_host:
-                    vhost = self.hosts[self.default_host]
+            if request.headers.has_key('Host'):
+                vhost = self.hosts.get(request.headers['Host'], None)
+            else:
+                vhost = None
+            if vhost is None and self.default_host:
+                vhost = self.hosts[self.default_host]
 
-                if vhost:
-                    vhost.handle(request, reply, request.path)
-                else:
-                    reply.sendErrorPage(http.HTTP_NOT_FOUND, 'No such host.')
-                    
-            except error.web.InputError, e:
-                if not reply.decapitated and not reply.transport.closed:
-                    reply.sendErrorPage(http.HTTP_BAD_REQUEST, e)
-                
-            except:
-                if not reply.decapitated and not reply.transport.closed:
-                    reply.sendErrorPage(http.HTTP_INTERNAL_SERVER_ERROR, 'Internal error.')
-                raise
+            if vhost:
+                vhost.handle(request, reply, request.path)
+            else:
+                reply.sendErrorPage(http.HTTP_NOT_FOUND, 'No such host.')
 
-        finally:
-            reply.done()
+        except error.web.WebServerError, e:
+            if not reply.decapitated and not reply.transport.closed:
+                reply.sendErrorPage(e.statusCode, e.args[0])
 
     def startup(self, transport):
         reader = io.RecordReader(transport, '\r\n')
@@ -242,7 +235,16 @@ class HTTPServer:
 
         request = HTTPRequest(requestline, querystring, headers)
         reply = HTTPReply(request.version, transport)
-        self.handle(request, reply)
+
+        try:
+            self.handle(request, reply)
+
+        except:
+            if not reply.decapitated and not reply.transport.closed:
+                reply.sendErrorPage(http.HTTP_INTERNAL_SERVER_ERROR)
+            raise
+            
+        reply.done()
 
 class HTTPSubServerAdapter:
     def __init__(self, reactor, path):

@@ -8,7 +8,7 @@ from tal import format_tag
 class SyntaxError(Exception):
     pass
 
-def compile(text, compile_expression):
+def compile(text, exp):
     """compile(text) -> [METAL instructions]
     
     This is a compiler for the Macro Expansion Template Attribute
@@ -80,7 +80,7 @@ def compile(text, compile_expression):
                                 metal_attr['define-macro'], thing])
                 elif metal_attr.has_key('use-macro'):
                     context[-1].append(['use-macro',
-                                compile_expression(metal_attr['use-macro']), thing])
+                                exp.compile(metal_attr['use-macro']), thing])
 
             else:
                 context[-1].append(('structure', element.raw))
@@ -88,7 +88,7 @@ def compile(text, compile_expression):
     assert len(context) == 1, 'internal compiler error: %r' % context
     return context[0]
 
-def execute(program, context, builtins, eval):
+def execute(program, context, builtins, exp):
     result = ''
     for instruction in program:
         op = instruction[0]
@@ -97,15 +97,15 @@ def execute(program, context, builtins, eval):
 
         elif op == 'define-macro':
             name, macro = instruction[1], instruction[2]
-            context.setLocal(name, macro)
+            context[name] = macro
 
         elif op == 'use-macro':
             expr, block = instruction[1], instruction[2]
             try:
-                block = eval(expr, context)
+                block = exp.execute(expr, context)
             except:
                 pass
-            result += execute(block, context, builtins, eval)
+            result += execute(block, context, builtins, exp)
 
         else:
             raise 'unknown op-code in %s' % `instruction`

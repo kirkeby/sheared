@@ -55,6 +55,9 @@ def compile(text):
     if prefix == 'not':
         return 'not', compile(expression)
 
+    if prefix == 'true':
+        return 'true', None
+
     if prefix == 'path':
         return 'path', expression.split('/')
 
@@ -84,8 +87,6 @@ def walkPath(context, path):
     return context
 
 def execute((op, arg), context):
-    if op == 'not':
-        return not execute(arg, context)
     if op == 'path':
         return walkPath(context, arg)
     if op == 'string':
@@ -97,6 +98,19 @@ def execute((op, arg), context):
                 s = s + arg[i]
         return s
     if op == 'python':
-        return eval(arg, context.dictify())
+        return eval(arg, context)
+    if op == 'not':
+        return not execute(arg, context)
+    if op == 'true':
+        return 1
 
     raise 'unknown op-code'
+
+def is_const((op, arg)):
+    if op == 'not':
+        return is_const(arg)
+    if op == 'true':
+        return 1
+    if op == 'string':
+        return len(arg) < 2
+    return 0

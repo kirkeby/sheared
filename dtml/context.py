@@ -4,37 +4,55 @@ class Context:
     def __init__(self):
         self.__contexts = [{}]
         self.__defaults = {}
+        self.__dictified = None
+
+    def invalidateDictified(self):
+        self.__dictified = None
 
     def setDefaults(self, defaults):
+        self.__dictified = None
         self.__defaults = defaults
+        self.__defaults.context = self
 
     def pushContext(self):
+        self.__dictified = None
         self.__contexts.append({})
     def popContext(self):
         assert len(self.__contexts) > 1
+        self.__dictified = None
         self.__contexts.pop()
 
     def setGlobal(self, name, value):
+        self.__dictified = None
         self.__contexts[0][name] = value
     def setLocal(self, name, value):
         assert len(self.__contexts) > 1
         self.__contexts[-1][name] = value
+        if self.__dictified:
+            self.__dictified[name] = value
+
+    def has_key(self, name):
+        return self.dictify().has_key(name)
 
     def keys(self):
         return self.dictify().keys()
     def dictify(self):
-        ctx = {}
-        if self.__defaults:
-            ctx.update(self.__defaults.dictify())
-        for i in range(len(self.__contexts)):
-            ctx.update(self.__contexts[i])
-        return ctx
+        if self.__dictified is None:
+            self.__dictified = {}
+            if self.__defaults:
+                self.__dictified.update(self.__defaults.dictify())
+            for i in range(len(self.__contexts)):
+                self.__dictified.update(self.__contexts[i])
+        return self.__dictified
 
     def __getitem__(self, name):
         for i in range(len(self.__contexts)):
             if self.__contexts[-i-1].has_key(name):
                 return self.__contexts[-i-1][name]
         return self.__defaults[name]
+
+    def __delitem__(self, name):
+        del self.__contexts[-1][name]
         
 #class Default:
 #    pass
@@ -75,12 +93,20 @@ class BuiltIns:
         return dict
 
     def pushRepeatVariable(self, name, value):
+        if hasattr(self, 'context'):
+            self.context.invalidateDictified()
         self.__repeat.pushContext()
         self.__repeat.setLocal(name, value)
     def popRepeatVariable(self):
+        if hasattr(self, 'context'):
+            self.context.invalidateDictified()
         self.__repeat.popContext()
 
     def pushAttrs(self, attrs):
+        if hasattr(self, 'context'):
+            self.context.invalidateDictified()
         self.__attrs.append(attrs)
     def popAttrs(self):
+        if hasattr(self, 'context'):
+            self.context.invalidateDictified()
         self.__attrs.pop()
