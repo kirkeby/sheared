@@ -54,8 +54,11 @@ are implmented.
 Helpers for various things related to network and daemon programming
 with Sheared (e.g. a logging infrastructure and helpers for daemonizing)."""
 
-import sheared.reactors.greenlet
-reactor = sheared.reactors.greenlet.Reactor()
+try:
+    import sheared.reactors.greenlet
+    reactor = sheared.reactors.greenlet.Reactor()
+except ImportError:
+    pass
 
 __author__ = 'Sune Kirkeby'
 __version__ = '0.1'
