@@ -22,6 +22,8 @@ import re
 
 from sheared import error
 
+__all__ = ['HTTPQueryString', 'UnvalidatedInput']
+
 def unscape_querystring(qs):
     qs = qs.replace('+', ' ')
     while 1:
@@ -63,35 +65,66 @@ class UnvalidatedInput:
         self.__str = str
 
     def as_int(self, radix=10):
+        """as_int(radix=10) -> int
+        Convert input to an integer (via builtin function int)."""
         try:
             return int(self.__str, radix)
         except ValueError:
             raise error.web.InputError, (self.name, 'invalid integer')
 
     def as_float(self):
+        """as_float() -> float
+        Convert input to an float (via builtin function float)."""
         try:
             return float(self.__str)
         except ValueError:
             raise error.web.InputError, (self.name, 'invalid floateger')
 
     def as_bool(self):
+        """as_bool() -> bool
+        Convert input to an bool (via builtin function bool)."""
         return bool(self.__str)
     
     def as_str(self, valid):
+        """as_str(valid) -> str
+        Validate input as a benign string.
+        
+        If input contains any characters not in valid ValueError is
+        raised. Regular expression character class lists are understood
+        in valid (e.g. as_str('a-z') validates all strings with only
+        lower-case letters.)"""
         if re.findall('[^%s]' % valid, self.__str):
             raise error.web.InputError, (self.name, 'invalid characters in value')
         return self.__str
 
     def as_unixstr(self):
+        """as_unixstr() -> str
+        Validates input as a UNIX string (i.e. can be stored as a zero
+        terminated character array).
+
+        Equivalent to as_str('\\x01-\\xff')."""
         return self.as_str('\x01-\xff')
 
     def as_name(self):
-        return self.as_str('a-zA-Z0-9:_-')
+        """as_name() -> str
+        Validates input as an identifier (as allowed in most programming
+        languages).
+
+        Equivalent to as_str('a-zA-Z0-9_')."""
+        return self.as_str('a-zA-Z0-9_')
 
     def as_word(self):
+        """as_word() -> str
+        Validates input as a single printable word.
+
+        Equivalent to as_str('\\x21-\\x7e')."""
         return self.as_str('\x21-\x7e')
 
     def as_text(self):
+        """as_text() -> str
+        Validates input as a normal printable text.
+
+        Equivalent to as_str('\\t\\n\\r\\x20-\\x7e')."""
         return self.as_str('\t\n\r\x20-\x7e')
     
 class HTTPQueryString:
@@ -118,5 +151,3 @@ class HTTPQueryString:
                 raise error.web.InputError, '%s: required argument missing' % name
             else:
                 return map((lambda v: UnvalidatedInput(name, v)), default)
-
-__all__ = ['HTTPQueryString']
