@@ -305,6 +305,13 @@ class PostgresqlClient:
             reply = self._readPacket(BackendKeyDataPacket)
             reply = self._readPacket(ReadyForQueryPacket)
 
+    def _quote(self, str, q):
+        return q + str.replace('\\', '\\\\').replace(q, '\\' + q) + q
+    def quote_str(self, str):
+        return self._quote(str, "'")
+    def quote_name(self, str):
+        return self._quote(str, '"')
+
     def query(self, query):
         self._sendPacket(QueryPacket(query))
 
