@@ -35,6 +35,6 @@ class Semaphore:
             
     def release(self):
         if self.waiting:
-            self.channel.send()
+            self.channel.send(None)
         else:
             self.taken = 0
