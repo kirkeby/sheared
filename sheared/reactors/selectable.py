@@ -133,6 +133,9 @@ class Reactor(base.Reactor):
     def _wait(self, file, op, argv):
         assert self.running
 
+        if self.waiting.has_key(file.fileno()):
+            raise RuntimeError, 'already waiting on file %r' % file
+
         channel = self.tasklet_channel[id(stackless.getcurrent())]
         self.waiting[file.fileno()] = op, file, channel, argv
         return channel.receive()
