@@ -244,18 +244,17 @@ class Reactor(base.Reactor):
 
         else:
             stackless.schedule()
-            
 
-    def fdopen(self, file, mode='r', other=None):
+    def fdopen(self, file, other=None):
         if isinstance(file, types.IntType):
             fd = file
         else:
             fd = file.fileno()
         if self.running:
             fcntl.fcntl(fd, fcntl.F_SETFL, os.O_NONBLOCK)
-            return base.ReactorFile(file, other, self)
+            return base.ReactorFile(fd, other, self)
         else:
-            return os.fdopen(file, mode)
+            return base.NoReactorFile(fd, other, self)
 
     def connectTCP(self, addr):
         assert self.running

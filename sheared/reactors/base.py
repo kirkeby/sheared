@@ -22,6 +22,8 @@ import stackless
 import os
 import warnings
 
+from sheared import error
+
 def parse_address_uri(where):
     domain, address = where.split(':', 1)
 
@@ -39,6 +41,31 @@ def parse_address_uri(where):
         raise 'Unknown domain: %s' % domain
 
     return domain, address
+
+class NoReactorFile:
+    def __init__(self, fd, other, reactor):
+        self.fd = fd
+        self.other = other
+        self.reactor = reactor
+        self.closed = 0
+    def __repr__(self):
+        return '<NoReactorFile %s>' % self.other
+    def fileno(self):
+        return self.fd
+    def read(self, max=4096):
+        if self.reactor.running:
+            raise error.reactor.ReactorRunningError, 'Reactor is running'
+        return os.read(self.fd, max)
+    def write(self, data):
+        if self.reactor.running:
+            raise error.reactor.ReactorRunningError, 'Reactor is running'
+        os.write(self.fd, data)
+    def seek(self, o, i):
+        return os.lseek(self.fd, o, i)
+    def close(self):
+        if not self.closed:
+            os.close(self.fd)
+        self.closed = 1
 
 class ReactorFile:
     def __init__(self, fd, other, reactor):
