@@ -66,6 +66,12 @@ class RFC822HeadersTestCase(unittest.TestCase):
         self.assertEquals(len(h['header']), 2)
         self.assertEquals(h['header'][0], 'value')
         self.assertEquals(h['header'][1], 'and this too')
+
+        h = rfc822.RFC822Headers("Header: value, and this too\r\n")
+        self.assertEquals(len(h['header']), 2)
+        self.assertEquals(h['header'][0], 'value')
+        self.assertEquals(h['header'][1], 'and this too')
+
     def testItems(self):
         """Test RFC822Headers items method."""
         h = rfc822.RFC822Headers('One: \r\nTwo: \r\n')

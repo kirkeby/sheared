@@ -103,6 +103,11 @@ class HTTPHeadersTestCase(unittest.TestCase):
         self.assertEquals(http.splitHeaderList(h['header'])[0], 'value')
         self.assertEquals(http.splitHeaderList(h['header'])[1], 'and this too')
 
+        h = http.HTTPHeaders("Header: value, and this too")
+        self.assertEquals(len(http.splitHeaderList(h['header'])), 2)
+        self.assertEquals(http.splitHeaderList(h['header'])[0], 'value')
+        self.assertEquals(http.splitHeaderList(h['header'])[1], 'and this too')
+
     def testItems(self):
         """Test HTTPHeaders items method."""
         h = http.HTTPHeaders('One: \r\nTwo: \r\n')
