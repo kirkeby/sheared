@@ -53,9 +53,9 @@ class FakeReply:
     def done(self):
         self.done = 1
 
-class FakeResource(resource.GettableResource):
+class FakeResource(resource.NormalResource):
     def __init__(self, name='foo'):
-        resource.GettableResource.__init__(self)
+        resource.NormalResource.__init__(self)
         self.name = name
 
     def handle(self, request, reply, subpath):
@@ -80,6 +80,9 @@ class FakeResource(resource.GettableResource):
         reply.send(content)
         reply.done()
 
+    def authenticate(self, request, reply):
+        pass
+
 class SimpleCollection(Collection):
     def __init__(self, name):
         resource.GettableResource.__init__(self)
@@ -95,6 +98,8 @@ class SimpleCollection(Collection):
         elif subpath == 'abuse-me':
             reply.headers.setHeader('Foo', 'fubar')
             raise error.web.ForbiddenError, 'Sod off, cretin!'
+        elif subpath == 'post':
+            return self.resource
         else:
             raise error.web.NotFoundError
 
