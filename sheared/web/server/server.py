@@ -146,7 +146,7 @@ class HTTPServer:
         else:
             reply.send("I am terribly sorry, but an error (%d) occured "
                        "while processing your request.\r\n" % e.statusCode)
-            self.logInternalError()
+            self.logInternalError(sys.exc_info())
         
     def logCompletedRequest(self, request, reply):
         if self.accesslog:
