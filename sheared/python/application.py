@@ -84,7 +84,7 @@ class Application:
                 raise 'Internal error: handler failed: %r' % handler
        
     
-    def parse_argv(self, argv):
+    def parse_args(self, argv):
         sopt = ''
         lopt = []
         for handler, value, name, short, long, conf in self.options:
@@ -122,7 +122,7 @@ class Application:
         if os.access(conf, os.R_OK):
             self.parse_conf(conf)
 
-        self.parse_argv(argv)
+        self.parse_args(argv[1:])
 
         self.start()
 
@@ -140,7 +140,7 @@ class Application:
         daemonize.closeall(min=3)
 
         if self.logfile:
-            dameonize.openstdlog(self.logfile)
+            daemonize.openstdlog(self.logfile)
 
         if self.daemonize:
             daemonize.background(chdir=0, close=0)
