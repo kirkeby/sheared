@@ -28,23 +28,63 @@ from sheared.web import cookie
 
 import oh_nine, one_oh
 
+# The wonderful error messages were lifted from:
+# http://archive.salon.com/21st/chal/1998/02/10chal2.html
+http_reason = {}
+http_reason[http.HTTP_MOVED_PERMANENTLY] = \
+    "This site has been moved.\r\n" \
+    "We'd tell you where, but then we'd\r\n" \
+    "have to delete you.\r\n" \
+    "\r\n" \
+    "-- Charles Matthews"
+http_reason[http.HTTP_MOVED_TEMPORARILY] = \
+    http_reason[http.HTTP_MOVED_PERMANENTLY]
+http_reason[http.HTTP_UNAUTHORIZED] = \
+    "Login incorrect.\r\n" \
+    "Only perfect spellers may\r\n" \
+    "enter this system.\r\n" \
+    "\r\n" \
+    "-- Jason Axley"
+http_reason[http.HTTP_NOT_FOUND] = \
+    "The Web site you seek\r\n" \
+    "cannot be located but\r\n" \
+    "endless others exist\r\n" \
+    "\r\n" \
+    "-- Joy Rothke"
+# this is a HTTP/1.1 error-code, but the haiku is too good to throw away
+#http_reason[http.HTTP_GONE] = \
+#    "Having been erased,\r\n" \
+#    "The document you're seeking\r\n" \
+#    "Must now be retyped.\r\n" \
+#    "\r\n" \
+#    "-- Judy Birmingham"
+
 def notModifiedHandler(server, exc_info, request, reply):
     reply.sendHead()
     reply.done()
 
 def internalServerErrorHandler(server, exc_info, request, reply):
-    reply.headers.setHeader('Content-Type', 'text/plain')
-    reply.send(http.http_reason[reply.status] + '\r\n')
+    send_http_error_page(reply, None)
     server.logInternalError(exc_info[1].args)
 
 def defaultErrorHandler(server, exc_info, request, reply):
     if len(exc_info[1].args) == 1 and isinstance(exc_info[1].args[0], types.StringTypes):
-        message = exc_info[1].args[0]
-    elif http.http_reason.has_key(reply.status):
-        message = http.http_reason[reply.status]
+        send_http_error_page(reply, exc_info[1].args[0])
     else:
-        message = "I am terribly sorry, but an error (%d) occured " \
-                  "while processing your request." % reply.status
+        send_http_error_page(reply, None)
+
+def send_http_error_page(reply, message):
+    if not message:
+        if http_reason.has_key(reply.status):
+            message = http_reason[reply.status]
+        else:
+            message = "Errors have occurred.\r\n" \
+                      "We won't tell you where or why.\r\n" \
+                      "Lazy programmers.\r\n" \
+                      "\r\n" \
+                      "-- Charlie Gibbs\r\n" \
+                      "\r\n" \
+                      "P.S. The numer of the error is %d." % reply.status
 
     for name in reply.headers.keys():
         if not name == 'Date':
