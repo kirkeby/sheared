@@ -21,7 +21,9 @@
 from py.magic import greenlet
 
 import os
+import time
 import select
+from heapq import heappush, heappop
 
 # dummy object for detecting dead greenlets
 dummy = object()
@@ -34,6 +36,8 @@ class Reactor:
         self.fd_greenlet = {}
         # file descriptors sets to select on
         self.reading, self.writing = [], []
+        # heapq of sleeping processes
+        self.sleepers = []
         
     def start(self, f):
         if not self.state == 'stopped':
@@ -51,6 +55,17 @@ class Reactor:
 
     def stop(self):
         self.state = 'stopping'
+
+    def sleep(self, seconds):
+        g = greenlet.getcurrent()
+        heappush(self.sleepers, (time.time() + seconds, g))
+        result = g.parent.switch()
+        if not result is dummy:
+            raise result
+
+    def spawn(self, function, args=(), kwargs={}):
+        g = greenlet(function)
+        g.switch(*args, **kwargs)
 
     def read(self, fd, max):
         self.__wait_on_io(fd, self.reading)
@@ -76,9 +91,11 @@ class Reactor:
 
     def __mainloop(self):
         while self.state == 'running':
-            if not self.reading or self.writing:
+            now = time.time()
+            timeout = self.__wake_sleepers(now)
+            if not timeout and not self.reading and not self.writing:
                 break
-            self.__select(None)
+            self.__select(timeout)
 
     def __cleanup(self):
         # FIXME -- this code-path is untested
@@ -88,6 +105,15 @@ class Reactor:
 
         self.fd_greenlet = {}
         self.reading, self.writing = [], []
+
+    def __wake_sleepers(self, now):
+        while self.sleepers and self.sleepers[0][0] <= now:
+            _, g = heappop(self.sleepers)
+            g.switch(dummy)
+        if self.sleepers:
+            return self.sleepers[0][0] - now
+        else:
+            return None
 
     def __select(self, timeout):
         r, w, e = select.select(self.reading, self.writing, [], timeout)
