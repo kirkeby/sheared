@@ -86,14 +86,14 @@ class HTTPQueryString:
                                              'got %r' % (name, v)
         return v
 
-    def get_many(self, name, default=[]):
+    def get_many(self, name, default=None):
         try:
             return self.dict[name]
         except KeyError:
-            if default:
-                return map(UnvalidatedInput, default)
-            else:
+            if default is None:
                 raise error.web.InputError, '%s: required argument missing' % name
+            else:
+                return map(UnvalidatedInput, default)
 
 class HTTPRequest:
     def __init__(self, requestline, querystring, headers):
