@@ -1,3 +1,4 @@
+# vim:nowrap:textwidth=0
 #
 # Sheared -- non-blocking network programming library for Python
 # Copyright (C) 2003  Sune Kirkeby <sune@mel.interspace.dk>
@@ -16,11 +17,33 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-__all__ = [
-    'reactor', 'database', 'pool', 'commands',
-    'time_since',
-    'http', 'querystring', 'cookie', 'virtualhost', 'accept',
-    'webresource', 'webcollections', 'webentwiner',
-    'webserver', 'webclient', 'web',
-    'semaphore', 'logfile',
-]
+
+import unittest
+
+from sheared.python import semaphore
+from sheared import reactor
+
+class SemaphoreTestCase(unittest.TestCase):
+    def testGrabRelease(self):
+        sem = semaphore.Semaphore()
+        sem.grab()
+        sem.release()
+
+    def testTwoGrabbers(self):
+        def grabber(sem):
+            sem.grab()
+            reactor.sleep(0.3)
+            sem.release()
+        
+        sem = semaphore.Semaphore()
+        reactor.createtasklet(grabber, (sem,))
+        reactor.createtasklet(grabber, (sem,))
+        reactor.start()
+
+suite = unittest.TestSuite()
+suite.addTests([unittest.makeSuite(SemaphoreTestCase, 'test')])
+
+__all__ = ['suite']
+
+if __name__ == '__main__':
+    unittest.TextTestRunner().run(suite)

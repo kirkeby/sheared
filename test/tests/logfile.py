@@ -1,6 +1,7 @@
+# vim:nowrap:textwidth=0
 #
 # Sheared -- non-blocking network programming library for Python
-# Copyright (C) 2003  Sune Kirkeby <sune@mel.interspace.dk>
+# Copyright (C) 2003  Sune Kirkeby
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,11 +17,24 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-__all__ = [
-    'reactor', 'database', 'pool', 'commands',
-    'time_since',
-    'http', 'querystring', 'cookie', 'virtualhost', 'accept',
-    'webresource', 'webcollections', 'webentwiner',
-    'webserver', 'webclient', 'web',
-    'semaphore', 'logfile',
-]
+
+from sheared.python.logfile import LogFile
+from sheared import reactor
+
+long_string = 'x' * 32000
+
+def writer(log):
+    for i in range(19):
+        log.write(long_string)
+
+if __name__ == '__main__':
+    import os
+
+    path = '/tmp/sheared.python.logfile.LogFile-test'
+
+    log = LogFile(path)
+    for i in range(7):
+        reactor.createtasklet(writer, (log,))
+    reactor.start()
+
+    os.unlink(path)
