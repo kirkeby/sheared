@@ -44,6 +44,7 @@ class Entwiner(resource.NormalResource):
         # Accept support
         ct = accept.chooseContentType(request, self.content_types)
         reply.headers.setHeader('Content-Type', ct)
+        reply.headers.setHeader('Vary', 'Accept')
     
         self.context = {}
         if hasattr(request, 'context'):
