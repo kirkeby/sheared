@@ -55,6 +55,12 @@ def treeify(events):
     assert len(stack) == 1
     return stack[0]
 
+class TagName:
+    def __init__(self, name):
+        self.name = name
+    def __eq__(self, other):
+        return self.name == other[1]
+
 class Fragment:
     def __init__(self, capture, **kwargs):
         self.capture = capture
@@ -64,7 +70,7 @@ class Fragment:
         for k, v in self.fields.items():
             if not hasattr(subtree, k):
                 return 0
-            if not getattr(subtree, k) == v:
+            if not v == getattr(subtree, k):
                 return 0
         return 1
 
@@ -85,7 +91,8 @@ def compile(ir):
             capture = 0
 
         if fragment[0] == '<' and fragment[-1] == '>':
-            fragments.append(Fragment(capture, type='start-tag', name=fragment[1:-1]))
+            fragments.append(Fragment(capture, type='start-tag',
+                        name=TagName(fragment[1:-1])))
 
         elif fragment == 'text':
             fragments.append(Fragment(capture, type='text'))
