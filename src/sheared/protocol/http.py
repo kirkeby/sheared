@@ -22,6 +22,7 @@ from __future__ import generators
 
 import time, urlparse, types
 
+# FIXME -- use rfc822
 def headerKey(n):
     return n.lower()
 
@@ -138,6 +139,7 @@ class HTTPDateTime:
     def __str__(self):
         return time.strftime("%a, %d %b %Y %H:%M:%S GMT", self.unixtime)
 
+# FIXME -- Use s.p.rfc822
 def parseHeaderLines(s):
     lines = []
     physical = s.split('\r\n')
