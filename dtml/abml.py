@@ -55,12 +55,11 @@ def lex_outer(text):
         yield 'tag', text[1:j]
         text = text[j+1:]
 
-#try:
-#    import cabml
-#    lex_outer = cabml.lex_outer
-#except:
-#    raise
-#    pass
+try:
+    import cabml
+    lex_outer = cabml.lex_outer
+except:
+    pass
 
 def lex_inner(tag):
     # split tag into name and attributes
