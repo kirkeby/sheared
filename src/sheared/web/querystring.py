@@ -151,3 +151,6 @@ class HTTPQueryString:
                 raise error.web.InputError, '%s: required argument missing' % name
             else:
                 return map((lambda v: UnvalidatedInput(name, v)), default)
+
+    def has_key(self, name):
+        return self.dict.has_key(name)

@@ -175,6 +175,17 @@ class HTTPQueryStringTestCase(unittest.TestCase):
         self.assertEquals(len(self.qs.get_many('flag')), 0)
         self.assertEquals(len(self.qs.get_many('many')), 2)
 
+    def testHasKey(self):
+        self.assertEquals(self.qs.has_key('int'), 1)
+        self.assertEquals(self.qs.has_key('hex'), 1)
+        self.assertEquals(self.qs.has_key('str'), 1)
+        self.assertEquals(self.qs.has_key('flag'), 1)
+        self.assertEquals(self.qs.has_key('many'), 1)
+        self.assertEquals(self.qs.has_key('1'), 0)
+        self.assertEquals(self.qs.has_key('foo'), 0)
+        self.assertEquals(self.qs.has_key('babe'), 0)
+        self.assertEquals(self.qs.has_key('other'), 0)
+
 class UnvalidatedInputTestCase(unittest.TestCase):
     def setUp(self):
         self.int = querystring.UnvalidatedInput('a', '1')
