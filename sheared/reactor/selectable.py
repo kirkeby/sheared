@@ -328,10 +328,10 @@ def connectSocket(factory, address, from_addr, klass):
     try:
         client = klass(reactor, address, from_addr)
         transport = client.connect()
-        coroutine = self.factory.buildCoroutine(transport)
-        self.reactor.addCoroutine(self.coroutine, (None,))
+        coroutine = factory.buildCoroutine(transport)
+        reactor.addCoroutine(coroutine, (None,))
     except socket.error:
-        self.reactor.addCoroutine(self.coroutine, (sys.exc_info(),))
+        reactor.addCoroutine(coroutine, (sys.exc_info(),))
 
 def connectTCP(address):
     return connectSocket(factory, address, None, shocket.TCPClient)

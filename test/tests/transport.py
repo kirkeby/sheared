@@ -1,7 +1,8 @@
 # vim:nowrap:textwidth=0
 
-import unittest
+import unittest, os.path, sys
 
+from sheared import reactor
 from sheared.reactor import transport
 
 class StringTransportTestCase(unittest.TestCase):
@@ -53,7 +54,8 @@ class StringTransportTestCase(unittest.TestCase):
         
 class FileTransportTestCase(unittest.TestCase):
     def testRead(self):
-        t = transport.FileTransport(open('tests/http-docroot/hello.txt', 'r'))
+        path = os.path.dirname(sys.argv[0])
+        t = transport.FileTransport(reactor.current, open('%s/http-docroot/hello.txt' % path, 'r'), 'some-file')
         data = ''
         while 1:
             r = t.read()

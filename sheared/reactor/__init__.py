@@ -1,1 +1,2 @@
-from selectable import *
+import selectable
+current = selectable

@@ -2,27 +2,40 @@
 
 import unittest, sys, traceback, os
 
-sys.path.insert(0, 'test')
-
-os.system('python setup.py build')
+print 'Making the world . . .'
+os.system('make >/dev/null 2>&1')
+print 'Building the world . . .'
+os.system('python setup.py build >/dev/null 2>&1')
 for path in os.listdir('build'):
     if path.startswith('lib.'):
-        sys.path.insert(0, 'build/' + path)
+        pythonpath = 'build/' + path
         break
 else:
     raise 'No build/lib.$ARCH found.'
 
 if len(sys.argv) == 1:
+    sys.path.append('test')
     import tests
     tests = tests.__all__
 else:
     tests = sys.argv[1:]
     
-runner = unittest.TextTestRunner()
+#runner = unittest.TextTestRunner()
+#for test in tests:
+#    module = __import__('tests.%s' % test, globals(), locals(), (test,))
+#    if getattr(module, 'skip', 0):
+#        print "Skipping tests in %s" % module
+#    else:
+#        print "Running tests in %s" % module
+#        runner.run(module.suite)
+
 for test in tests:
-    module = __import__('tests.%s' % test, globals(), locals(), (test,))
-    if getattr(module, 'skip', 0):
-        print "Skipping tests in %s" % module
-    else:
-        print "Running tests in %s" % module
-        runner.run(module.suite)
+    cmd = 'PYTHONPATH=%s:test %s %s' % (pythonpath,
+                                        sys.executable,
+                                        'test/tests/%s.py' % test)
+    print 'Running tests in %s . . .' % test
+    st = os.system(cmd)
+    if not os.WIFEXITED(st) or os.WEXITSTATUS(st):
+        print 'Bailing out in flames . . .'
+        sys.exit(1)
+sys.exit(0)

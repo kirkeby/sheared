@@ -20,6 +20,12 @@ class StringTransport:
         self.output = self.output + data
         return len(data)
 
+    def sendfile(self, file):
+        d = file.read()
+        while not d == '':
+            self.output = self.output + d
+            d = file.read()
+
     def close(self):
         if self.closed:
             raise IOError, 'already closed'

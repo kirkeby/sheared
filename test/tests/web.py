@@ -35,7 +35,7 @@ def parseReply(reply):
 
 class HTTPServerTestCase(unittest.TestCase):
     def setUp(self):
-        self.reactor = reactor
+        self.reactor = reactor.current
         self.reactor.reset()
         
         self.server = server.HTTPServerFactory(self.reactor, server.HTTPServer)
@@ -101,7 +101,7 @@ class HTTPSubServerTestCase(unittest.TestCase):
 
         self.port = random.random() * 8192 + 22000
             
-        self.reactor = reactor
+        self.reactor = reactor.current
         self.reactor.reset()
 
         factory = server.HTTPServerFactory(self.reactor, server.HTTPSubServer)
@@ -110,7 +110,7 @@ class HTTPSubServerTestCase(unittest.TestCase):
         self.reactor.listenUNIX(factory, './test/fifoo')
 
         factory = server.HTTPServerFactory(reactor, server.HTTPServer)
-        factory.addVirtualHost('localhost', server.HTTPSubServerAdapter(reactor, './test/fifoo'))
+        factory.addVirtualHost('localhost', server.HTTPSubServerAdapter(self.reactor, './test/fifoo'))
         factory.setDefaultHost('localhost')
         self.reactor.listenTCP(factory, ('127.0.0.1', self.port))
 
@@ -134,7 +134,7 @@ class HTTPSubServerTestCase(unittest.TestCase):
 
 class StaticCollectionTestCase(unittest.TestCase):
     def setUp(self):
-        self.reactor = reactor
+        self.reactor = reactor.current
         self.reactor.reset()
         
         self.server = server.HTTPServerFactory(self.reactor, server.HTTPServer)

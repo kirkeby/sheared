@@ -7,7 +7,7 @@ import socket, os, time, errno, commands, random
 from sheared.reactor import selectable
 from sheared.python import coroutine
 
-class ReactorTestCase(unittest.TestCase):
+class ReactorTestCaseMixin:
     """Test a reactor."""
 
     def setUp(self):
@@ -192,7 +192,7 @@ class ReactorTestCase(unittest.TestCase):
         self.failUnless(len(readPasswd.result))
         self.assertEqual(writeNull.result, 1)
             
-class SelectableReactorTestCase(ReactorTestCase):
+class SelectableReactorTestCase(ReactorTestCaseMixin, unittest.TestCase):
     """Test-cases for the selectable reactor."""
     reactor = selectable
 

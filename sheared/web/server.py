@@ -1,6 +1,6 @@
 # vim:nowrap:textwidth=0
 
-import os, stat, errno, mimetypes, sys, traceback, pickle, re
+import os, stat, errno, mimetypes, sys, pickle, re
 
 from sheared.protocol import basic
 from sheared.protocol import http

@@ -14,7 +14,8 @@ class TALESContextTestCase(unittest.TestCase):
         self.context.setGlobal('year', 2001)
         self.context.setGlobal('now', 'just this minute')
 
-        self.interpreter = tales.Interpreter(self.context)
+        # FIXME -- this can't be done?!?
+        #self.interpreter = tales.Interpreter(self.context)
 
 class TALESInterpreterTestCase(unittest.TestCase):
     def setUp(self):
