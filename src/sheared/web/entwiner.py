@@ -28,10 +28,17 @@ class Entwiner(resource.NormalResource):
     def __init__(self):
         resource.NormalResource.__init__(self)
 
+        if hasattr(self, 'template_page'):
+            self.template_pages = [self.template_page]
+        else:
+            self.templates_pages = []
+
     def handle(self, request, reply, subpath):
         self.context = {}
         self.entwine(request, reply, subpath)
-        r = self.execute(self.template_page, throwaway=0)
+        for i in range(len(self.template_pages)):
+            last = i == range(len(self.template_pages))
+            r = self.execute(self.template_pages[i], throwaway=last)
         reply.send(r)
 
     def execute(self, path, throwaway=1):
