@@ -42,6 +42,20 @@ class ReactorTestCaseMixin:
         self.reactor.createtasklet(f)
         self.reactor.run()
         
+    def testBadFD(self):
+        """Test that the reactor works given a bad file-descriptor."""
+        def f():
+            try:
+                class FooFile:
+                    def fileno(self):
+                        return -1
+                self.reactor.read(FooFile(), 1024)
+                self.reactor.shutdown('bad')
+            except ValueError:
+                self.reactor.shutdown('ok')
+        self.reactor.createtasklet(f)
+        self.assertEquals(self.reactor.run(), 'ok')
+
     def testBadWrite(self):
         """Test that the reactor works given bad input to write."""
         def f():
