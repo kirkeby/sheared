@@ -130,6 +130,17 @@ class Application:
 
         self.parse_args(argv[1:])
 
+        def stop(signum, frame):
+            if signum == signal.SIGQUIT:
+                sys.exit(0)
+            else:
+                self.stop()
+        signal.signal(signal.SIGINT, stop)
+        signal.signal(signal.SIGTERM, stop)
+        signal.signal(signal.SIGQUIT, stop)
+
+        daemonize.closeall(min=3)
+
         self.setup()
         self.start()
 
@@ -141,17 +152,6 @@ class Application:
             self.logfile = self.name + '.log'
         if self.daemonize and not self.pidfile:
             self.pidfile = self.name + '.pid'
-
-        def stop(signum, frame):
-            if signum == signal.SIGQUIT:
-                sys.exit(0)
-            else:
-                self.stop()
-        signal.signal(signal.SIGINT, stop)
-        signal.signal(signal.SIGTERM, stop)
-        signal.signal(signal.SIGQUIT, stop)
-
-        daemonize.closeall(min=3)
 
         if self.logfile:
             daemonize.openstdlog(self.logfile)
