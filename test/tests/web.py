@@ -1,6 +1,6 @@
 # vim:nowrap:textwidth=0
 
-import unittest
+import unittest, os, random, signal, commands
 
 from sheared import reactor
 from sheared.python import coroutine
@@ -32,7 +32,7 @@ def parseReply(reply):
     headers = http.HTTPHeaders(headers)
 
     return status, headers, body
-    
+
 class HTTPServerTestCase(unittest.TestCase):
     def setUp(self):
         self.reactor = reactor
@@ -92,6 +92,46 @@ class HTTPServerTestCase(unittest.TestCase):
         self.reactor.run()
         self.assertEquals(self.transport.getOutput(), 'Welcome to bar.com!\r\n')
 
+class HTTPSubServerTestCase(unittest.TestCase):
+    def setUp(self):
+        try:
+            os.unlink('./test/fifoo')
+        except:
+            pass
+
+        self.port = random.random() * 8192 + 22000
+            
+        self.reactor = reactor
+        self.reactor.reset()
+
+        factory = server.HTTPServerFactory(self.reactor, server.HTTPSubServer)
+        factory.addVirtualHost('localhost', SimpleCollection('localhost'))
+        factory.setDefaultHost('localhost')
+        self.reactor.listenUNIX(factory, './test/fifoo')
+
+        factory = server.HTTPServerFactory(reactor, server.HTTPServer)
+        factory.addVirtualHost('localhost', server.HTTPSubServerAdapter(reactor, './test/fifoo'))
+        factory.setDefaultHost('localhost')
+        self.reactor.listenTCP(factory, ('127.0.0.1', self.port))
+
+    def testRequest(self):
+        pid = os.fork()
+        if pid:
+            try:
+                reply = commands.getoutput('curl -D - http://localhost:%d/ 2>/dev/null' % self.port)
+                status, headers, body = parseReply(reply)
+                
+                self.assertEquals(status.version, (1, 0))
+                self.assertEquals(status.code, 200)
+                self.assertEquals(body, 'Welcome to localhost!\r')
+
+            finally:
+                os.kill(pid, signal.SIGTERM)
+            
+        else:
+            self.reactor.run()
+            sys.exit(0)
+
 class StaticCollectionTestCase(unittest.TestCase):
     def setUp(self):
         self.reactor = reactor
@@ -135,6 +175,7 @@ class StaticCollectionTestCase(unittest.TestCase):
 
 suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(HTTPServerTestCase, 'test')])
+suite.addTests([unittest.makeSuite(HTTPSubServerTestCase, 'test')])
 suite.addTests([unittest.makeSuite(StaticCollectionTestCase, 'test')])
 
 __all__ = ['suite']
