@@ -69,7 +69,10 @@ class ReactorTransport:
         self.reactor.sendfile(file, self.file)
 
     def fileno(self):
-        return self.reactor.getfd(self.file)
+        if type(self.file) is types.IntType:
+            return self.file
+        else:
+            return self.file.fileno()
 
     def close(self):
         self.reactor.close(self.file)
