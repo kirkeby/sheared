@@ -98,7 +98,7 @@ class StaticCollectionTestCase(unittest.TestCase):
         self.reactor.reset()
         
         self.server = server.HTTPServerFactory(self.reactor)
-        self.server.addVirtualHost('foo.com', server.StaticCollection(self.reactor, './tests/http-docroot'))
+        self.server.addVirtualHost('foo.com', server.StaticCollection(self.reactor, './test/http-docroot'))
 
         self.transport = transport.StringTransport()
         self.coroutine = self.server.buildCoroutine(self.transport)

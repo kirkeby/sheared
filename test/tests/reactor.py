@@ -35,7 +35,7 @@ class ReactorTestCase(unittest.TestCase):
     def testRead(self):
         """Test reading from an open file."""
         def f(reactor):
-            fd = os.open('tests/reactor.py', os.O_RDONLY)
+            fd = os.open('test/tests/reactor.py', os.O_RDONLY)
             fd = reactor.prepareFile(fd)
             lines = reactor.read(fd, 4096).split('\n')
             self.assertEquals(lines[0], '# First line.')
