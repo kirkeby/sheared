@@ -14,6 +14,9 @@ class Port:
 
     def listen(self):
         self.socket = socket.socket(self.family, self.type)
+        # we do not want 'address already in use' because of TCP-
+        # connections in TIME_WAIT state
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket = self.reactor.prepareFile(self.socket)
         self.reactor.bind(self.socket, self.address)
         self.reactor.listen(self.socket, self.backlog)
