@@ -37,7 +37,8 @@ class GettableResource(Resource):
     def parseGet(self, request, reply):
         if request.body:
             raise error.web.BadRequestError
-        request.args = querystring.HTTPQueryString(request.requestline.uri[3])
+        qs = request.requestline.uri[3]
+        request.args = querystring.HTTPQueryString(qs)
 
 class PostableResource(Resource):
     def __init__(self):
@@ -50,7 +51,8 @@ class PostableResource(Resource):
 
         ct = request.headers.get('Content-Type')
         if ct == 'application/x-www-form-urlencoded':
-            querystring = request.body.lstrip()
+            qs = request.body.lstrip()
+            request.args = querystring.HTTPQueryString(qs)
 
         else:
             print 'need handler for POST with Content-Type %r' % ct
