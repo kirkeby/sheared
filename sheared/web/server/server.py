@@ -72,6 +72,8 @@ class HTTPServer:
         except:
             self.logInternalError(sys.exc_info())
 
+        transport.close()
+
     def handle(self, request, reply):
         try:
             if request.requestline.uri[0] or request.requestline.uri[1]:

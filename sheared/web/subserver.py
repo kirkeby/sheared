@@ -50,15 +50,25 @@ class HTTPSubServer(server.HTTPServer):
         else:
             raise
 
-        addr = pickle.loads(addr)
-        client_transport = reactor.openfd(sock, addr)
+        try:
+            addr = pickle.loads(addr)
+            client_transport = reactor.fdopen(sock, addr)
+        
+        except:
+            import os
+            os.close(sock)
+            raise
 
-        data = io.readall(server_transport)
-        server_transport.close()
+        try:
+            data = io.readall(server_transport)
+            server_transport.close()
 
-        request, reply, subpath = pickle.loads(data)
-        reply.transport = client_transport
+            request, reply, subpath = pickle.loads(data)
+            reply.transport = client_transport
 
-        self.handle(request, reply)
+            self.handle(request, reply)
+
+        finally:
+            client_transport.close()
 
 __all__ = ['HTTPSubServerAdapter', 'HTTPSubServer']
