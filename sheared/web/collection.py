@@ -67,7 +67,7 @@ class ShadowCollection(resource.GettableResource):
                 # want to hand the request over to it from then on,
                 # which should not be done if there are multiple
                 # children on this subptah
-                raise 'multiple subpath matches vs. asocial child'
+                raise 'multiple subpath matches vs. asocial child for %s' % subpath
             else:
                 return ShadowCollection(children)
 
@@ -88,8 +88,8 @@ class TildeUserCollection(resource.GettableResource):
         path = path + os.sep + 'public_html'
         if not os.access(path, os.F_OK):
             raise error.web.NotFoundError, 'no public_html'
-        #if os.access(path + os.sep + '.do-not-serve', os.F_OK):
-        #    raise error.web.NotFoundError, 'public_html not servable'
+        if os.access(path + os.sep + '.do-not-serve', os.F_OK):
+            raise error.web.NotFoundError, 'public_html not servable'
         return FilesystemCollection(path)
 
     def handle(self, request, reply, subpath):
