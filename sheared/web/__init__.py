@@ -1,2 +1,2 @@
 # vim:nowrap:textwidth=0
-__all__ = ['server']
+__all__ = ['server', 'error']
