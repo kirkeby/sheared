@@ -41,6 +41,7 @@ class HTTPSubServerCollection:
                     pickle.dumps(reply.transport.other))
         pickle.dump((request, reply, subpath), transport)
         transport.close()
+        reply.transport.close()
 
 class HTTPSubServer(server.HTTPServer):
     def startup(self, server_transport):
@@ -51,21 +52,25 @@ class HTTPSubServer(server.HTTPServer):
             addr = pickle.loads(addr)
             client_transport = reactor.fdopen(sock, addr)
 
-            data = io.readall(server_transport)
-            request, reply, subpath = pickle.loads(data)
-            server_transport.close()
+            try:
+                data = io.readall(server_transport)
+                request, reply, subpath = pickle.loads(data)
+                server_transport.close()
             
             # FIXME -- There must be a better way to do this
-            request.requestline.uri = list(request.requestline.uri)
-            request.requestline.uri[0] = ''
-            request.requestline.uri[1] = ''
-            request.requestline.uri[2] = subpath
-            request.requestline.uri = tuple(request.requestline.uri)
+                request.requestline.uri = list(request.requestline.uri)
+                request.requestline.uri[0] = ''
+                request.requestline.uri[1] = ''
+                request.requestline.uri[2] = subpath
+                request.requestline.uri = tuple(request.requestline.uri)
 
-            reply.server = self
-            reply.transport = client_transport
+                reply.server = self
+                reply.transport = client_transport
 
-            self.handle(request, reply)
+                self.handle(request, reply)
+
+            finally:
+                client_transport.close()
 
         except:
             self.logInternalError(sys.exc_info())
