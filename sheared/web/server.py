@@ -216,20 +216,25 @@ class HTTPServer:
         requestline = http.HTTPRequestLine(reader.readline().rstrip())
         querystring = requestline.uri[3]
 
-        if requestline.version[0] == 0:
+        if requestline.version[0] == 0: # HTTP/0.9
             headers = http.HTTPHeaders()
-        elif requestline.version[0] == 1:
+
+        elif requestline.version[0] == 1: # HTTP/1.x
             reader = io.RecordReader(reader, '\r\n\r\n')
+            # FIXME -- Need to limit how much we are willing to accept
+            # here.
             headers = reader.readline()
             headers = http.HTTPHeaders(headers)
 
+            # FIXME -- This needs refactoring badly; this should
+            # probably go into Collection, or into a HTTP-method-
+            # mixin.
             if headers.has_key('Content-Type'):
                 ct = headers.get('Content-Type')
                 cl = int(headers.get('Content-Length'))
                 if ct == 'application/x-www-form-urlencoded':
                     querystring = reader.read(cl).lstrip()
                 else:
-                    # FIXME -- need logging
                     print 'need handler for Content-Type %r' % ct
 
         request = HTTPRequest(requestline, querystring, headers)
@@ -245,122 +250,31 @@ class HTTPServer:
             
         reply.done()
 
-class HTTPSubServerAdapter:
-    def __init__(self, path):
-        self.path = path
+class VirtualHost:
+    def __init__(self, collection):
+        self.collection = collection
 
-    def handle(self, request, reply, subpath):
-        transport = reactor.current.connectUNIX(self.path)
-        fdpass.send(transport.fileno(), reply.transport.fileno(), pickle.dumps(reply.transport.other))
-        pickle.dump((request, subpath), transport)
-        transport.close()
-
-class HTTPSubServer(HTTPServer):
-    def startup(self, transport):
-        for i in range(3):
-            try:
-                sock, addr = fdpass.recv(transport.fileno())
-                break
-            except:
-                pass
-        else:
-            raise
-        addr = pickle.loads(addr)
-
-        data = ''
-        read = None
-        while not read == '':
-            read = transport.read()
-            data = data + read
-        transport.close()
-        request, subpath = pickle.loads(data)
-
-        transport = reactor.current.createTransport(sock, addr)
-        reply = HTTPReply(request.version, transport)
-        self.handle(request, reply)
-
-def walkPath(root, path):
-    roots = [root]
-    subpath = ''
-    for piece in path.split('/'):
-        if piece == '..':
-            if len(path) > 1:
-                roots.pop()
-        elif piece == '.' or piece == '':
-            pass
-        else:
-            if getattr(roots[-1], 'isWalkable', 0):
-                roots.append(roots[-1].getChild(piece))
-            else:
-                subpath = subpath + '/' + piece
-    return roots[-1], subpath
-
-class StaticCollection:
-    isWalkable = 1
-
-    def __init__(self):
-        self.bindings = {}
-
-    def getChild(self, path):
-        if not path:
-            path = 'index'
-        if not self.bindings.has_key(path):
-            raise error.web.NotFoundError('Resource not found.')
-        return self.bindings[path]
-
-    def bind(self, root, thing):
-        self.bindings[root] = thing
-
-class VirtualHost(StaticCollection):
-    def handle(self, request, reply, path):
-        child, subpath = walkPath(self, path)
-        if child is self:
-            child = self.getChild('')
-        child.handle(request, reply, subpath)
-
-class FilesystemCollection:
-    def __init__(self, root):
-        self.root = root
-
-    def handle(self, request, reply, subpath):
-        path = [self.root]
-        for piece in subpath.split('/'):
+    def walkPath(self, path):
+        roots = [self.collection]
+        subpath = ''
+        for piece in path.split('/'):
             if piece == '..':
                 if len(path) > 1:
-                    path.pop()
+                    roots.pop()
             elif piece == '.' or piece == '':
                 pass
             else:
-                path.append(piece)
+                if getattr(roots[-1], 'isWalkable', 0):
+                    roots.append(roots[-1].getChild(piece))
+                else:
+                    subpath = subpath + '/' + piece
+        return roots[-1], subpath
 
-        path = os.sep.join(path)
-        type, encoding = mimetypes.guess_type(path)
-        if not type:
-            type = 'application/octet-stream'
+    def handle(self, request, reply, path):
+        child, subpath = self.walkPath(path)
+        #if child is collection:
+        #    child = collection.getChild('')
+        child.handle(request, reply, subpath)
 
-        try:
-            st = os.stat(path)
-            if stat.S_ISDIR(st.st_mode):
-                reply.sendErrorPage(http.HTTP_FORBIDDEN, 'Indexing forbidden.')
-
-            elif stat.S_ISREG(st.st_mode):
-                file = open(path, 'r')
-                file = reactor.current.prepareFile(file)
-                reply.headers.setHeader('Last-Modified', http.HTTPDateTime(st.st_mtime))
-                reply.headers.setHeader('Content-Length', st.st_size)
-                reply.headers.setHeader('Content-Type', type)
-                if encoding:
-                    reply.headers.setHeader('Content-Encoding', encoding)
-                reply.sendfile(file)
-                reply.done()
-
-            else:
-                reply.sendErrorPage(http.HTTP_FORBIDDEN, 'You may not view this resource.')
-
-        except OSError, ex:
-            if ex.errno == errno.ENOENT:
-                reply.sendErrorPage(http.HTTP_NOT_FOUND, 'No such file or directory.')
-            else:
-                reply.sendErrorPage(http.HTTP_FORBIDDEN, 'You may not view this resource.')
-
-__all__ = ['HTTPServer', 'VirtualHost', 'StaticCollection']
+__all__ = ['HTTPRequest', 'HTTPReply', 'UnvalidatedInput',
+           'HTTPQueryString', 'HTTPServer', 'VirtualHost']

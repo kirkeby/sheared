@@ -1,12 +1,12 @@
 # vim:nowrap:textwidth=0
 
-import unittest, os, random, signal, commands
+import unittest, os, random, signal, commands, time
 
 from sheared import reactor
 from sheared import error
 from sheared.reactor import transport
 from sheared.protocol import http
-from sheared.web import server
+from sheared.web import server, subserver, collection
 
 class SimpleCollection:
     def __init__(self, name):
@@ -26,10 +26,14 @@ class SimpleCollection:
             reply.sendErrorPage(http.HTTP_NOT_FOUND)
 
 def parseReply(reply):
-    headers, body = reply.split('\r\n\r\n', 1)
-    status, headers = headers.split('\r\n', 1)
-    status = http.HTTPStatusLine(status)
-    headers = http.HTTPHeaders(headers)
+    try:
+        headers, body = reply.split('\r\n\r\n', 1)
+        status, headers = headers.split('\r\n', 1)
+        status = http.HTTPStatusLine(status)
+        headers = http.HTTPHeaders(headers)
+
+    except ValueError:
+        raise 'Bad reply: %r' % reply
 
     return status, headers, body
 
@@ -97,17 +101,18 @@ class HTTPSubServerTestCase(unittest.TestCase):
         except:
             pass
 
-        self.port = random.random() * 8192 + 22000
+        self.port = int(random.random() * 8192 + 22000)
             
         self.reactor = reactor.current
 
-        factory = server.HTTPSubServer()
+        factory = subserver.HTTPSubServer()
         factory.addVirtualHost('localhost', SimpleCollection('localhost'))
         factory.setDefaultHost('localhost')
         self.reactor.listenUNIX(factory, './test/fifoo')
 
         factory = server.HTTPServer()
-        factory.addVirtualHost('localhost', server.HTTPSubServerAdapter('./test/fifoo'))
+        vhost = server.VirtualHost(subserver.HTTPSubServerCollection('./test/fifoo'))
+        factory.addVirtualHost('localhost', vhost)
         factory.setDefaultHost('localhost')
         self.reactor.listenTCP(factory, ('127.0.0.1', self.port))
 
@@ -129,12 +134,13 @@ class HTTPSubServerTestCase(unittest.TestCase):
             self.reactor.run()
             sys.exit(0)
 
-class StaticCollectionTestCase(unittest.TestCase):
+class FilesystemCollectionTestCase(unittest.TestCase):
     def setUp(self):
         self.reactor = reactor.current.__class__()
         
         self.server = server.HTTPServer()
-        self.server.addVirtualHost('foo.com', server.StaticCollection('./test/http-docroot'))
+        vhost = server.VirtualHost(collection.FilesystemCollection('./test/http-docroot'))
+        self.server.addVirtualHost('foo.com', vhost)
 
         self.transport = transport.StringTransport()
         self.reactor.createtasklet(self.server.startup, (self.transport,))
@@ -202,7 +208,7 @@ class UnvalidatedInputTestCase(unittest.TestCase):
 suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(HTTPServerTestCase, 'test')])
 suite.addTests([unittest.makeSuite(HTTPSubServerTestCase, 'test')])
-suite.addTests([unittest.makeSuite(StaticCollectionTestCase, 'test')])
+suite.addTests([unittest.makeSuite(FilesystemCollectionTestCase, 'test')])
 suite.addTests([unittest.makeSuite(HTTPQueryStringTestCase, 'test')])
 suite.addTests([unittest.makeSuite(UnvalidatedInputTestCase, 'test')])
 
