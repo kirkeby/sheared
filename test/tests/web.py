@@ -38,7 +38,7 @@ class HTTPServerTestCase(unittest.TestCase):
         self.reactor = reactor
         self.reactor.reset()
         
-        self.server = server.HTTPServerFactory(self.reactor)
+        self.server = server.HTTPServerFactory(self.reactor, server.HTTPServer)
         self.server.addVirtualHost('foo.com', SimpleCollection('foo.com'))
         self.server.addVirtualHost('bar.com', SimpleCollection('bar.com'))
         self.server.setDefaultHost('bar.com')
@@ -97,7 +97,7 @@ class StaticCollectionTestCase(unittest.TestCase):
         self.reactor = reactor
         self.reactor.reset()
         
-        self.server = server.HTTPServerFactory(self.reactor)
+        self.server = server.HTTPServerFactory(self.reactor, server.HTTPServer)
         self.server.addVirtualHost('foo.com', server.StaticCollection(self.reactor, './test/http-docroot'))
 
         self.transport = transport.StringTransport()
@@ -134,7 +134,7 @@ class StaticCollectionTestCase(unittest.TestCase):
         self.assertEquals(status.code, 403)
 
 suite = unittest.TestSuite()
-suite.addTests([unittest.makeSuite(HTTPServerFactoryTestCase, 'test')])
+suite.addTests([unittest.makeSuite(HTTPServerTestCase, 'test')])
 suite.addTests([unittest.makeSuite(StaticCollectionTestCase, 'test')])
 
 __all__ = ['suite']

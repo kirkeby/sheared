@@ -199,7 +199,6 @@ reset()
 
 def run():
     try:
-        coroutine.init()
         main_co()
     except coroutine.CoroutineReturned:
         pass
@@ -209,7 +208,8 @@ def run():
 
 def call_main(*args, **kwargs):
     rv = apply(main_co, args, kwargs)
-    if isinstance(rv, types.TupleType) and isinstance(rv[0], types.ClassType) and issubclass(rv[0], Exception):
+    if isinstance(rv, types.TupleType) and len(rv) > 0 and \
+       isinstance(rv[0], types.ClassType) and issubclass(rv[0], Exception):
         raise rv[0]
     return rv
 

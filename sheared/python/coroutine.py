@@ -80,13 +80,11 @@ class FIFO:
     def give(self, *args):
         self.channel.send(args)
 
-def init():
-    class DummyCoroutine:
-        def __init__(self):
-            self.tasklet = stackless.getcurrent()
-            self.channel = stackless.channel()
-    dummy = DummyCoroutine()
-    tasklet_coroutines[id(dummy.tasklet)] = dummy
-init()
+class DummyCoroutine:
+    def __init__(self):
+        self.tasklet = stackless.getcurrent()
+        self.channel = stackless.channel()
+dummy = DummyCoroutine()
+tasklet_coroutines[id(dummy.tasklet)] = dummy
 
 __all__ = ['Coroutine', 'CoroutineFailed', 'CoroutineReturned', 'init']
