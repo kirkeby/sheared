@@ -31,11 +31,14 @@ class StaticCollection:
         self.bindings[root] = thing
 
     def getChild(self, request, reply, path):
-        if not path:
-            path = 'index'
         if not self.bindings.has_key(path):
             raise error.web.NotFoundError('Resource not found.')
         return self.bindings[path]
+
+    def handle(self, request, reply, path):
+        if not getattr(self, 'index', None):
+            raise error.web.ForbiddenError
+        return self.index.handle(request, reply, path)
 
 class FilesystemCollection:
     def __init__(self, root, mt=None):
