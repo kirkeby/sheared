@@ -17,13 +17,19 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import os, mimetypes, stat, errno
+import os
+import os.path
+import stat
+import errno
+import mimetypes
+import warnings
 
 from sheared import reactor
 from sheared import error
 from sheared.python import io
 from sheared.protocol import http
 from sheared.web import resource
+from sheared.web import accept
 
 import abml
 
@@ -67,6 +73,10 @@ def normal_handler(request, reply, collection, walker):
     type, encoding = collection.mimetypes.guess_type(walker.root)
     if not type:
         type = 'application/octet-stream'
+    if type == 'application/xhtml+xml':
+        type = accept.chooseContentType(request, [type, 'text/html'])
+        # FIXME -- should be a list
+        reply.headers.setHeader('Vary', 'Accept')
 
     last_modified = http.HTTPDateTime(walker.stat.st_mtime)
 
@@ -107,13 +117,18 @@ def forbidden_handler(request, reply, collection, walker):
     raise error.web.ForbiddenError
 
 class FilesystemCollection(resource.NormalResource):
-    def __init__(self, root, allow_indexing=0):
+    def __init__(self, root, allow_indexing=0, multiviews=1):
         resource.NormalResource.__init__(self)
 
         self.walker = FilesystemWalker(self, root, '')
         self.mimetypes = mimetypes.MimeTypes()
+        self.mimetypes.types_map['.xhtml'] = 'application/xhtml+xml'
 
-        self.index_files = ['index.html']
+        self.multiviews = 1
+        if self.multiviews:
+            self.index_files = ['index']
+        else:
+            self.index_files = ['index.xhtml', 'index.html']
 
         self.authenticator = htaccess_authenticator
         self.normal_handler = normal_handler
@@ -171,14 +186,52 @@ class FilesystemWalker(resource.NormalResource):
                     subpaths = [subpath]
                 else:
                     subpaths = self.collection.index_files
+                    
                 for subpath in subpaths:
                     abs_path = self.root + os.sep + subpath
                     if os.access(abs_path, os.F_OK):
                         return self.createChild(abs_path, self.path_info)
+    
+                    elif self.collection.multiviews:
+                        views = {}
+                        
+                        for name in os.listdir(self.root):
+                            if not name.startswith(subpath):
+                                continue
+                            path = self.root + os.sep + name
+                            if not os.path.isfile(path):
+                                continue
+                            mt, enc = self.collection.mimetypes.guess_type(path)
+                            if not mt:
+                                msg = 'unknown mime-type for multiview: ' \
+                                      '%s' % (path)
+                                warnings.warn(msg)
+                                continue
+                            if views.has_key(mt):
+                                msg = 'mime-type clash for multiview: ' \
+                                      '%s vs %s' % (views[mt], path)
+                                warnings.warn(msg)
+                                continue
+                            views[mt] = path
+
+                        try:
+                            if views:
+                                mimetypes = views.keys()
+                                mt = accept.chooseContentType(request, mimetypes)
+                                # FIXME -- should be a list
+                                reply.headers.setHeader('Vary', 'Accept')
+                                path = views[mt]
+                                return self.createChild(path, self.path_info)
+                            
+                        except error.web.NotAcceptable:
+                            pass
+
                 raise error.web.NotFoundError
+                
             elif stat.S_ISREG(st.st_mode):
                 path_info = self.path_info + '/' + subpath
                 return self.createChild(self.root, path_info)
+    
             else:
                 raise error.web.ForbiddenError, 'not a file or directory'
 
@@ -189,7 +242,7 @@ class FilesystemWalker(resource.NormalResource):
                 raise error.web.ForbiddenError, 'other OSError'
 
     def handle(self, request, reply, subpath):
-        assert not subpath
+        assert not subpath, subpath
 
         try:
             st = os.stat(self.root)

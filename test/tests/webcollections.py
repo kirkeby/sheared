@@ -67,6 +67,23 @@ class FilesystemCollectionTestCase(unittest.TestCase):
                           time.gmtime(last_mod))
         self.assertEquals(reply.sent, content)
 
+    def testMultiView(self):
+        content = io.readfile('./test/http-docroot/hello.txt')
+        last_mod = os.stat('./test/http-docroot/hello.txt')[8]
+
+        coll = FilesystemCollection('./test/http-docroot')
+        request = FakeRequest('GET /hello HTTP/1.0')
+        request.headers.setHeader('Accept', 'text/plain, text/*')
+        reply = self.doRequest(coll, '/hello', request=request)
+
+        self.assertEquals(reply.status, 200)
+        self.assertEquals(reply.headers['content-type'], 'text/plain')
+        self.assertEquals(reply.headers.has_key('content-encoding'), 0)
+        self.assertEquals(reply.headers['content-length'], str(len(content)))
+        self.assertEquals(http.HTTPDateTime(reply.headers['last-modified']).unixtime,
+                          time.gmtime(last_mod))
+        self.assertEquals(reply.sent, content)
+
     def testOldConditionalGet(self):
         content = io.readfile('./test/http-docroot/hello.py')
         last_mod = os.stat('./test/http-docroot/hello.py')[8]
@@ -160,22 +177,21 @@ class EntwinedCollectionTestCase(unittest.TestCase):
     # FilesystemCollectionTestCase.
 
     def testCreate(self):
-        coll = EntwinedCollection([], './test/http-docroot')
-        coll = EntwinedCollection([], './test/http-docroot',
+        coll = EntwinedCollection(None, './test/http-docroot')
+        coll = EntwinedCollection(None, './test/http-docroot',
                 allow_indexing=0)
-        coll = EntwinedCollection([], './test/http-docroot',
+        coll = EntwinedCollection(None, './test/http-docroot',
                 allow_indexing=1)
 
     def testSimple(self):
-        coll = EntwinedCollection(['./test/http-docroot/page.html'],
-                                  './test/http-docroot')
-        
+        coll = EntwinedCollection(None, './test/http-docroot')
+        coll.entwiner.template_pages = ['./test/http-docroot/page.html']
         request = FakeRequest('GET /index.html HTTP/1.0')
         reply = FakeReply()
 
         child = coll.getChild(request, reply, 'index.html')
         child.handle(request, reply, '')
-        self.assertEquals(reply.sent, '<body>index.html</body>\n')
+        self.assertEquals(reply.sent, '<body>index.html</body>')
 
 class Gadget:
     def handle(self, request, reply, subpath):
