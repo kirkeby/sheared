@@ -126,7 +126,6 @@ class Reactor:
         if self.channel_tasklet.has_key(id(ch)):
             apply(ch.send, what)
         else:
-            # FIXME -- use self.log
             warnings.warn('send to dead channel intercepted: %r' % what,
                           stacklevel=2)
     def _startup(self, factory, transport):
