@@ -21,6 +21,7 @@
 import unittest
 
 from sheared.web.collections.filesystem import FilesystemCollection
+from sheared.web.collections.entwined import EntwinedCollection
 from sheared.web.collections.static import StaticCollection
 
 from sheared.protocol import http
@@ -99,6 +100,16 @@ class FilesystemCollectionTestCase(unittest.TestCase):
         self.assertRaises(error.web.MovedPermanently,
                           self.doRequest, coll, '/sub')
         
+class EntwinedCollectionTestCase(unittest.TestCase):
+    # FIXME -- really should have the same tests as
+    # FilesystemCollectionTestCase.
+
+    def testCreate(self):
+        coll = EntwinedCollection([], './test/http-docroot')
+        coll = EntwinedCollection([], './test/http-docroot',
+                allow_indexing=0)
+        coll = EntwinedCollection([], './test/http-docroot',
+                allow_indexing=1)
 
 class Gadget:
     def handle(self, request, reply, subpath):
@@ -158,6 +169,7 @@ class StaticCollectionTestCase(unittest.TestCase):
 suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(StaticCollectionTestCase, 'test')])
 suite.addTests([unittest.makeSuite(FilesystemCollectionTestCase, 'test')])
+suite.addTests([unittest.makeSuite(EntwinedCollectionTestCase, 'test')])
 
 __all__ = ['suite']
 
