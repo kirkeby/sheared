@@ -23,10 +23,13 @@ from sheared.web import server
 from sheared.python import fdpass
 
 class HTTPSubServerCollection:
-    isWalkable = 0
-
     def __init__(self, path):
         self.path = path
+
+    def getMethodParser(self, _):
+        return self.parseAnything
+    def parseAnything(self, *args):
+        pass
 
     def handle(self, request, reply, subpath):
         transport = reactor.connectUNIX(self.path)
@@ -55,7 +58,8 @@ class HTTPSubServer(server.HTTPServer):
         request, subpath = pickle.loads(data)
 
         transport = reactor.openfd(sock, addr)
-        reply = server.HTTPReply(request.version, transport)
+        reply = server.HTTPReply(request.requestline.version, transport)
+
         self.handle(request, reply)
 
 __all__ = ['HTTPSubServerAdapter', 'HTTPSubServer']

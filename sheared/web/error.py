@@ -21,7 +21,8 @@ from sheared.protocol.http import HTTP_NOT_FOUND, \
                                   HTTP_FORBIDDEN, \
                                   HTTP_MOVED_PERMANENTLY, \
                                   HTTP_BAD_REQUEST, \
-                                  HTTP_INTERNAL_SERVER_ERROR
+                                  HTTP_INTERNAL_SERVER_ERROR, \
+                                  HTTP_NOT_IMPLEMENTED
 
 class WebServerError(Exception):
     statusCode = HTTP_INTERNAL_SERVER_ERROR
@@ -42,6 +43,9 @@ class MovedPermanently(WebServerError):
 
 class InternalServerError(WebServerError):
     statusCode = HTTP_INTERNAL_SERVER_ERROR
+
+class NotImplementedError(WebServerError):
+    statusCode = HTTP_NOT_IMPLEMENTED
 
 __all__ = ['WebServerError', 'UnauthorizedError', 'ForbiddenError',
     'NotFoundError', 'MovedPermanently']

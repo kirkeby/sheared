@@ -23,27 +23,24 @@ import unittest, os, random, signal, time
 from sheared import reactor
 from sheared import error
 from sheared.protocol import http
-from sheared.web import server, subserver, collection, querystring, virtualhost
+from sheared.web import server, subserver, collection, querystring, virtualhost, resource
 from sheared.python import commands
 
 from tests import transport
 
-class SimpleCollection:
+class SimpleCollection(resource.GettableResource):
     def __init__(self, name):
+        resource.GettableResource.__init__(self)
         self.name = name
 
     def handle(self, request, reply, subpath):
-        if subpath == '/':
-            if not request.method == 'GET':
-                reply.sendErrorPage(http.HTTP_METHOD_NOT_SUPPORTED)
-
-            else:
-                reply.headers.setHeader('Content-Type', 'text/plain')
-                reply.send("""Welcome to %s!\r\n""" % self.name)
-                reply.done()
+        if subpath == '':
+            reply.headers.setHeader('Content-Type', 'text/plain')
+            reply.send("""Welcome to %s!\r\n""" % self.name)
+            reply.done()
 
         else:
-            reply.sendErrorPage(http.HTTP_NOT_FOUND)
+            raise error.web.NotFoundError
 
 def parseReply(reply):
     try:
@@ -60,8 +57,10 @@ def parseReply(reply):
 class HTTPServerTestCase(unittest.TestCase):
     def setUp(self):
         self.server = server.HTTPServer()
-        self.server.addVirtualHost('foo.com', SimpleCollection('foo.com'))
-        self.server.addVirtualHost('bar.com', SimpleCollection('bar.com'))
+        vh = virtualhost.VirtualHost(SimpleCollection('foo.com'))
+        self.server.addVirtualHost('foo.com', vh)
+        vh = virtualhost.VirtualHost(SimpleCollection('bar.com'))
+        self.server.addVirtualHost('bar.com', vh)
         self.server.setDefaultHost('bar.com')
 
         self.transport = transport.StringTransport()
@@ -126,7 +125,9 @@ class HTTPSubServerTestCase(unittest.TestCase):
         self.reactor = reactor
 
         factory = subserver.HTTPSubServer()
-        factory.addVirtualHost('localhost', SimpleCollection('localhost'))
+
+        vh = virtualhost.VirtualHost(SimpleCollection('localhost'))
+        factory.addVirtualHost('localhost', vh)
         factory.setDefaultHost('localhost')
         self.reactor.listenUNIX(factory, './test/fifoo')
 

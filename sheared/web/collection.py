@@ -16,12 +16,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
+import os, mimetypes, stat, errno
+
 from sheared import reactor
 from sheared import error
 from sheared.python import path
 from sheared.protocol import http
-
-import os, mimetypes, stat, errno
+from sheared.web import resource
 
 class StaticCollection:
     def __init__(self):
@@ -45,8 +47,10 @@ class StaticCollection:
             reply.headers.setHeader('Location', request.path + '/')
             raise error.web.MovedPermanently
 
-class FilesystemCollection:
+class FilesystemCollection(resource.NormalResource):
     def __init__(self, root, path_info='', mt=None):
+        resource.NormalResource.__init__(self)
+
         self.root = root
         self.path_info = path_info
         if mt:

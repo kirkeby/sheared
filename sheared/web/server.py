@@ -27,23 +27,24 @@ from sheared.python import io
 from sheared.web import querystring
 
 class HTTPRequest:
-    def __init__(self, requestline, qs, headers):
+    def __init__(self, requestline, headers, body):
+        self.requestline = requestline
         self.method = requestline.method
-        self.version = requestline.version
-        self.scheme = requestline.uri[0]
-        self.host = requestline.uri[1]
         self.path = requestline.uri[2]
-        self.querystring = qs
-        self.fragment = requestline.uri[4]
-        self.args = querystring.HTTPQueryString(self.querystring)
         self.headers = headers
+        self.body = body
 
     def parent(self):
-        # FIXME -- need to return absolute urls
         return self.path[self.path.rfind('/') : ]
     
     def sibling(self, uri):
         return self.parent() + '/' + uri
+
+    def child(self, uri):
+        if self.path.endswith('/'):
+            return self.path + uri
+        else:
+            return self.path + '/' + uri
 
 class HTTPReply:
     def __init__(self, version, transport):
@@ -112,10 +113,10 @@ class HTTPServer:
     def startup(self, transport):
         reader = io.RecordReader(transport, '\r\n')
         requestline = http.HTTPRequestLine(reader.readline().rstrip())
-        querystring = requestline.uri[3]
 
         if requestline.version[0] == 0: # HTTP/0.9
             headers = http.HTTPHeaders()
+            body = ''
 
         elif requestline.version[0] == 1: # HTTP/1.x
             reader = io.RecordReader(reader, '\r\n\r\n')
@@ -124,25 +125,31 @@ class HTTPServer:
             headers = reader.readline()
             headers = http.HTTPHeaders(headers)
 
-            # FIXME -- This needs refactoring badly; this should
-            # probably go into Collection, or into a HTTP-method-
-            # mixin.
-            if headers.has_key('Content-Type'):
-                ct = headers.get('Content-Type')
+            if headers.has_key('Content-Length'):
+                # FIXME -- Need to limit how much we are willing to
+                # accept here.
                 cl = int(headers.get('Content-Length'))
-                if ct == 'application/x-www-form-urlencoded':
-                    querystring = reader.read(cl).lstrip()
-                else:
-                    print 'need handler for Content-Type %r' % ct
+                body = reader.read(cl)
+            else:
+                body = ''
 
-        request = HTTPRequest(requestline, querystring, headers)
-        reply = HTTPReply(request.version, transport)
+        else:
+            # FIXME -- is this the Right Thing?
+            transport.write('HTTP/1.0 %d HTTP/%d.%d not supported'
+                            '\r\n\r\n' % (http.HTTP_NOT_IMPLEMENTED,
+                                          requestline.version[0],
+                                          requestline.version[1]))
+            transport.close()
+            return
+
+        request = HTTPRequest(requestline, headers, body)
+        reply = HTTPReply(requestline.version, transport)
 
         self.handle(request, reply)
 
     def handle(self, request, reply):
         try:
-            if request.scheme or request.host:
+            if request.requestline.uri[0] or request.requestline.uri[1]:
                 raise error.web.ForbiddenError
 
             if request.headers.has_key('Host'):
@@ -154,7 +161,7 @@ class HTTPServer:
 
             if vhost:
                 try:
-                    vhost.handle(request, reply, request.path)
+                    vhost.handle(request, reply)
                 except error.web.WebServerError:
                     raise
                 except:

@@ -40,13 +40,19 @@ class VirtualHost:
         
         return child, '/'.join(pieces)
 
-    def handle(self, request, reply, path):
+    def handle(self, request, reply):
+        path = request.requestline.uri[2]
         child, subpath = self.walkPath(request, reply, path)
 
         try:
             if not getattr(child, 'handle', None):
                 raise error.web.ForbiddenError
 
+            mp = child.getMethodParser(request.requestline.method)
+            if not mp:
+                raise error.web.NotImplementedError
+            mp(request, reply)
+            
             child.handle(request, reply, subpath)
 
         except error.web.MovedPermanently, e:

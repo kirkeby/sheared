@@ -21,8 +21,12 @@ import warnings
 from entwine import entwine
 
 from sheared.python import io
+from sheared.web import resource
 
-class Entwiner:
+class Entwiner(resource.NormalResource):
+    def __init__(self):
+        resource.NormalResource.__init__(self)
+
     def handle(self, request, reply, subpath):
         self.context = {}
         self.entwine(request, reply, subpath)
