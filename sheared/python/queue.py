@@ -2,19 +2,22 @@
 
 class MinQueue:
     def __init__(self):
-        self.list = []
-    
-    def insert(self, key, value):
-        for i in range(len(self.list)):
-            if self.list[i][0] > key:
-                break
-        self.list.insert(i, (key, value))
+        self.queued = []
 
     def minkey(self):
-        assert not self.empty(), 'empty queue'
-        return self.list[0][0]
+        return self.queued[0][0]
 
     def getmin(self):
-        return self.pop(0)
+        return self.queued.pop(0)[1]
+
+    def insert(self, key, value):
+        i = 0
+        for i in range(len(self.queued)):
+            if self.queued[i][0] > key:
+                break
+        self.queued.insert(i, (key, value))
+
+    def empty(self):
+        return len(self.queued) == 0
 
 __all__ = ['MinQueue']
