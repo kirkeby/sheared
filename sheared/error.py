@@ -16,6 +16,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-__all__ = ['database', 'web']
+__all__ = ['database', 'web', 'reactor']
 from sheared.database import error as database
 from sheared.web import error as web
+from sheared.reactors import error as reactor
