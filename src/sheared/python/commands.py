@@ -63,12 +63,17 @@ def getstatusoutput(cmd, argv):
             break
         out = out + d
 
+    return waitpid(pid)[1], out
+
+def waitpid(pid, interval=0):
     while 1:
         status = os.waitpid(pid, os.WNOHANG)
         if status[0]:
             break
+        if interval:
+            reactor.sleep(interval)
     assert status[0] == pid, '%d is not %d' % (status[0], pid)
-    return status[1], out
+    return status
 
 def getoutput(cmd, argv):
     return getstatusoutput(cmd, argv)[1]

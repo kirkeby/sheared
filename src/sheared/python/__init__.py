@@ -19,4 +19,4 @@
 __all__ = ['coroutine', 'fdpass', 'aio', 'daemonize', 'commands', 'io',
            'benchmark', 'queue', 'path', 'application', 'conffile',
            'process', 'log', 'logfile', 'proctitle', 'bitbucket',
-           'rfc822']
+           'rfc822', 'sendmail']
