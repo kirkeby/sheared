@@ -76,7 +76,7 @@ def parse(str):
 
 def format(cookie):
     str = '%s=%s' % (quote(cookie.name), quote(cookie.value))
-    if cookie.expires:
+    if not cookie.expires is None:
         str = str + ('; expires=%s'
                      % time.strftime("%A, %d-%b-%Y %H:%M:%S GMT",
                                      time.gmtime(cookie.expires)))
