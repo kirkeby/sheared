@@ -43,7 +43,7 @@ def notFoundErrorHandler(server, exception, request, reply):
 
 def internalServerErrorHandler(server, exception, request, reply):
     reply.send('Internal Server Error.\r\n')
-    self.logInternalError(exception.args)
+    server.logInternalError(exception.args)
 
 def defaultErrorHandler(server, exception, request, reply):
     reply.send("I am terribly sorry, but an error (%d) occured "
