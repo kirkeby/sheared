@@ -22,6 +22,24 @@ import stackless
 import os
 import warnings
 
+def parse_address_uri(where):
+    domain, address = where.split(':', 1)
+
+    if domain == 'tcp':
+        ip, port = address.split(':')
+        if ip == '*':
+            ip = ''
+        port = int(port)
+        address = ip, port
+
+    elif domain == 'unix':
+        pass
+
+    else:
+        raise 'Unknown domain: %s' % domain
+
+    return domain, address
+
 class ReactorFile:
     def __init__(self, fd, other, reactor):
         self.fd = fd
@@ -124,6 +142,13 @@ class Reactor:
     def fdopen(self, file, mode='r', other=None):
         raise NotImplementedError
 
+    def connect(self, where):
+        domain, address = parse_address_uri(where)
+        if domain == 'tcp':
+            return self.connectTCP(factory, address)
+        elif domain == 'unix':
+            return self.connectUNIX(factory, address)
+
     def connectTCP(self, addr):
         raise NotImplementedError
 
@@ -131,11 +156,9 @@ class Reactor:
         raise NotImplementedError
 
     def listen(self, factory, where):
-        domain, address = where.split(':', 1)
+        domain, address = parse_address_uri(where)
         if domain == 'tcp':
-            ip, port = address.split(':')
-            return self.listenTCP(factory, (ip, int(port)))
-
+            return self.listenTCP(factory, address)
         elif domain == 'unix':
             return self.listenUNIX(factory, address)
     
