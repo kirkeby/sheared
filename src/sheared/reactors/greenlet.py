@@ -61,18 +61,50 @@ class ReactorFile:
     def __init__(self, reactor, fd): 
         self.reactor = reactor
         self.fd = fd
+        self.buffered = ''
 
     def read(self, max=None):
         if max is None:
-            data = ''
+            data, self.buffered = self.buffered, ''
             while 1:
                 d = self.reactor.read(self.fd, 8192)
                 if d == '':
                     break
                 data = data + d
             return data
+        elif self.buffered:
+            data, self.buffered = self.buffered[:max], self.buffered[max:]
         else:
-            return self.reactor.read(self.fd, max)
+            data = self.reactor.read(self.fd, max)
+        return data
+
+    def readline(self):
+        i = self.buffered.find('\n')
+        while i < 0:
+            d = self.reactor.read(self.fd, 8192)
+            if d == '':
+                i = len(self.buffered)
+                break
+            j = d.find('\n')
+            if not j < 0:
+                i = j + len(self.buffered)
+            self.buffered = self.buffered + d
+
+        data, self.buffered = self.buffered[:i+1], self.buffered[i+1:]
+        return data
+
+    def readlines(self):
+        return [line for line in self]
+
+    # iteration protocol
+    def __iter__(self):
+        return self
+    def next(self):
+        line = self.readline()
+        if line == '':
+            raise StopIteration
+        else:
+            return line
 
     def write(self, data):
         while data:
@@ -85,9 +117,8 @@ class ReactorFile:
 
 class ReactorSocket(ReactorFile):
     def __init__(self, reactor, sock):
-        self.reactor = reactor
+        ReactorFile.__init__(self, reactor, sock.fileno())
         self.sock = sock
-        self.fd = self.sock.fileno()
 
     def shutdown(self, how):
         self.sock.shutdown(how)

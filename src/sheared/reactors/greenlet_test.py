@@ -48,12 +48,16 @@ def test_connect_tcp():
     def run(reactor):
         t = reactor.connect('tcp:localhost:echo')
         t.write('Hello, World!\r\n')
+        t.write('qux\r\n')
+        t.write('foo')
         t.shutdown(1)
-        reactor.result = t.read()
+        reactor.result = t.readlines()
 
     reactor = Reactor()
     reactor.start(run)
-    assert reactor.result == 'Hello, World!\r\n'
+    assert reactor.result == ['Hello, World!\r\n',
+                              'qux\r\n',
+                              'foo']
 
 def test_listen_tcp():
     def application(transport):
