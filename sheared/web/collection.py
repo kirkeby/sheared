@@ -22,6 +22,7 @@ import os, mimetypes, stat, errno
 from sheared import reactor
 from sheared import error
 from sheared.python import path
+from sheared.python import io
 from sheared.protocol import http
 from sheared.web import resource
 
@@ -106,6 +107,42 @@ class FilesystemCollection(resource.NormalResource):
             self.mimetypes = mimetypes.MimeTypes()
 
         self.index_files = ['index.html']
+
+    def authenticate(self, request, reply):
+        htaccess = self.root + os.sep + '.htaccess'
+        if os.access(htaccess, os.R_OK):
+            authname = ''
+            htpasswd = ''
+            require = ''
+
+            f = io.BufferedReader(reactor.open(htaccess, 'r'))
+            for line in f.readlines():
+                op, arg = line.strip().split(' ', 1)
+                if op == 'AuthName':
+                    authname = arg
+                elif op == 'AuthUserFile':
+                    htpasswd = arg
+                elif op == 'require':
+                    require = arg
+            
+            if authname:
+                good = 0
+                auth = request.authentication()
+                if auth:
+                    scheme, login, password = auth
+                    
+                    if scheme == 'Basic':
+                        f = io.BufferedReader(reactor.open(htpasswd, 'r'))
+                        for line in f.readlines():
+                            u, p = line.strip().split(':', 1)
+                            if u == login and p == password:
+                                good = 1
+                                break
+
+                if not good:
+                    hdr = 'Basic realm=%s' % authname
+                    reply.headers.setHeader('WWW-Authenticate', hdr)
+                    raise error.web.UnauthorizedError
 
     def getChild(self, request, reply, subpath):
         try:
