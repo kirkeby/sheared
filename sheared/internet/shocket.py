@@ -17,10 +17,10 @@ class Port:
         self.socket = self.reactor.prepareFile(self.socket)
         self.reactor.bind(self.socket, self.address)
         self.reactor.listen(self.socket, self.backlog)
-        self.coroutine = coroutine.Coroutine(self._run)
+        self.coroutine = coroutine.Coroutine(self.run)
         self.reactor.addCoroutine(self.coroutine, ())
 
-    def _run(self):
+    def run(self):
         while 1:
             fd, addr = self.reactor.accept(self.socket)
             transport = self.reactor.createTransport(fd, addr)
