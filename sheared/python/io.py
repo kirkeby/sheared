@@ -1,3 +1,16 @@
+from sheared import reactor
+
+def readfile(path):
+    f = reactor.current.open(path, 'r')
+    all = ''
+    while 1:
+        read = reactor.current.read(f, 4096)
+        if read == '':
+            break
+        all += read
+    reactor.current.close(f)
+    return all
+
 class Drainer:
     def __init__(self, file):
         self.file = file
