@@ -22,6 +22,7 @@ from socket import htons, htonl, ntohs, ntohl
 import struct
 import string
 import array
+import crypt
 
 from sheared.python import coroutine
 
@@ -113,6 +114,14 @@ class QueryPacket:
     def send(self, transport):
         transport.write('Q' + formatString(self.query))
 
+class PasswordPacket:
+    def __init__(self, password):
+        self.password = password
+
+    def send(self, transport):
+        s = formatString(self.password)
+        transport.write(formatInt32(len(s) + 4) + s)
+
 class CursorResponsePacket:
     def __init__(self, name):
         self.name = name
@@ -172,7 +181,26 @@ def parsePacket(client, data, columns=None):
 
         if tag == 'R':
             auth, data = parseInt32(data)
-            return AuthenticationPacket(auth), data
+            p = AuthenticationPacket(auth)
+            if auth == 0:
+                p.authentication = 'OK'
+            elif auth == 1:
+                p.authentication = 'KerberosV4'
+            elif auth == 2:
+                p.authentication = 'KerberosV5'
+            elif auth == 3:
+                p.authentication = 'CleartextPassword'
+            elif auth == 4:
+                p.authentication = 'CryptPassword'
+                p.salt, data = parseBytes(2, data)
+            elif auth == 5:
+                p.authentication = 'MD5Password'
+                p.salt, data = parseBytes(4, data)
+            elif auth == 6:
+                p.authentication = 'SCMCredential'
+            else:
+                raise ProtocolError, 'Unknown Authentication type: %d' % auth
+            return p, data
 
         if tag == 'K':
             pid, data = parseInt32(data)
@@ -261,11 +289,23 @@ class PostgresqlClient:
     def authenticate(self, user, password='', database='', args='', tty=''):
         self._sendPacket(StartupPacket(user, database))
         reply = self._readPacket(AuthenticationPacket)
-        if not reply.authentication == 0:
+
+        if reply.authentication == 'OK':
+            pass
+        
+        elif reply.authentication == 'CryptPassword':
+            crypted = crypt.crypt(password, reply.salt)
+            self._sendPacket(PasswordPacket(crypted))
+            reply = self._readPacket()
+            raise `reply`
+    
+        else:
             s = 'Got request for unsupported authentication: %d' % reply.authentication
             raise ProtocolError, s
-        reply = self._readPacket(BackendKeyDataPacket)
-        reply = self._readPacket(ReadyForQueryPacket)
+
+        if reply.authentication == 'OK':
+            reply = self._readPacket(BackendKeyDataPacket)
+            reply = self._readPacket(ReadyForQueryPacket)
 
     def query(self, query):
         self._sendPacket(QueryPacket(query))
