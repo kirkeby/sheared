@@ -22,20 +22,21 @@
 from distutils.core import setup, Extension
 setup(name = "Sheared", version = "0.1",
       author = "Sune Kirkeby",
-      author_email = "sune@mel.interspace.dk",
-      url = "http://mel.interspace.dk/~sune/sheared/",
+      author_email = "me@ibofobi.dk",
+      url = "http://ibofobi.dk/stuff/sheared/",
       packages = [
         'sheared', 'sheared.database', 'sheared.protocol',
         'sheared.python', 'sheared.reactors', 'sheared.web',
         'sheared.web.server', 'sheared.web.collections'
       ],
+      package_dir = { '': 'src' },
       ext_modules = [
         Extension("sheared.python.fdpass",
-                  ["sheared/python/fdpass.c"]),
+                  ["src/sheared/python/fdpass.c"]),
         Extension("sheared.python.proctitle",
-                  ["sheared/python/proctitle.c"]),
+                  ["src/sheared/python/proctitle.c"]),
         Extension("sheared.python.aio",
-                  ["sheared/python/aio.c"],
+                  ["src/sheared/python/aio.c"],
                   libraries = ['rt']),
       ],
     )
