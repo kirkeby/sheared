@@ -56,7 +56,7 @@ class ShadowCollection(resource.GettableResource):
 
 class TildeUserCollection(resource.GettableResource):
     def getChild(self, request, reply, subpath):
-        if not subpath[0] == '~':
+        if not subpath.startswith('~'):
             raise error.web.NotFoundError, 'not a tilde-user path'
         path = os.path.expanduser(subpath)
         if path == subpath:
