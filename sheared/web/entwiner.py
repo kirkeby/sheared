@@ -17,6 +17,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 import warnings
+import os
 
 from entwine import entwine
 
@@ -30,10 +31,14 @@ class Entwiner(resource.NormalResource):
     def handle(self, request, reply, subpath):
         self.context = {}
         self.entwine(request, reply, subpath)
-        r = self.execute(self.page_path, throwaway=0)
+        r = self.execute(self.template_page, throwaway=0)
         reply.send(r)
 
     def execute(self, path, throwaway=1):
+        root = getattr(self, 'template_root', '')
+        path = [root] + path.split('/')
+        path = os.sep.join(path)
+
         r = entwine(io.readfile(path), self.context)
 
         if throwaway and r.strip():
