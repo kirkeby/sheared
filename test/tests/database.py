@@ -71,6 +71,11 @@ class DatabaseClientTestCase(unittest.TestCase):
         self.assertEquals(len(rows), 3)
         result.release()
 
+    def testError(self):
+        self.assertRaises(error.database.ProgrammingError,
+                          self.connection.query, 'SELECT blah')
+        self.testSelect()
+
     def testUnicode(self):
         self.connection.begin()
         self.connection.query('INSERT INTO test VALUES(80, %s)'

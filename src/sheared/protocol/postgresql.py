@@ -297,7 +297,7 @@ class PostgresqlClient:
         elif reply.authentication == 'CryptPassword':
             crypted = crypt.crypt(password, reply.salt)
             self._sendPacket(PasswordPacket(crypted))
-            reply = self._readPacket()
+            reply = self._readPacket(AuthenticationPacket)
     
         else:
             s = 'Got request for unsupported authentication: %d' % reply.authentication
@@ -335,10 +335,14 @@ class PostgresqlClient:
         columns = None
         while 1:
             packet = self._readPacket(columns=columns)
+                
             type = packet.__class__
 
             if type is CursorResponsePacket:
                 pass
+
+            elif type is ErrorPacket:
+                err = error.ProgrammingError, packet.message
 
             elif type is ReadyForQueryPacket:
                 if err:
@@ -394,7 +398,7 @@ class PostgresqlClient:
                 self.transport.close()
                 raise error.InterfaceError, 'got unexpected %s' % `packet`
 
-        return result
+        raise 'internal error; branch should never execute'
 
     def begin(self):
         self.query('BEGIN TRANSACTION')
@@ -415,10 +419,7 @@ class PostgresqlClient:
             packet, self.buffer = parsePacket(self, self.buffer, columns)
     
             if packet:
-                if packet.__class__ is ErrorPacket:
-                    raise error.ProgrammingError, packet.message
-                else:
-                    break
+                break
 
             self.buffer = self.buffer + self.transport.read(4096)
 
