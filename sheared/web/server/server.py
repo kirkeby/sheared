@@ -152,8 +152,11 @@ class HTTPServer:
         if self.accesslog:
             ip, port = reply.transport.other
             ident = '-'
-            user, _ = request.authentication(require=0)
-            user = user or '-'
+            auth = request.authentication()
+            if auth:
+                user = auth[1]
+            else:
+                user = '-'
             date = time.strftime('%d/%m/%Y:%H:%M:%S %z')
             req = request.requestline.raw
             code = reply.status
