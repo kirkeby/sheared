@@ -197,6 +197,8 @@ class Gadget:
     def handle(self, request, reply, subpath):
         reply.headers.setHeader('gadget', 'gadget')
         raise NotImplementedError
+    def authenticate(self, request, reply):
+        pass
 class StaticCollectionTestCase(unittest.TestCase):
     def testOneLevel(self):
         gadget = Gadget()
