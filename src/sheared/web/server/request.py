@@ -34,8 +34,8 @@ class HTTPRequest:
         self.cookies = {}
         cookies = self.headers.get('Cookie', '')
         if cookies:
-            for c in cookies.split(','):
-                c = cookie.parse(c)
+            for c in cookies.split(';'):
+                c = cookie.parse(c.strip())
                 self.cookies[c.name] = c
 
     def parent(self):
