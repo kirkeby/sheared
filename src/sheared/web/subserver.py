@@ -36,7 +36,12 @@ class HTTPSubServerCollection:
         pass
 
     def handle(self, request, reply, subpath):
-        transport = reactor.connectUNIX(self.path)
+        try:
+            transport = reactor.connectUNIX(self.path)
+        except:
+            raise error.web.InternalServerError, \
+                  'could not connect to sub-server'
+
         fdpass.send(transport.fileno(), reply.transport.fileno(),
                     pickle.dumps(reply.transport.other))
         pickle.dump((request, reply, subpath), transport)
