@@ -253,12 +253,10 @@ class Application:
         if self.pidfile:
             daemonize.writepidfile(self.pidfile)
 
-        name = '<Main for %r>' % self
-        self.reactor.createtasklet(self.run, name=name)
+        if hasattr(self, 'run'):
+            name = '<Main for %r>' % self
+            self.reactor.createtasklet(self.run, name=name)
         self.reactor.start()
 
     def stop(self):
         self.reactor.stop()
-
-    def run(self):
-        raise NotImplementedError
