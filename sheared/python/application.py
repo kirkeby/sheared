@@ -125,7 +125,11 @@ class Application:
 
         self.parse_args(argv[1:])
 
+        self.setup()
         self.start()
+
+    def setup(self):
+        pass
 
     def start(self):
         if self.daemonize and not self.logfile:
