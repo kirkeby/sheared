@@ -25,6 +25,8 @@ from sheared.python import path
 from sheared.protocol import http
 from sheared.web import resource
 
+from entwine import abml
+
 class ShadowCollection(resource.GettableResource):
     def __init__(self):
         resource.GettableResource.__init__(self)
@@ -168,3 +170,15 @@ class FilesystemCollection(resource.NormalResource):
 
     def handle_exec(self, request, reply, subpath):
         raise error.web.ForbiddenError, 'cgi-scripts not allowed: %s' % self.root
+
+    def handle_index(self, request, reply, subpath):
+        reply.transport.write('<html>\r\n'
+                    '<head><title>Some directory index</title></head>\r\n'
+                    '<body>\r\n')
+        for file in os.listdir(self.root):
+            reply.transport.write('<a href="%s">%s</a><br />\r\n' % (
+                file.replace('"', '\\"'),
+                abml.quote(file),
+            ))
+        reply.transport.write('</body></html>\r\n')
+        reply.transport.close()
