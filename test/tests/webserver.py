@@ -42,6 +42,21 @@ class HTTPServerTestCase(unittest.TestCase):
         self.reactor = reactor
         self.reactor.createtasklet(self.server.startup, (self.transport,))
 
+    def testPostRequest(self):
+        self.transport.appendInput('POST /post HTTP/1.0\r\n'
+                                   'Host: foo.com\r\n'
+                                   'Content-Length: 12\r\n'
+                                   'Content-Type: application/x-www-form-urlencoded\r\n'
+                                   '\r\n'
+                                   'q=fortytwo\r\n')
+        self.reactor.start()
+
+        status, headers, body = parseReply(self.transport.getOutput())
+
+        self.assertEquals(body, 'Welcome to foo.com!\r\n')
+        self.assertEquals(status.version, (1, 0))
+        self.assertEquals(status.code, 200)
+
     def testFullRequestWithFoo(self):
         self.transport.appendInput('''GET / HTTP/1.0\r\nHost: foo.com\r\n\r\n''')
         self.reactor.start()
