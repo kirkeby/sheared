@@ -1,0 +1,16 @@
+import sys
+
+from sheared import reactor
+from sheared.protocol import postgresql
+from sheared.python import coroutine
+
+user, database = sys.argv[1:]
+
+def main():
+    factory = postgresql.PostgresqlClientFactory(user, '', database)
+    client = reactor.current.connectUNIX(factory, '/var/run/postgresql/.s.PGSQL.5432')
+    #client = reactor.current.connectTCP(factory, ('localhost', 5432))
+    print `client.query('SELECT * FROM domains').fetchall()`
+
+reactor.current.addCoroutine(coroutine.Coroutine(main), ())
+reactor.current.run()
