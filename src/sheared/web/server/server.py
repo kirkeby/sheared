@@ -165,10 +165,9 @@ class HTTPServer:
                 raise error.web.InternalServerError, sys.exc_info()
 
         except error.web.WebServerError, e:
-            if not reply.decapitated:
-                reply.setStatusCode(e.statusCode)
-                reply.headers.setHeader('Content-Type', 'text/plain')
-                self.handleWebServerError(e, request, reply)
+            reply.setStatusCode(e.statusCode)
+            reply.headers.setHeader('Content-Type', 'text/plain')
+            self.handleWebServerError(e, request, reply)
 
         for cb in self.requestCompletedCallbacks:
             try:
