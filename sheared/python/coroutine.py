@@ -65,13 +65,6 @@ class Coroutine:
         else:
             return args
 
-class DummyCoroutine:
-    def __init__(self):
-        self.tasklet = stackless.getcurrent()
-        self.channel = stackless.channel()
-dummy = DummyCoroutine()
-tasklet_coroutines[id(dummy.tasklet)] = dummy
-
 class FIFO:
     def __init__(self):
         self.channel = stackless.channel()
@@ -87,4 +80,12 @@ class FIFO:
     def give(self, *args):
         self.channel.send(args)
 
-__all__ = ['Coroutine', 'CoroutineFailed', 'CoroutineReturned']
+def init():
+    class DummyCoroutine:
+        def __init__(self):
+            self.tasklet = stackless.getcurrent()
+            self.channel = stackless.channel()
+    dummy = DummyCoroutine()
+    tasklet_coroutines[id(dummy.tasklet)] = dummy
+
+__all__ = ['Coroutine', 'CoroutineFailed', 'CoroutineReturned', 'init']

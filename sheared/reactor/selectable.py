@@ -1,8 +1,8 @@
 # vim:nowrap:textwidth=0
-import select, sys, types, fcntl, os, socket, traceback, errno
+import select, socket, sys, types, fcntl, os, traceback, errno
 
 from sheared.python import coroutine
-from sheared.internet import tcp
+from sheared.internet import shocket
 from sheared.reactor import transport
 
 # FIXME -- this would be so much nicer if we had a Reactor class
@@ -38,13 +38,13 @@ def do_open(co, path, mode):
         co.sendException(ValueError, 'bad flags')
     os.open(path, flags)
 
-def do_accept(co, fd):
-    accepting[fd] = co
+def do_accept(co, fd, sock):
+    accepting[fd] = co, sock
 
-def do_connect(co, fd, addr):
-    connecting[fd] = co
+def do_connect(co, fd, sock, addr):
+    connecting[fd] = co, sock
     try:
-        fd.connect(addr)
+        sock.connect(addr)
     except socket.error, e:
         if e[0] == errno.EINPROGRESS:
             pass
@@ -101,17 +101,38 @@ def mainloop():
             if not read and not write and not sleeping:
                 return
 
-            # FIXME -- if we are passed a bad file-descriptor (a closed one for instance) select.select
-            # will bonk out. so we should do clean-up in that case.
-            if sleeping:
-                timeout = sleeping[0][0] - now
-                if timeout >= 0:
-                    readable, writable, errable = select.select(read, write, both, timeout)
+            readable, writable, errable = (), (), ()
+            try:
+                if sleeping:
+                    timeout = sleeping[0][0] - now
+                    if timeout >= 0:
+                        readable, writable, errable = select.select(read, write, both, timeout)
                 else:
-                    readable, writable, errable = (), (), ()
-            else:
-                readable, writable, errable = select.select(read, write, both)
+                    readable, writable, errable = select.select(read, write, both)
 
+            except select.error, (eno, emsg):
+                for fd in reading.keys():
+                    try:
+                        select.select([fd], [], [], 0)
+                    except select.error:
+                        print 'reading from %r failed' % fd
+                        call(reading[fd][0], IOError, (eno, emsg))
+                        del reading[fd]
+                for fd in accepting.keys():
+                    try:
+                        select.select([fd], [], [], 0)
+                    except select.error:
+                        print 'accepting from %r failed' % fd
+                        call(accepting[fd][0], IOError, (eno, emsg))
+                        del accepting[fd]
+                for fd in writing.keys():
+                    try:
+                        select.select([fd], [], [], 0)
+                    except select.error, err:
+                        print 'writing to %r failed' % fd
+                        call(writing[fd][0], IOError, (eno, emsg))
+                        del writing[fd]
+                        
             while sleeping and sleeping[0][0] <= now:
                 _, co = sleeping.pop(0)
                 apply(call, (co, ()))
@@ -128,10 +149,10 @@ def mainloop():
                     call(co, data)
 
                 elif accepting.has_key(fd):
-                    co = accepting[fd]
+                    co, sock = accepting[fd]
                     del accepting[fd]
 
-                    data = fd.accept()
+                    data = sock.accept()
                     call(co, data)
 
                 else:
@@ -149,10 +170,10 @@ def mainloop():
                         writing[fd] = co, d[n:]
 
                 elif connecting.has_key(fd):
-                    co = connecting[fd]
+                    co, sock = connecting[fd]
                     del connecting[fd]
 
-                    err = fd.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+                    err = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
                     call(co, err)
 
     finally:
@@ -178,6 +199,7 @@ reset()
 
 def run():
     try:
+        coroutine.init()
         main_co()
     except coroutine.CoroutineReturned:
         pass
@@ -185,11 +207,17 @@ def run():
         exc_info = e.args[0].exc_info
         raise exc_info[0], exc_info[1], exc_info[2]
 
+def call_main(*args, **kwargs):
+    rv = apply(main_co, args, kwargs)
+    if isinstance(rv, types.TupleType) and isinstance(rv[0], types.ClassType) and issubclass(rv[0], Exception):
+        raise rv[0]
+    return rv
+
 def sleep(n):
-    return main_co(do_sleep, (n,))
+    return call_main(do_sleep, (n,))
 
 def open(path):
-    return main_co(do_open, (path,))
+    return call_main(do_open, (path,))
 
 def getfd(file):
     if isinstance(file, types.IntType):
@@ -198,24 +226,33 @@ def getfd(file):
         return file.fileno()
 
 def read(fd, n):
-    return main_co(do_read, (getfd(fd), n))
+    return call_main(do_read, (getfd(fd), n))
 
 def write(fd, d):
-    main_co(do_write, (getfd(fd), d))
+    call_main(do_write, (getfd(fd), d))
 
 def accept(fd):
-    return main_co(do_accept, (fd,))
+    return call_main(do_accept, (getfd(fd), fd))
 
 def connect(fd, addr):
-    err = main_co(do_connect, (fd, addr))
+    err = call_main(do_connect, (getfd(fd), fd, addr))
     if err:
         raise socket.error, (err, os.strerror(err))
 
+def bind(fd, addr):
+    return fd.bind(addr)
+
+def listen(fd, backlog):
+    return fd.listen(backlog)
+
 def close(fd):
-    return os.close(getfd(fd))
+    if isinstance(fd, types.IntType):
+        return os.close(fd)
+    else:
+        return fd.close()
 
 def shutdown(r):
-    main_co(do_shutdown, (r,))
+    call_main(do_shutdown, (r,))
 
 def prepareFile(file):
     fcntl.fcntl(getfd(file), fcntl.F_SETFL, os.O_NONBLOCK)
@@ -223,23 +260,38 @@ def prepareFile(file):
 
 def addCoroutine(coroutine, args):
     if running:
-        main_co(do_add, (coroutine, args))
+        call_main(do_add, (coroutine, args))
     else:
         coroutines.append((coroutine, args))
 
-def connectTCP(factory, address, *args, **kwargs):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    reactor.prepareFile(sock)
-    reactor.connect(sock, address)
-    transport = createTransport(sock, address)
-    return apply(factory, (reactor, transport) + args, kwargs)
+def connectSocket(factory, address, from_addr, klass):
+    try:
+        client = klass(reactor, address, from_addr)
+        transport = client.connect()
+        coroutine = self.factory.buildCoroutine(transport)
+        self.reactor.addCoroutine(self.coroutine, (None,))
+    except socket.error:
+        self.reactor.addCoroutine(self.coroutine, (sys.exc_info(),))
 
+def connectTCP(address):
+    return connectSocket(factory, address, None, shocket.TCPClient)
+
+def connectUNIX(factory, address):
+    return connectSocket(factory, address, None, shocket.UNIXClient)
+    
 def listenTCP(factory, address):
-    port = tcp.TCPPort(reactor, factory, address)
+    port = shocket.TCPPort(reactor, factory, address)
     port.listen()
+    return port
+
+def listenUNIX(factory, address):
+    port = shocket.UNIXPort(reactor, factory, address)
+    port.listen()
+    return port
 
 def createTransport(fd, addr):
     return transport.ReactorTransport(reactor, fd, addr)
 
-__all__ = ['run', 'reset', 'read', 'write', 'accept',
-           'prepareFile', 'addCoroutine', 'listenTCP', 'connectTCP']
+__all__ = ['run', 'reset', 'read', 'write', 'accept', 'connect', 'bind', 'listen', 'close',
+           'prepareFile', 'addCoroutine', 'listenTCP', 'connectTCP', 'createTransport',
+           'listenUNIX', 'connectUNIX']

@@ -1,9 +1,11 @@
 # vim:nowrap:textwidth=0
 
-import os, stat, errno, mimetypes, sys, traceback
+import os, stat, errno, mimetypes, sys, traceback, pickle
 
 from sheared.protocol import basic
 from sheared.protocol import http
+from sheared.internet import shocket
+from sheared.python import fdpass
 
 class HTTPReply:
     def __init__(self, version, transport):
@@ -45,7 +47,7 @@ class HTTPReply:
         self.setStatusCode(status)
         self.headers.setHeader('Content-Type', 'text/plain')
         self.sendHead()
-        self.send("""I am terribly sorry, but an error occured while processing your request.""")
+        self.send("""I am terribly sorry, but an error occured while processing your request.\n""")
         self.done()
 
     def done(self):
@@ -53,8 +55,8 @@ class HTTPReply:
             self.transport.close()
 
 class HTTPServerFactory(basic.ProtocolFactory):
-    def __init__(self, reactor):
-        basic.ProtocolFactory.__init__(self, reactor, HTTPServer)
+    def __init__(self, reactor, server):
+        basic.ProtocolFactory.__init__(self, reactor, server)
         
         self.hosts = { }
         self.default_host = None
@@ -72,20 +74,28 @@ class HTTPServer(basic.LineProtocol):
         self.collected = ''
 
     def handle(self, request, reply):
-        if request.uri[0]:
-            reply.sendErrorPage(http.HTTP_FORBIDDEN)
+        try:
+            try:
+                if request.uri[0]:
+                    reply.sendErrorPage(http.HTTP_FORBIDDEN)
 
-        if request.headers.has_key('Host'):
-            vhost = self.factory.hosts.get(request.headers['Host'], None)
-        else:
-            vhost = None
-        if vhost is None and self.factory.default_host:
-            vhost = self.factory.hosts[self.factory.default_host]
+                if request.headers.has_key('Host'):
+                    vhost = self.factory.hosts.get(request.headers['Host'], None)
+                else:
+                    vhost = None
+                if vhost is None and self.factory.default_host:
+                    vhost = self.factory.hosts[self.factory.default_host]
 
-        if vhost:
-            vhost.handle(request, reply, request.uri[2])
-        else:
-            reply.sendErrorPage(http.HTTP_NOT_FOUND)
+                if vhost:
+                    vhost.handle(request, reply, request.uri[2])
+                else:
+                    reply.sendErrorPage(http.HTTP_NOT_FOUND)
+            except:
+                if not self.reply.decapitated and not self.reply.transport.closed:
+                    self.reply.sendErrorPage(http.HTTP_INTERNAL_SERVER_ERROR)
+                raise
+        finally:
+            self.reply.done()
 
     def receivedLine(self, line):
         self.collected = self.collected + line
@@ -101,18 +111,44 @@ class HTTPServer(basic.LineProtocol):
             if line == '\r\n':
                 self.request.headers = http.HTTPHeaders(self.collected)
                 self.reply = HTTPReply(self.request.version, self.transport)
-                try:
-                    try:
-                        self.handle(self.request, self.reply)
-                    except:
-                        if not self.reply.decapitated and not self.reply.transport.closed:
-                            self.reply.sendErrorPage(http.HTTP_INTERNAL_SERVER_ERROR)
-                        raise
-                finally:
-                    self.reply.done()
+                self.handle(self.request, self.reply)
 
     def lastLineReceived(self):
         pass
+
+class HTTPSubServerAdapter:
+    def __init__(self, reactor, path):
+        self.reactor = reactor
+        self.path = path
+
+    def handle(self, request, reply, subpath):
+        client = shocket.UNIXClient(self.reactor, self.path, None)
+        transport = client.connect()
+        fdpass.send(transport.fileno(), reply.transport.fileno(), pickle.dumps(reply.transport.other))
+        pickle.dump((request, subpath), transport)
+        transport.close()
+
+class HTTPSubServer(HTTPServer):
+    def run(self):
+        for i in range(3):
+            try:
+                sock, addr = fdpass.recv(self.transport.fileno())
+                break
+            except:
+                pass
+        addr = pickle.loads(addr)
+
+        data = ''
+        read = None
+        while not read == '':
+            read = self.transport.read()
+            data = data + read
+        self.transport.close()
+
+        self.request, subpath = pickle.loads(data)
+        self.transport = self.reactor.createTransport(sock, addr)
+        self.reply = HTTPReply(self.request.version, self.transport)
+        self.handle(self.request, self.reply)
 
 class VirtualHost:
     def __init__(self):

@@ -33,7 +33,7 @@ def parseReply(reply):
 
     return status, headers, body
     
-class HTTPServerFactoryTestCase(unittest.TestCase):
+class HTTPServerTestCase(unittest.TestCase):
     def setUp(self):
         self.reactor = reactor
         self.reactor.reset()

@@ -59,6 +59,9 @@ class ReactorTransport:
     def write(self, data):
         self.reactor.write(self.file, data)
 
+    def fileno(self):
+        return self.reactor.getfd(self.file)
+
     def close(self):
         self.reactor.close(self.file)
         self.closed = 1

@@ -14,7 +14,7 @@ class Port:
 
     def listen(self):
         self.socket = socket.socket(self.family, self.type)
-        sock.socket = reactor.prepareFile(self.socket)
+        self.socket = self.reactor.prepareFile(self.socket)
         self.reactor.bind(self.socket, self.address)
         self.reactor.listen(self.socket, self.backlog)
         self.coroutine = coroutine.Coroutine(self._run)
@@ -37,8 +37,7 @@ class UNIXPort(Port):
 
     
 class Client:
-    def __init__(self, reactor, factory, addr, from_addr, family, type):
-        self.factory = factory
+    def __init__(self, reactor, addr, from_addr, family, type):
         self.from_address = from_addr
         self.to_address = addr
         self.family = family
@@ -50,19 +49,15 @@ class Client:
         self.socket = self.reactor.prepareFile(self.socket)
         if not self.from_address is None:
             self.socket.bind(self.from_address)
+        self.reactor.connect(self.socket, self.to_address)
         transport = self.reactor.createTransport(self.socket, self.to_address)
-        coroutine = self.factory.buildCoroutine(transport)
-        try:
-            self.reactor.connect(self.socket, self.to_address)
-            self.reactor.addCoroutine(self.coroutine, (None,))
-        except:
-            self.reactor.addCoroutine(self.coroutine, (sys.exc_info(),))
+        return transport
 
 class TCPClient(Client):
-    def __init__(self, reactor, factory, address, from_addr):
-        Client.__init__(self, reactor, factory, address, from_addr, socket.AF_INET, socket.SOCK_STREAM)
+    def __init__(self, reactor, address, from_addr):
+        Client.__init__(self, reactor, address, from_addr, socket.AF_INET, socket.SOCK_STREAM)
 
 class UNIXClient(Client):
-    def __init__(self, reactor, factory, address, backlog):
-        Client.__init__(self, reactor, factory, address, from_addr, socket.AF_UNIX, socket.SOCK_STREAM)
+    def __init__(self, reactor, address, from_addr):
+        Client.__init__(self, reactor, address, from_addr, socket.AF_UNIX, socket.SOCK_STREAM)
          
