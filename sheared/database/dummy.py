@@ -3,6 +3,12 @@
 import re
 from sheared.database import error
 
+class DummyRowDescription:
+    def __init__(self, name, type, len):
+        self.name = name
+        self.type = type
+        self.len = len
+
 class DummyCursor:
     def __init__(self, description, rows):
         self.description = description
@@ -20,10 +26,9 @@ class DummyCursor:
     def fetchall(self):
         if self.cursor is None:
             raise error.ProgrammingError, 'cursor has been released'
-        if self.cursor == len(self.rows):
-            raise error.CursorEmpty, 'no more rows in cursor'
-        c, self.cursor = self.cursor, len(self.rows)
-        return self.rows[c:]
+        rows = self.rows[self.cursor:]
+        self.cursor = len(self.rows)
+        return rows
 
     def release(self):
         if self.cursor is None:
