@@ -81,23 +81,23 @@ def normal_handler(request, reply, collection, walker):
     reply.done()
 
 def index_handler(request, reply, collection, walker):
-    reply.header.setHeader('Content-Type', 'text/html')
-    reply.transport.write('<html>\r\n'
+    reply.headers.setHeader('Content-Type', 'text/html')
+    reply.send('<html>\r\n'
                 '<head><title>Some directory index</title></head>\r\n'
                 '<body>\r\n')
     for file in os.listdir(walker.root):
-        reply.transport.write('<a href="%s">%s</a><br />\r\n' % (
+        reply.send('<a href="%s">%s</a><br />\r\n' % (
             file.replace('"', '\\"'),
             abml.abmlify(file),
         ))
-    reply.transport.write('</body></html>\r\n')
-    reply.transport.close()
+    reply.send('</body></html>\r\n')
+    reply.done()
 
 def forbidden_handler(request, reply, collection, walker):
     raise error.web.ForbiddenError
 
 class FilesystemCollection(resource.NormalResource):
-    def __init__(self, root):
+    def __init__(self, root, allow_indexing=0):
         resource.NormalResource.__init__(self)
 
         self.walker = FilesystemWalker(self, root, '')
@@ -109,6 +109,9 @@ class FilesystemCollection(resource.NormalResource):
         self.normal_handler = normal_handler
         self.index_handler = forbidden_handler
         self.exec_handler = forbidden_handler
+        
+        if allow_indexing:
+            self.index_handler = index_handler
 
     def authenticate(self, request, reply):
         return self.walker.authenticate(request, reply)
