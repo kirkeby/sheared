@@ -75,7 +75,7 @@ def parse_attribute(str):
         # Yes, we do the lexers work here and it is ugly, but it is easy
         # and it works.
         if len(value) > 0 and value[0] in "\'\"":
-            assert value[-1] == value[0], 'Lexer handed me crap for attribute'
+            assert value[-1] == value[0], ('Lexer handed me crap for attribute', value)
             value = value[1:-1]
     except ValueError:
         name, value = str, None

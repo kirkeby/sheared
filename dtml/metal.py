@@ -86,8 +86,7 @@ def compile(text, compile_expression):
                 context[-1].append(('structure', element.raw))
 
     assert len(context) == 1, 'internal compiler error: %r' % context
-    for thing in context[0]:
-        yield thing
+    return context[0]
 
 def execute(program, context, builtins, eval):
     result = ''
