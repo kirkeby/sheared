@@ -53,9 +53,9 @@ class HTTPReply:
         if not self.transport.closed:
             self.transport.close()
 
-class HTTPServer(basic.ProtocolFactory):
+class HTTPServerFactory(basic.ProtocolFactory):
     def __init__(self, reactor):
-        basic.ProtocolFactory.__init__(self, reactor, HTTPSubServer)
+        basic.ProtocolFactory.__init__(self, reactor, HTTPServer)
         
         self.hosts = { }
         self.default_host = None
@@ -66,7 +66,7 @@ class HTTPServer(basic.ProtocolFactory):
     def setDefaultHost(self, name):
         self.default_host = name
 
-class HTTPSubServer(basic.LineProtocol):
+class HTTPServer(basic.LineProtocol):
     def __init__(self, reactor, transport):
         basic.LineProtocol.__init__(self, reactor, transport, '\n')
         self.where = 'request-line'
@@ -177,4 +177,4 @@ class StaticCollection:
             else:
                 reply.sendErrorPage(http.HTTP_FORBIDDEN)
 
-__all__ = ['HTTPServer', 'VirtualHost', 'StaticCollection']
+__all__ = ['HTTPServerFactory', 'VirtualHost', 'StaticCollection']

@@ -132,12 +132,12 @@ def parseReply(reply):
 
     return status, headers, body
     
-class HTTPServerTestCase(unittest.TestCase):
+class HTTPServerFactoryTestCase(unittest.TestCase):
     def setUp(self):
         self.reactor = reactor
         self.reactor.reset()
         
-        self.server = http.HTTPServer(self.reactor)
+        self.server = http.HTTPServerFactory(self.reactor)
         self.server.addVirtualHost('foo.com', SimpleCollection('foo.com'))
         self.server.addVirtualHost('bar.com', SimpleCollection('bar.com'))
         self.server.setDefaultHost('bar.com')
@@ -196,7 +196,7 @@ class StaticCollectionTestCase(unittest.TestCase):
         self.reactor = reactor
         self.reactor.reset()
         
-        self.server = http.HTTPServer(self.reactor)
+        self.server = http.HTTPServerFactory(self.reactor)
         self.server.addVirtualHost('foo.com', http.StaticCollection(self.reactor, './tests/http-docroot'))
 
         self.transport = transport.StringTransport()
@@ -236,7 +236,7 @@ suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(HTTPDateTimeTestCase, 'test')])
 suite.addTests([unittest.makeSuite(HTTPHeadersTestCase, 'test')])
 suite.addTests([unittest.makeSuite(HTTPRequestLineTestCase, 'test')])
-suite.addTests([unittest.makeSuite(HTTPServerTestCase, 'test')])
+suite.addTests([unittest.makeSuite(HTTPServerFactoryTestCase, 'test')])
 suite.addTests([unittest.makeSuite(StaticCollectionTestCase, 'test')])
 
 __all__ = ['suite']
