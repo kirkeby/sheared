@@ -23,12 +23,15 @@ import sys
 import time
 import traceback
 import types
+import encodings
 
-dangerous_in_logs = range(0, 33) + range(128, 156)
+ascii_encode = encodings.search_function('ascii')[0]
+dangerous_in_logs = range(0, 33)
 dangerous_in_logs.remove(ord('\n'))
 dangerous_in_logs.remove(ord('\t'))
 dangerous_in_logs.remove(ord(' '))
 def escape_dangerous(s):
+    s = ascii_encode(s, 'replace')[0]
     s = s.replace('\\', '\\\\')
     for c in dangerous_in_logs:
         s = s.replace(chr(c), '\\x%02x' % c)
