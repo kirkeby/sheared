@@ -278,23 +278,46 @@ class HTTPSubServer(HTTPServer):
         reply = HTTPReply(request.version, transport)
         self.handle(request, reply)
 
-class VirtualHost:
-    def __init__(self):
-        self.bindings = []
-
-    def handle(self, request, reply, path):
-        for root, thing in self.bindings:
-            if path == root or path.startswith(root + '/'):
-                sub = path[ len(root) - 1 : ]
-                thing.handle(request, reply, sub)
-                break
+def walkPath(root, path):
+    roots = [root]
+    subpath = ''
+    for piece in path.split('/'):
+        if piece == '..':
+            if len(path) > 1:
+                roots.pop()
+        elif piece == '.' or piece == '':
+            pass
         else:
-            reply.sendErrorPage(http.HTTP_NOT_FOUND, '%s: No such resource.' % path)
-
-    def bind(self, root, thing):
-        self.bindings.append((root, thing))
+            if getattr(roots[-1], 'isWalkable', 0):
+                roots.append(roots[-1].getChild(piece))
+            else:
+                subpath = subpath + '/' + piece
+    return roots[-1], subpath
 
 class StaticCollection:
+    isWalkable = 1
+
+    def __init__(self):
+        self.bindings = {}
+
+    def getChild(self, path):
+        if not path:
+            path = 'index'
+        if not self.bindings.has_key(path):
+            raise error.web.NotFoundError('Resource not found.')
+        return self.bindings[path]
+
+    def bind(self, root, thing):
+        self.bindings[root] = thing
+
+class VirtualHost(StaticCollection):
+    def handle(self, request, reply, path):
+        child, subpath = walkPath(self, path)
+        if child is self:
+            child = self.getChild('')
+        child.handle(request, reply, subpath)
+
+class FilesystemCollection:
     def __init__(self, root):
         self.root = root
 
