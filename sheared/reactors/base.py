@@ -130,6 +130,15 @@ class Reactor:
     def connectUNIX(self, addr):
         raise NotImplementedError
 
+    def listen(self, factory, where):
+        domain, address = where.split(':', 1)
+        if domain == 'tcp':
+            ip, port = address.split(':')
+            return self.listenTCP(factory, (ip, int(port)))
+
+        elif domain == 'unix':
+            return self.listenUNIX(factory, address)
+    
     def listenTCP(self, factory, addr, backlog=5):
         raise NotImplementedError
 
