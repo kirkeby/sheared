@@ -90,14 +90,17 @@ class Reactor(base.Reactor):
                     raise
                 except socket.error, (eno, estr):
                     if not eno in (errno.EINTR, errno.EAGAIN):
-                        del self.waiting[fd]
+                        if self.waiting.has_key(fd):
+                            del self.waiting[fd]
                         self._safe_send(channel, sys.exc_info()[1])
                 except OSError, e:
                     if not e.errno in (errno.EINTR, errno.EAGAIN):
-                        del self.waiting[fd]
+                        if self.waiting.has_key(fd):
+                            del self.waiting[fd]
                         self._safe_send(channel, sys.exc_info()[1])
                 except:
-                    del self.waiting[fd]
+                    if self.waiting.has_key(fd):
+                        del self.waiting[fd]
                     self._safe_send(channel, sys.exc_info()[1])
 
     def _buildselectable(self):
@@ -127,7 +130,8 @@ class Reactor(base.Reactor):
             handler, file, channel, argv = self.waiting[fd]
             warnings.warn('fd %d unselectable for %r/%r' % (fd, handler, argv),
                           stacklevel=2)
-            del self.waiting[fd]
+            if self.waiting.has_key(fd):
+                del self.waiting[fd]
             self._safe_send(channel, why)
 
     def _wait(self, file, op, argv):
