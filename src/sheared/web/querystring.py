@@ -58,9 +58,14 @@ def parse_querystring(qs):
         name, value = thing
         
         if len(name) == 0:
-            raise QueryStringError, 'zero-length name not allowed'
+            if len(value) > 0:
+                raise QueryStringError, \
+                      'invalid name %r in query-string' % ''
+            else:
+                continue
         if re.findall('[^a-zA-Z0-9-_]', name):
-            raise QueryStringError, 'invalid name in query-string'
+            raise QueryStringError, \
+                  'invalid name in query-string' % name
 
         if not args.has_key(name):
             args[name] = []
