@@ -41,7 +41,7 @@ class Entwiner(resource.NormalResource):
         'text/html',
         'text/xml',
     ]
-    encoder = encodings.search_function('utf8')[0]
+    charset = 'utf8'
     
     def __init__(self):
         resource.NormalResource.__init__(self)
@@ -52,6 +52,7 @@ class Entwiner(resource.NormalResource):
 
         # Accept support
         ct = accept.chooseContentType(request, self.content_types)
+        ct = ct + '; charset=%s' % self.charset
         reply.headers.setHeader('Content-Type', ct)
         reply.headers.addHeader('Vary', 'Accept')
     
@@ -92,4 +93,5 @@ class Entwiner(resource.NormalResource):
         if result.strip():
             if not self.result is None:
                 warnings.warn('%s: multiple results' % path)
-            self.result = self.encoder(result)[0]
+            encoder = encodings.search_function(self.charset)[0]
+            self.result = encoder(result)[0]
