@@ -267,6 +267,12 @@ def parse(text):
     if stack:
         raise ParseError, 'open tags after end-of-document'
 
+def format_name(name):
+    if name[0]:
+        return '%s:%s' % name
+    else:
+        return name[1]
+
 if __name__ == '__main__':
     xml = '''<!doctype foo><?xml fisk?><baz><tag name="value \\"\\'\\\\" />text</baz>'''
     for event in parse(xml):
