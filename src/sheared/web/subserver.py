@@ -16,13 +16,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-import pickle, types
+import os, pickle, types
 
 from sheared import error
 from sheared import reactor
 from sheared.web import server
 from sheared.python import fdpass
 from sheared.python import io
+
+from sheared.python import log
 
 class HTTPSubServerCollection:
     def __init__(self, path):
@@ -42,25 +44,18 @@ class HTTPSubServerCollection:
 
 class HTTPSubServer(server.HTTPServer):
     def startup(self, server_transport):
-        server_transport.read(0)
-        sock, addr = fdpass.recv(server_transport.fileno())
-
         try:
+            server_transport.read(0)
+            sock, addr = fdpass.recv(server_transport.fileno())
+
             addr = pickle.loads(addr)
             client_transport = reactor.fdopen(sock, addr)
-        
-        except:
-            import os
-            os.close(sock)
-            raise
 
-        try:
             data = io.readall(server_transport)
-            server_transport.close()
-
             request, reply, subpath = pickle.loads(data)
+            server_transport.close()
             
-            # There must be a better way to do this
+            # FIXME -- There must be a better way to do this
             request.requestline.uri = list(request.requestline.uri)
             request.requestline.uri[0] = ''
             request.requestline.uri[1] = ''
@@ -71,7 +66,7 @@ class HTTPSubServer(server.HTTPServer):
 
             self.handle(request, reply)
 
-        finally:
-            client_transport.close()
+        except:
+            self.logInternalError(sys.exc_info())
 
 __all__ = ['HTTPSubServerAdapter', 'HTTPSubServer']
