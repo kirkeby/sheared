@@ -72,6 +72,7 @@ def defaultErrorHandler(server, exc_info, request, reply):
         send_http_error_page(reply, exc_info[1].args[0])
     else:
         send_http_error_page(reply, None)
+        log.default.exception(exc_info)
 
 def send_http_error_page(reply, message):
     if not message:
