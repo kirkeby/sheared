@@ -35,8 +35,12 @@ class HTTPServer:
         self.oh_nine = oh_nine.Server()
         self.one_oh = one_oh.Server()
 
+        # FIXME -- use requestCallbacks and refactor logger into a class
+        # of it's own.
         self.accesslog = None
         self.errorlog = None
+
+        self.requestCallbacks = [self.logCompletedRequest]
 
     def addVirtualHost(self, name, vhost):
         self.hosts[name] = vhost
@@ -129,7 +133,11 @@ class HTTPServer:
                 reply.headers.setHeader('Content-Type', 'text/plain')
                 self.handleWebServerError(e, request, reply)
 
-        self.logCompletedRequest(request, reply)
+        for cb in self.requestCallbacks:
+            try:
+                cb(request, reply)
+            except:
+                log.default.exception(sys.exc_info())
      
     def handleWebServerError(self, e, request, reply):
         if isinstance(e, error.web.Moved):
