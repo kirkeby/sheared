@@ -28,12 +28,17 @@ from sheared.web.collections.filesystem import *
 
 def entwined_handler(request, reply, collection, walker):
     if walker.root.endswith(collection.template_ext):
+        templates = [walker.root]
+        templates.extend(collection.page_templates)
+    
         ctx = {}
-        r = entwine(io.readfile(walker.root), ctx)
-        if r.strip():
-            warnings.warn('ignored generated content from %s' % walker.root,
-                          UserWarning, stacklevel=2)
-        r = entwine(io.readfile(collection.page_template), ctx)
+
+        for i in range(len(templates)):
+            last = i == len(templates) - 1
+            r = entwine(io.readfile(templates[i]), ctx)
+            if (not last) and r.strip():
+                warnings.warn('ignored generated content from %s' % template,
+                              UserWarning, stacklevel=2)
         
         reply.headers.setHeader('Content-Type', 'text/html')
         reply.headers.setHeader('Content-Length', len(r))
@@ -43,8 +48,8 @@ def entwined_handler(request, reply, collection, walker):
         return normal_handler(request, reply, collection, walker)
 
 class EntwinedCollection(FilesystemCollection):
-    def __init__(self, pt, *a):
+    def __init__(self, page_templates, *a):
         FilesystemCollection.__init__(self, *a)
-        self.page_template = pt
+        self.page_templates = page_templates
         self.normal_handler = entwined_handler
         self.template_ext = '.html'
