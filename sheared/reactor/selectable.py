@@ -2,6 +2,7 @@
 import select, socket, sys, types, fcntl, os, traceback, errno
 
 from sheared.python import coroutine
+from sheared.python import daemonize
 from sheared.internet import shocket
 from sheared.reactor import transport
 
@@ -159,11 +160,6 @@ def mainloop():
                     if writing.has_key(fd):
                         co, d, n = writing[fd]
                         try:
-                            #i = os.write(fd, d[n:])
-                            #writing[fd] = co, d[i:], n + i
-                            #if len(writing[fd][1]) == 0:
-                            #    del writing[fd]
-                            #    call(co, n + i)
                             n = n + os.write(fd, d[n:])
                             if n == len(d):
                                 del writing[fd]
@@ -196,25 +192,7 @@ def mainloop():
             apply(traceback.print_exception, sys.exc_info())
 
     finally:
-        files = {}
-        files.update(accepting)
-        files.update(connecting)
-        files.update(reading)
-        files.update(writing)
-
-        for fd in files.keys():
-            if accepting.has_key(fd) or connecting.has_key(fd):
-                _, sock = files[fd]
-                try:
-                    sock.close()
-                except:
-                    pass
-            else:
-                try:
-                    os.close(fd)
-                except:
-                    pass
-
+        daemonize.closeall()
         reactor.running = 0
 
 reactor.running = 0
