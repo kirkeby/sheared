@@ -74,8 +74,6 @@ class VirtualHost:
 
         loc = reply.headers.get('Location')
         if loc.find('://') < 0:
-            if not self.location:
-                raise error.web.InternalServerError
             if not loc.startswith('/'):
                 loc = request.path + '/' + loc
             loc = 'http://' + request.headers['Host'] + loc
