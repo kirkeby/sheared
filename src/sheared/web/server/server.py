@@ -28,27 +28,27 @@ from sheared.web import cookie
 
 import oh_nine, one_oh
 
-def movedHandler(server, exception, request, reply):
+def movedHandler(server, exc_info, request, reply):
     reply.send("This page has moved. You can now find it here:\r\n"
                "  %s\r\n" % reply.headers.get('Location'))
 
-def unauthorizedErrorHandler(server, exception, request, reply):
+def unauthorizedErrorHandler(server, exc_info, request, reply):
     reply.send("I need to see some credentials.\r\n")
 
-def forbiddenErrorHandler(server, exception, request, reply):
+def forbiddenErrorHandler(server, exc_info, request, reply):
     reply.send("Forbidden.\r\n")
 
-def notFoundErrorHandler(server, exception, request, reply):
+def notFoundErrorHandler(server, exc_info, request, reply):
     reply.send("Not found.\r\n")
 
-def internalServerErrorHandler(server, exception, request, reply):
+def internalServerErrorHandler(server, exc_info, request, reply):
     reply.send('Internal Server Error.\r\n')
-    server.logInternalError(exception[1].args)
+    server.logInternalError(exc_info[1].args)
 
-def defaultErrorHandler(server, exception, request, reply):
+def defaultErrorHandler(server, exc_info, request, reply):
     reply.send("I am terribly sorry, but an error (%d) occured "
-               "while processing your request.\r\n" % exception[1].statusCode)
-    server.logInternalError(exception)
+               "while processing your request.\r\n" % exc_info[1].statusCode)
+    server.logInternalError(exc_info)
 
 class HTTPServer:
     def __init__(self):
@@ -175,10 +175,10 @@ class HTTPServer:
             except:
                 self.logInternalError(sys.exc_info())
      
-    def handleWebServerError(self, exception, request, reply):
+    def handleWebServerError(self, exc_info, request, reply):
         handler = None
         for kls, hnd in self.errorHandlers:
-            if isinstance(exception[1], kls):
+            if isinstance(exc_info[1], kls):
                 if handler:
                     if issubclass(kls, handler[0]):
                         handler = kls, hnd
@@ -188,12 +188,12 @@ class HTTPServer:
         if not handler:
             raise error.web.InternalServerError
 
-        handler[1](self, exception, request, reply)
+        handler[1](self, exc_info, request, reply)
 
-    def logInternalError(self, ex):
+    def logInternalError(self, exc_info):
         if self.errorlog:
-            self.errorlog.exception(ex)
+            self.errorlog.exception(exc_info)
         else:
-            log.default.exception(ex)
+            log.default.exception(exc_info)
 
 __all__ = ['HTTPServer']
