@@ -1,6 +1,12 @@
 from StringIO import StringIO
 from skewed.wsgi import BaseWSGIServer
 
+import logging
+log = logging.getLogger()
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter())
+log.addHandler(handler)
+
 class FakeTransport:
     def __init__(self, input):
         self.here = 'localhost', 80
@@ -12,20 +18,49 @@ class FakeTransport:
         self.readlines = self.input.readlines
         self.write = self.output.write
         self.writelines = self.output.writelines
+        self.close = lambda: None
+        self.shutdown = lambda i: None
 
 class WSGIServer(BaseWSGIServer):
-    def __application(self, env, start_response):
-        start_response('200 Ok', [('Content-Type', 'text/plain')])
-        return ['Hello, World!\r\n']
+    def __init__(self, app):
+        BaseWSGIServer.__init__(self)
+        self.__application = app
     def find_application(self, host, path_info):
         return self.__application, '', path_info
-    
-def test_get():
-    transport = FakeTransport('GET / HTTP/1.0\r\n\r\n')
-    server = WSGIServer()
+
+def __get(app, headers=[]):
+    req = 'GET / HTTP/1.0\r\n'
+    for header in headers:
+        req = req + header + '\r\n'
+    req = req + '\r\n'
+
+    transport = FakeTransport(req)
+    server = WSGIServer(app)
     server(transport)
+    return transport.output.getvalue()
+
+def test_get():
+    def app(env, start_response):
+        start_response('200 Ok', [])
+        return ['Hello, World!\r\n']
     
-    assert transport.output.getvalue() == '200 Ok\r\n' \
-                                          'Content-Type: text/plain\r\n' \
-                                          '\r\n' \
-                                          'Hello, World!\r\n'
+    assert __get(app) == '200 Ok\r\n\r\n' 'Hello, World!\r\n'
+
+def test_exception():
+    def app(env, start_response):
+        raise AssertionError, 'this always fails'
+
+    try:
+        log.setLevel(100)
+        assert __get(app).startswith('500 Internal Server Error\r\n')
+    finally:
+        log.setLevel(0)
+        
+
+def test_http_env():
+    def app(env, start_response):
+        start_response('200 Ok', [])
+        return ['HTTP_QUX: ' + env.get('HTTP_QUX', '')]
+
+    assert __get(app, ['Qux: FuBar']) == '200 Ok\r\n\r\n' 'HTTP_QUX: FuBar'
+
