@@ -25,7 +25,7 @@ def split_durations(duration, durations):
 
     return tuple(result)
 
-def strftime_since(when, now=None):
+def strftime_since(when, now=None, fields=None):
     """\
     strftime_since(when[, now]) -> string
 
@@ -33,20 +33,25 @@ def strftime_since(when, now=None):
     (e.g. "1 month, 2 hours")."""
 
     years, months, days, hours, minutes, _ = time_since(when, now)
-    if months:
-        weeks = 0
-    else:
+    fragments = [(years, 'year'), (months, 'month'), (days, 'day'),
+                 (hours, 'hour'), (minutes, 'minute'),]
+    if not months:
         weeks, days = split_durations(days, (7,))
+        fragments[1] = weeks, 'week'
+        fragments[2] = days, 'day'
 
-    fragments = [(years, 'year'), (months, 'month'), (weeks, 'week'),
-                 (days, 'day'), (hours, 'hour'), (minutes, 'minute'),]
-
+    fields_seen = 0
     stringses = [] # preeecious stringses
     for i, w in fragments:
         if i > 1:
             stringses.append('%d %ss' % (i, w))
         elif i > 0:
             stringses.append('%d %s' % (i, w))
+        
+        if stringses:
+            fields_seen = fields_seen + 1
+        if (not fields is None) and (fields_seen == fields):
+            break
 
     if stringses:
         return ', '.join(stringses)

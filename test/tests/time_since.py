@@ -78,6 +78,13 @@ class StringFormatTimeSinceTestCase(unittest.TestCase):
         self.assertEquals(strftime_since(0, 40 * 24 * 60 * 60),
                           "1 month, 10 days")
 
+        self.assertEquals(strftime_since(0, 30 * 24 * 60 * 60, fields=2),
+                          "1 month")
+        self.assertEquals(strftime_since(0, 30 * 24 * 60 * 60 + 180, fields=2),
+                          "1 month")
+        self.assertEquals(strftime_since(0, 40 * 24 * 60 * 60, fields=2),
+                          "1 month, 10 days")
+
 suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(TimeSinceTestCase, 'test')])
 suite.addTests([unittest.makeSuite(StringFormatTimeSinceTestCase, 'test')])
