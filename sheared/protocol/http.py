@@ -156,7 +156,7 @@ def parseHeaderLines(s):
 
 def parseHeaderLine(s):
     try:
-        name, value = s.split(':')
+        name, value = s.split(':', 1)
         if not name:
             raise ValueError
         name = name.strip()
