@@ -22,11 +22,13 @@ import os, sys, errno, atexit, signal
 
 from sheared import reactor
 
-def normally(pidfile=1, logfile=1):
+def normally(name=None, pidfile=1, logfile=1):
+    if name is None:
+        name = sys.argv[0]
     if pidfile == 1:
-        pidfile = sys.argv[0] + '.pid'
+        pidfile = name + '.pid'
     if logfile == 1:
-        logfile = sys.argv[0] + '.log'
+        logfile = name + '.log'
     
     background(chdir=0)
     handle_signals()
@@ -89,8 +91,8 @@ def closeall(min=0):
 def openstdlog(path):
     closerange(range(0, 3))
 
-    sys.stdin = open('/dev/zero', 'r')
-    sys.stdout = sys.stderr = open(path, 'a')
+    sys.stdin = open('/dev/zero', 'r', 0)
+    sys.stdout = sys.stderr = open(path, 'a', 0)
 
     assert sys.stdin.fileno() == 0
     assert sys.stdout.fileno() == 1
@@ -99,13 +101,13 @@ def openstdlog(path):
 def openstdio(stdin='/dev/zero', stdout='/dev/null', stderr='/dev/null'):
     closerange(range(0, 3))
 
-    sys.stdin = open(stdin, 'r')
-    sys.stdout = open(stdout, 'w')
+    sys.stdin = open(stdin, 'r', 0)
+    sys.stdout = open(stdout, 'w', 0)
     if stderr == stdout:
         sys.stderr = sys.stdout
         os.dup2(1, 2)
     else:
-        sys.stderr = open(stderr, 'w')
+        sys.stderr = open(stderr, 'w', 0)
 
     assert sys.stdin.fileno() == 0
     assert sys.stdout.fileno() == 1
