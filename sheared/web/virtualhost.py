@@ -46,6 +46,9 @@ class VirtualHost:
         return child, '/'.join(pieces)
 
     def handle(self, request, reply):
+        if request.requestline.uri[0] or request.requestline.uri[1]:
+            raise error.web.ForbiddenError
+
         path = request.requestline.uri[2]
         child, subpath = self.walkPath(request, reply, path)
 

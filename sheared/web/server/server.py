@@ -100,9 +100,6 @@ class HTTPServer:
 
     def handle(self, request, reply):
         try:
-            if request.requestline.uri[0] or request.requestline.uri[1]:
-                raise error.web.ForbiddenError
-
             if request.headers.has_key('Host'):
                 vhost = self.hosts.get(request.headers['Host'], None)
             else:
