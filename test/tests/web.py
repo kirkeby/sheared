@@ -92,6 +92,9 @@ class SimpleCollection(Collection):
         elif subpath == 'moved':
             reply.headers.setHeader('Location', '/')
             raise error.web.MovedPermanently
+        elif subpath == 'abuse-me':
+            reply.headers.setHeader('Foo', 'fubar')
+            raise error.web.ForbiddenError, 'Sod off, cretin!'
         else:
             raise error.web.NotFoundError
 

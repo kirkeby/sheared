@@ -38,12 +38,22 @@ def internalServerErrorHandler(server, exc_info, request, reply):
     server.logInternalError(exc_info[1].args)
 
 def defaultErrorHandler(server, exc_info, request, reply):
-    reply.headers.setHeader('Content-Type', 'text/plain')
-    if http.http_reason.has_key(reply.status):
-        reply.send(http.http_reason[reply.status] + '\r\n')
+    if len(exc_info[1].args) == 1 and isinstance(exc_info[1].args[0], types.StringTypes):
+        message = exc_info[1].args[0]
+    elif http.http_reason.has_key(reply.status):
+        message = http.http_reason[reply.status]
     else:
-        reply.send("I am terribly sorry, but an error (%d) occured "
-                   "while processing your request.\r\n" % reply.status)
+        message = "I am terribly sorry, but an error (%d) occured " \
+                  "while processing your request." % reply.status
+
+    for name in reply.headers.keys():
+        if not name == 'Date':
+            reply.headers.delHeader(name)
+
+    reply.headers.setHeader('Content-Type', 'text/plain')
+    reply.headers.setHeader('Content-Length', str(len(message) + 2))
+    reply.send(message + '\r\n')
+    reply.done()
 
 class HTTPServer:
     def __init__(self):

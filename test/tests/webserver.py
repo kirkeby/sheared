@@ -154,6 +154,18 @@ class HTTPServerTestCase(unittest.TestCase):
         self.assertEquals(headers['Content-Type'], 'text/plain')
         self.assertEquals(headers['Foo'], 'fubar')
 
+    def testErrorMessage(self):
+        self.transport.appendInput('''GET /abuse-me HTTP/1.0\r\n\r\n''')
+        self.reactor.start()
+
+        status, headers, body = parseReply(self.transport.getOutput())
+        
+        self.assertEquals(status.code, 403)
+        self.assertEquals(body, 'Sod off, cretin!\r\n')
+        self.assertEquals(headers['Content-Type'], 'text/plain')
+        self.assertEquals(headers['Content-Length'], str(len(body)))
+        self.assertEquals(headers.keys(), ['Date', 'Content-Type', 'Content-Length'])
+
 class HTTPSubServerTestCase(unittest.TestCase):
     def setUp(self):
         try:
