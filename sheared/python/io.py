@@ -29,11 +29,22 @@ class RecordReader:
         self.file = file
         self.newline = newline
 
-    def read(self):
+    def read(self, max=None):
         if self.buffered:
-            data, self.buffered = self.buffered, ''
+            if max is None:
+                data, self.buffered = self.buffered, ''
+            else:
+                if len(self.buffered) >= max:
+                    data = self.buffered[:max]
+                    self.buffered = self.buffered[max:]
+                else:
+                    data, self.buffered = self.buffered, ''
+                    data = data + self.file.read(max - len(data))
         else:
-            data = self.file.read()
+            if max is None:
+                data = self.file.read()
+            else:
+                data = self.file.read(max)
         return data
 
     def readline(self):
