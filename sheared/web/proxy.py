@@ -31,11 +31,8 @@ class DumbProxy:
             version = request.requestline.version[0]
             transport = reactor.connectTCP((self.host, self.port))
             
-            if version == 0:
-                transport.write('GET %s\r\n' % request.requestline.wire_uri)
-
-            elif version == 1:
-                transport.write('GET %s HTTP/1.0\r\n' % request.requestline.wire_uri)
+            transport.write('%s\r\n' % request.requestline.raw)
+            if version == 1:
                 for k, v in request.headers.items():
                     transport.write('%s: %s\r\n' % (k, v))
                 transport.write('\r\n')
