@@ -243,11 +243,11 @@ class HTTPStatusLine:
     def __init__(self, s):
         http, status, self.reason = s.split(' ', 2)
         if not http.startswith('HTTP/'):
-            raise ValueError('"%s" is not a valie HTTP status-line' % s)
+            raise ValueError('%r is not a valid HTTP status-line' % s)
 
         self.version = tuple(map(int, http[5:].split('.')))
         if not len(self.version) == 2:
-            raise ValueError('"%s" is not a valie HTTP status-line' % s)
+            raise ValueError('%r is not a valid HTTP status-line' % s)
         self.code = int(status)
 
 #__all__ = ['HTTPDateTime', 'HTTPHeaders', 'HTTPRequestLine', 'HTTPStatusLine', 'splitHeaderList']
