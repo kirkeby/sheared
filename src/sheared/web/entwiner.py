@@ -83,11 +83,7 @@ class Entwiner(resource.NormalResource):
             path = [root] + path.split('/')
             path = os.sep.join(path)
 
-        try:
-            result = entwine(io.readfile(path), self.context)
-        except:
-            etype, value, tb = sys.exc_info()
-            raise TemplateError, '%s: %s' % (path, traceback.format_exception_only(etype, value))
+        result = entwine(io.readfile(path), self.context, source=path)
         if not throwaway:
             self.result = result
         if result and throwaway:
