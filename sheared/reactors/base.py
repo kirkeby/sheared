@@ -171,10 +171,9 @@ class Reactor:
             flags = os.O_CREAT | os.O_WRONLY
         else:
             raise ValueError, 'unknown flags %r' % flags
-        file = self.fdopen(os.open(path, flags, mode), other=path)
-        return file
+        return self.fdopen(os.open(path, flags, mode), other=path)
 
-    def fdopen(self, file, mode='r', other=None):
+    def fdopen(self, file, other=None):
         raise NotImplementedError
 
     def connect(self, where):
