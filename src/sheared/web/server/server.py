@@ -51,6 +51,7 @@ class HTTPServer:
 
     def startup(self, transport):
         try:
+            client = transport.other
             transport = io.BufferedReader(transport)
 
             rl = transport.readline().rstrip()
@@ -65,10 +66,12 @@ class HTTPServer:
 
             if requestline.version[0] == 0: # HTTP/0.9
                 request, reply = self.oh_nine.parse(transport, requestline)
+                request.other = client
                 self.handle(request, reply)
 
             elif requestline.version[0] == 1: # HTTP/1.x
                 request, reply = self.one_oh.parse(transport, requestline)
+                request.other = client
                 self.handle(request, reply)
 
             else:
@@ -109,9 +112,11 @@ class HTTPServer:
 
             try:
                 vhost = self.hosts[request.headers['Host']]
+                request.hostname = request.headers['Host']
             except KeyError:
                 if self.default_host:
                     vhost = self.hosts[self.default_host]
+                    request.hostname = self.default_host
                 else:
                     raise error.web.NotFoundError, 'unknown host and no default host'
 
