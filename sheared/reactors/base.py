@@ -166,7 +166,7 @@ class Reactor:
 
     def open(self, path, flags='r', mode=0600):
         if flags == 'r':
-            flags = os.O_CREAT | os.O_RDONLY
+            flags = os.O_RDONLY
         elif flags == 'w':
             flags = os.O_CREAT | os.O_WRONLY
         else:
