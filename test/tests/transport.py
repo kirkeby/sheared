@@ -25,6 +25,7 @@ class StringTransport:
         self.input = ''
         self.output = ''
         self.closed = 0
+        self.other = '<some string>'
 
     def read(self, cnt=4096):
         cnt = min(cnt, 1 + int(random.random() * (len(self.input) - 1)))
