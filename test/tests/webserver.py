@@ -138,6 +138,20 @@ class HTTPServerTestCase(unittest.TestCase):
         self.assertEquals(status.code, 304)
         self.assertEquals(body, '')
 
+    def testMassageReplyHeaders(self):
+        def foo(request, reply):
+            reply.headers.setHeader('Foo', 'fubar')
+
+        self.server.massageReplyHeadCallbacks.append(foo)
+        self.transport.appendInput('''GET / HTTP/1.0\r\nHost: foo.com\r\n\r\n''')
+        self.reactor.start()
+
+        status, headers, body = parseReply(self.transport.getOutput())
+        
+        self.assertEquals(status.code, 200)
+        self.assertEquals(body, 'Welcome to foo.com!\r\n')
+        self.assertEquals(headers['Foo'], 'fubar')
+
 class HTTPSubServerTestCase(unittest.TestCase):
     def setUp(self):
         try:

@@ -23,8 +23,11 @@ from sheared.protocol import http
 from sheared.web import cookie
 
 class HTTPReply:
-    def __init__(self, transport, version):
+    def __init__(self, server, request, transport, version):
+        self.server = server
         self.transport = transport
+
+        self.request = request
 
         self.status = 200
         self.version = version
@@ -40,6 +43,7 @@ class HTTPReply:
 
     def __getstate__(self):
         return {
+           'request': self.request,
            'status': self.status, 
            'version': self.version, 
            'headers': self.headers, 
@@ -49,6 +53,7 @@ class HTTPReply:
         }
     def __setstate__(self, state):
         self.__dict__.update(state)
+        self.server = None
         self.transport = None
 
     def setStatusCode(self, status):
@@ -57,6 +62,9 @@ class HTTPReply:
     def sendHead(self):
         assert not self.decapitated
         self.decapitated = 1
+
+        for cb in self.server.massageReplyHeadCallbacks:
+            cb(self.request, self)
 
         self.transport.write('HTTP/%d.%d ' % self.version)
         reason = http.http_reason.get(self.status, 'Unknown Status')

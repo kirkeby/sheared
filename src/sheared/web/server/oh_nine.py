@@ -59,7 +59,7 @@ class HTTPReply:
         self.transport.close()
 
 class Server:
-    def parse(self, transport, requestline):
+    def parse(self, server, transport, requestline):
         headers = http.HTTPHeaders()
         body = ''
 

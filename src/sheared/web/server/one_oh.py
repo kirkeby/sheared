@@ -23,15 +23,15 @@ import request
 import one_x
 
 class HTTPReply(one_x.HTTPReply):
-    def __init__(self, transport):
-        one_x.HTTPReply.__init__(self, transport, (1, 0))
+    def __init__(self, server, request, transport):
+        one_x.HTTPReply.__init__(self, server, request, transport, (1, 0))
 
 class Server(one_x.Server):
-    def parse(self, transport, requestline):
+    def parse(self, server, transport, requestline):
         headers, body = self.readBeast(transport)
 
         req = request.HTTPRequest(requestline, headers, body)
-        rep = HTTPReply(transport)
+        rep = HTTPReply(server, req, transport)
 
         return req, rep
 

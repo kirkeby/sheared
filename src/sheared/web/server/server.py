@@ -54,6 +54,7 @@ class HTTPServer:
         self.errorlog = None
 
         self.massageRequestCallbacks = []
+        self.massageReplyHeadCallbacks = []
         self.requestCompletedCallbacks = []
         self.errorHandlers = [
             (error.web.WebServerError, defaultErrorHandler),
@@ -86,12 +87,12 @@ class HTTPServer:
                 raise error.web.BadRequestError, 'could not parse request-line: %r' % rl
 
             if requestline.version[0] == 0: # HTTP/0.9
-                request, reply = self.oh_nine.parse(transport, requestline)
+                request, reply = self.oh_nine.parse(self, transport, requestline)
                 request.other = client
                 self.handle(request, reply)
 
             elif requestline.version[0] == 1: # HTTP/1.x
-                request, reply = self.one_oh.parse(transport, requestline)
+                request, reply = self.one_oh.parse(self, transport, requestline)
                 request.other = client
                 self.handle(request, reply)
 

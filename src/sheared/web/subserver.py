@@ -62,6 +62,7 @@ class HTTPSubServer(server.HTTPServer):
             request.requestline.uri[2] = subpath
             request.requestline.uri = tuple(request.requestline.uri)
 
+            reply.server = self
             reply.transport = client_transport
 
             self.handle(request, reply)
