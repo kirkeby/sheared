@@ -72,16 +72,6 @@ class HTTPServerTestCase(unittest.TestCase):
         self.assertEquals(status.code, 200)
         self.assertEquals(body, 'Welcome to bar.com!\r\n')
 
-    def testFullRequestWithoutDefault(self):
-        self.server.setDefaultHost(None)
-        self.transport.appendInput('''GET / HTTP/1.0\r\nHost: blech.com\r\n\r\n''')
-        self.reactor.start()
-
-        status, headers, body = parseReply(self.transport.getOutput())
-        
-        self.assertEquals(status.version, (1, 0))
-        self.assertEquals(status.code, 404)
-
     def testFullRequestWithoutHost(self):
         self.transport.appendInput('''GET / HTTP/1.0\r\n\r\n''')
         self.reactor.start()

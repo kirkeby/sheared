@@ -136,8 +136,12 @@ class HTTPServer:
 
     def addVirtualHost(self, name, vhost):
         self.hosts[name] = vhost
+        if not self.default_host:
+            self.setDefaultHost(name)
 
     def setDefaultHost(self, name):
+        if not self.hosts.has_key(name):
+            raise ValueError, '%s: not a virtual host' % name
         self.default_host = name
 
     def setErrorLog(self, l):
@@ -195,21 +199,17 @@ class HTTPServer:
 
     def handle(self, request, reply):
         try:
-            if not request.headers.has_key('Host'):
-                if self.default_host:
-                    request.headers.setHeader('Host', self.default_host)
-                else:
-                    raise error.web.NotFoundError, 'no Host header and no default host'
+            if request.headers.has_key('Host'):
+                host = request.headers.get('Host')
+                if ':' in host:
+                    host, _ = host.split(':', 1)
+                request.hostname = host
+            else:
+                request.hostname = self.default_host
 
-            try:
-                vhost = self.hosts[request.headers['Host']]
-                request.hostname = request.headers['Host']
-            except KeyError:
-                if self.default_host:
-                    vhost = self.hosts[self.default_host]
-                    request.hostname = self.default_host
-                else:
-                    raise error.web.NotFoundError, 'unknown host and no default host'
+            vhost = self.hosts.get(request.hostname, None)
+            if not vhost:
+                vhost = self.hosts[self.default_host]
 
             for cb in self.massageRequestCallbacks:
                 cb(request, reply)
