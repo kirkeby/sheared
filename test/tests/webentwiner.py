@@ -1,0 +1,58 @@
+# vim:nowrap:textwidth=0
+#
+# Sheared -- non-blocking network programming library for Python
+# Copyright (C) 2003  Sune Kirkeby <sune@mel.interspace.dk>
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+
+import unittest
+
+from sheared.web import entwiner
+
+class FakeReply:
+    def __init__(self):
+        self.sent = ''
+    def send(self, d):
+        self.sent = self.sent + d
+class EntwinerTestCase(unittest.TestCase):
+    def testTemplatePage(self):
+        class Foo(entwiner.Entwiner):
+            template_page = './test/http-docroot/page.html'
+            def entwine(self, request, reply, subpath):
+                self.context['foo'] = 'foo'
+        ent = Foo()
+        rep = FakeReply()
+        ent.handle(None, rep, None)
+        self.assertEquals(rep.sent, 'foo\n')
+
+    def testTemplatePages(self):
+        class Foo(entwiner.Entwiner):
+            template_pages = ['./test/http-docroot/page.html']
+            def entwine(self, request, reply, subpath):
+                self.context['foo'] = 'foo'
+        ent = Foo()
+        rep = FakeReply()
+        ent.handle(None, rep, None)
+        self.assertEquals(rep.sent, 'foo\n')
+
+suite = unittest.TestSuite()
+suite.addTests([unittest.makeSuite(EntwinerTestCase, 'test')])
+
+__all__ = ['suite']
+
+if __name__ == '__main__':
+    unittest.TextTestRunner().run(suite)
+        
