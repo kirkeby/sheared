@@ -18,14 +18,18 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+import stackless
+
 from sheared import reactor
 
 from sheared.python.log import Log
+from sheared.python.semaphore import Semaphore
 
 class LogFile(Log):
     def __init__(self, path):
         self.path = path
         self.file = None
+        self.sem = Semaphore()
 
     def open(self):
         self.close()
@@ -40,6 +44,9 @@ class LogFile(Log):
     def write(self, s):
         if not self.file:
             self.open()
+
+        self.sem.grab()
         self.file.write(s)
+        self.sem.release()
 
 __all__ = ['LogFile']
