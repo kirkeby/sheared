@@ -22,7 +22,11 @@ import re
 
 from sheared import error
 
-__all__ = ['HTTPQueryString', 'UnvalidatedInput']
+__all__ = ['HTTPQueryString', 'UnvalidatedInput',
+           'UnvalidatedInputError']
+
+class QueryStringError(error.web.InputError):
+    pass
 
 def unscape_querystring(qs):
     qs = qs.replace('+', ' ')
@@ -33,10 +37,10 @@ def unscape_querystring(qs):
             break
 
         if len(after) < 2:
-            raise error.web.InputError, (None, 'percent near end of query-string')
+            raise QueryStringError, 'percent near end of query-string'
         hex, after = after[0:2], after[2:]
         if re.findall('[^0-9a-fA-F]', hex):
-            raise error.web.InputError, (None, 'malformed hex-number in query-string')
+            raise QueryStringError, 'malformed hex-number in query-string'
         qs = before + chr(int(hex, 16)) + after
     return qs
 
@@ -49,16 +53,25 @@ def parse_querystring(qs):
         if len(thing) == 1:
             thing = thing[0], ''
         name, value = thing
+        
         if len(name) == 0:
-            raise error.web.InputError, (None, 'zero-length name not allowed')
+            raise QueryStringError, 'zero-length name not allowed'
         if re.findall('[^a-zA-Z0-9-_]', name):
-            raise error.web.InputError, (None, 'invalid name in query-string')
+            raise QueryStringError, 'invalid name in query-string'
+
         if not args.has_key(name):
             args[name] = []
         if len(value):
             args[name].append(UnvalidatedInput(name, value))
+
     return args
 
+class UnvalidatedInputError(error.web.InputError):
+    def __init__(self, name, why):
+        error.web.InputError.__init__(self, name, why)
+        self.name = name
+        self.why = why
+        
 class UnvalidatedInput:
     def __init__(self, name, str):
         self.name = name
@@ -70,7 +83,8 @@ class UnvalidatedInput:
         try:
             return int(self.__str, radix)
         except ValueError:
-            raise error.web.InputError, (self.name, 'invalid integer')
+            raise UnvalidatedInputError, \
+                  (self.name, 'invalid integer')
 
     def as_float(self):
         """as_float() -> float
@@ -78,7 +92,8 @@ class UnvalidatedInput:
         try:
             return float(self.__str)
         except ValueError:
-            raise error.web.InputError, (self.name, 'invalid floateger')
+            raise UnvalidatedInputError, \
+                  (self.name, 'invalid floateger')
 
     def as_bool(self):
         """as_bool() -> bool
@@ -94,7 +109,8 @@ class UnvalidatedInput:
         in valid (e.g. as_str('a-z') validates all strings with only
         lower-case letters.)"""
         if re.findall('[^%s]' % valid, self.__str):
-            raise error.web.InputError, (self.name, 'invalid characters in value')
+            raise UnvalidatedInputError, \
+                  (self.name, 'invalid characters in value')
         return self.__str
 
     def as_unixstr(self):
@@ -139,8 +155,8 @@ class HTTPQueryString:
         elif len(v) == 1:
             v = v[0]
         else:
-            raise error.web.InputError, '%s: expected scalar-arg, ' \
-                                             'got %r' % (name, v)
+            raise UnvalidatedInputError, \
+                  (name, 'expected scalar-arg, got %r' % v)
         return v
 
     def get_many(self, name, default=None):
@@ -148,7 +164,8 @@ class HTTPQueryString:
             return self.dict[name]
         except KeyError:
             if default is None:
-                raise error.web.InputError, '%s: required argument missing' % name
+                raise UnvalidatedInputError, \
+                      (name, 'required argument missing')
             else:
                 return map((lambda v: UnvalidatedInput(name, v)), default)
 
