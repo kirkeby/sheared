@@ -65,3 +65,11 @@ def test_http_env():
     assert __get(app, ['Qux: FuBar']) == 'HTTP/1.0 200 Ok\r\n\r\n' \
                                          'HTTP_QUX: FuBar'
 
+def test_http_headers():
+    def app(env, start_response):
+        start_response('200 Ok', [('Qux', 'quuuuux')])
+        return ['']
+
+    assert __get(app, []) == 'HTTP/1.0 200 Ok\r\n' \
+                             'Qux: quuuuux\r\n' \
+                             '\r\n'
