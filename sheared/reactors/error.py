@@ -1,3 +1,4 @@
+# vim:nowrap:textwidth=0
 #
 # Sheared -- non-blocking network programming library for Python
 # Copyright (C) 2003  Sune Kirkeby <sune@mel.interspace.dk>
@@ -17,7 +18,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import selectable
-default = selectable
+class ReactorRunningError(Exception):
+    pass
 
-__all__ = ['default', 'base', 'selectable', 'error']
