@@ -25,6 +25,33 @@ from sheared.python import path
 from sheared.protocol import http
 from sheared.web import resource
 
+class ShadowCollection(resource.GettableResource):
+    def __init__(self):
+        resource.GettableResource.__init__(self)
+
+        self.layers = []
+
+    def addLayer(self, layer):
+        self.layers.append(layer)
+
+    def getChild(self, request, reply, subpath):
+        for layer in self.layers:
+            try:
+                child = layer.getChild(request, reply, subpath)
+            except error.web.NotFoundError:
+                continue
+            break
+        else:
+            raise error.web.NotFoundError
+        return child
+
+    def handle(self, request, reply, subpath):
+        if request.path.endswith('/'):
+            self.getChild(request, reply, '').handle(request, reply, subpath)
+        else:
+            reply.headers.setHeader('Location', request.path + '/')
+            raise error.web.MovedPermanently
+
 class StaticCollection(resource.GettableResource):
     def __init__(self):
         resource.GettableResource.__init__(self)
@@ -60,15 +87,21 @@ class FilesystemCollection(resource.NormalResource):
         else:
             self.mimetypes = mimetypes.MimeTypes()
 
+        self.index_files = ['index.html']
+
     def getChild(self, request, reply, subpath):
         try:
             st = os.stat(self.root)
             if stat.S_ISDIR(st.st_mode):
                 if subpath:
-                    abs_path = self.root + os.sep + subpath
-                    return FilesystemCollection(abs_path, self.path_info, self.mimetypes)
+                    subpaths = [subpath]
                 else:
-                    raise error.web.ForbiddenError
+                    subpaths = self.index_files
+                for subpath in subpaths:
+                    abs_path = self.root + os.sep + subpath
+                    if os.access(abs_path, os.F_OK):
+                        return FilesystemCollection(abs_path, self.path_info, self.mimetypes)
+                raise error.web.ForbiddenError, 'indexing forbidden'
             elif stat.S_ISREG(st.st_mode):
                 path_info = self.path_info + '/' + subpath
                 return FilesystemCollection(self.root, path_info, self.mimetypes)
