@@ -32,6 +32,8 @@ setup(name = "Sheared", version = "0.1",
       ext_modules = [
         Extension("sheared.python.fdpass",
                   ["sheared/python/fdpass.c"]),
+        Extension("sheared.python.proctitle",
+                  ["sheared/python/proctitle.c"]),
         Extension("sheared.python.aio",
                   ["sheared/python/aio.c"],
                   libraries = ['rt']),
