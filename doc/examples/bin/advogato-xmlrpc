@@ -1,0 +1,10 @@
+#!/usr/bin/env stackless-python
+
+from sheared import reactor
+from sheared.web import xmlrpc
+
+def do():
+    proxy = xmlrpc.XMLRPCProxy('www.advogato.org', 80, '/XMLRPC')
+    print `proxy.test.guess()`
+reactor.createtasklet(do)
+reactor.start()

@@ -1,6 +1,7 @@
 from sheared import reactor
 from sheared.python import io
-from dtml import abml, ir
+from entwine import abml, ir
+from entwine.tree import treeify
 
 import types
 
@@ -39,7 +40,7 @@ def parse_value(tree):
 
     if child.type == 'text':
         return child.raw
-    elif child.type == 'start-tag':
+    elif child.type == 'tag':
         if child.name[1] == 'string':
             return parse_value(child)
         elif child.name[1] == 'int' or child.name == 'i4':
@@ -76,7 +77,7 @@ def call(host, port, uri, method, params):
     if not status == '200':
         raise 'HTTP error: %s' % status
 
-    tree = ir.treeify(abml.parse(content))
+    tree = treeify(abml.strip(abml.parse(content)))
     if ir.match(ir.compile('<methodResponse> <params>'), tree):
         values = list(ir.find(ir.compile('(<value>)'), tree))
         if not len(values) == 1:
@@ -85,7 +86,7 @@ def call(host, port, uri, method, params):
     elif ir.match(ir.compile('<methodResponse> <fault>'), tree):
         raise 'fault'
     else:
-        raise 'Unable to parse reply'
+        raise 'Unable to parse reply: %r' % tree
 
 def guess_types(args):
     guesses = []
