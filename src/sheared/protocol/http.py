@@ -192,9 +192,16 @@ class HTTPRequestLine:
 
 class HTTPStatusLine:
     def __init__(self, s):
-        http, status, self.reason = s.split(' ', 2)
+        all = s.split(' ', 2)
+        http, status = all[:2]
         if not http.startswith('HTTP/'):
-            raise ValueError('%r is not a valid HTTP status-line' % s)
+            raise ValueError, '%r is not a valid HTTP status-line' % s
+        if len(all) == 2:
+            self.reason = ''
+        elif len(all) == 3:
+            self.reason = all[2]
+        else:
+            raise ValueError, '%r is not a valid HTTP status-line' % s
 
         self.version = tuple(map(int, http[5:].split('.')))
         if not len(self.version) == 2:
