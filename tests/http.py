@@ -7,6 +7,7 @@ from sheared.python import coroutine
 from sheared.reactor import transport
 from sheared.protocol import basic
 from sheared.protocol import http
+from sheared.http import server
 
 class HTTPDateTimeTestCase(unittest.TestCase):
     def testAsctime(self):
@@ -137,7 +138,7 @@ class HTTPServerFactoryTestCase(unittest.TestCase):
         self.reactor = reactor
         self.reactor.reset()
         
-        self.server = http.HTTPServerFactory(self.reactor)
+        self.server = server.HTTPServerFactory(self.reactor)
         self.server.addVirtualHost('foo.com', SimpleCollection('foo.com'))
         self.server.addVirtualHost('bar.com', SimpleCollection('bar.com'))
         self.server.setDefaultHost('bar.com')
@@ -196,8 +197,8 @@ class StaticCollectionTestCase(unittest.TestCase):
         self.reactor = reactor
         self.reactor.reset()
         
-        self.server = http.HTTPServerFactory(self.reactor)
-        self.server.addVirtualHost('foo.com', http.StaticCollection(self.reactor, './tests/http-docroot'))
+        self.server = server.HTTPServerFactory(self.reactor)
+        self.server.addVirtualHost('foo.com', server.StaticCollection(self.reactor, './tests/http-docroot'))
 
         self.transport = transport.StringTransport()
         self.coroutine = self.server.buildCoroutine(self.transport)

@@ -3,8 +3,7 @@
 import os, stat, errno, mimetypes, sys, traceback
 
 from sheared.protocol import basic
-
-from sheared.protocol.http import http
+from sheared.protocol import http
 
 class HTTPReply:
     def __init__(self, version, transport):
