@@ -21,6 +21,7 @@
 import urlparse
 
 from sheared import reactor
+from sheared import version_string
 from sheared.protocol import http
 from sheared.python import io
 
@@ -37,7 +38,7 @@ def parse_netloc(nl):
 
     return host, port
 
-def get(url):
+def get(url, headers=None):
     url = urlparse.urlsplit(url)
     scheme = url[0]
     if not scheme == 'http':
@@ -49,6 +50,12 @@ def get(url):
     if url[4]:
         raise ValueError, 'Fragments not supported'
     
+    if headers is None:
+        headers = http.HTTPHeaders()
+    headers.setHeader('Host', '%s:%d' % (host, port))
+    if not headers.has_key('User-Agent'):
+        headers.setHeader('User-Agent', 'Sheared/%s' % version_string)
+
     tr = reactor.connect('tcp:%s:%d' % (host, port))
     tr = io.BufferedReader(tr)
     
