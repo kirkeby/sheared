@@ -196,7 +196,7 @@ class FilesystemCollectionTestCase(unittest.TestCase):
         self.assertEquals(status.code, 404)
     
     def testListing(self):
-        status, headers, body = self.doRequest('/')
+        status, headers, body = self.doRequest('/sub/')
         self.assertEquals(status.code, 403)
 
 class HTTPQueryStringTestCase(unittest.TestCase):
