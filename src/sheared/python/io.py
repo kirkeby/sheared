@@ -36,17 +36,17 @@ class BufferedReader:
             self.buffer = ''
             return d
             
-        while len(self.buffer) < cnt:
-            got = self.file.read(cnt - len(self.buffer))
+        while len(self.buffer) < max:
+            got = self.file.read(max - len(self.buffer))
             if got == '':
                 break
             self.buffer = self.buffer + got
 
-        if cnt > len(self.buffer):
+        if max > len(self.buffer):
             got, self.buffer = self.buffer, ''
         else:
-            got = self.buffer[:cnt]
-            self.buffer = self.buffer[cnt:]
+            got = self.buffer[:max]
+            self.buffer = self.buffer[max:]
 
         return got
 
