@@ -18,7 +18,18 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-class ReactorRunningError(Exception):
-    pass
-class ReactorShuttingDown(Exception):
-    pass
+class BitBucket:
+    """File-like and s.p.l.Log-like bit-bucket."""
+
+    def open(self):
+        pass
+    def close(self):
+        pass
+    def write(self, s):
+        pass
+    def debug(self, s):
+        pass
+    def normal(self, s):
+        pass
+    def exception(self, ex):
+        pass

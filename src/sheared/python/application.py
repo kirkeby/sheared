@@ -20,11 +20,14 @@
 import getopt
 import sys
 import traceback
+import warnings
 import signal
 import os
 
 from sheared.python import daemonize
 from sheared.python import conffile
+from sheared.python.log import LogFile
+from sheared.python.bitbucket import BitBucket
 from sheared.python.proctitle import setproctitle
 from sheared import reactor
 
@@ -34,6 +37,14 @@ app_options = [
      
    [ 'help',         0, 'conf-help', '',  'conf-help','',
      'Display help on configuration-file variables.' ],
+
+   [ 'kill',         0, 'stop',      '',  'kill', '',
+     'Kill a daemonized, running instance of this\n'
+     'application.' ],
+     
+   [ 'kill',         0, 'restart',   '',  'restart', '',
+     'Restart a daemonized, running instance of this\n'
+     'application.' ],
      
    [ 'set_bool',     0, 'daemonize', '',  'daemonize',  'application.daemonize',
      'Run as a UNIX daemon process (implies log-file\n'
@@ -76,13 +87,37 @@ class Application:
         self.options.extend(options)
 
         self.daemonize = 0
-        self.logfile = None
-        self.pidfile = None
+        self.logfile = self.name + '.log'
+        self.pidfile = self.name + '.pid'
 
         self.user = None
         self.group = None
 
         self.reactor = reactor
+
+        self.do_restart = 0
+
+    def kill(self, name, _):
+        if not self.pidfile:
+            print "Error: No pid-file path given."
+            sys.exit(1)
+    
+        if name == 'stop':
+            sig = signal.SIGINT
+        elif name == 'restart':
+            sig = signal.SIGHUP
+        else:
+            raise 'Pigs can fly!'
+
+        try:
+            pid = int(open(self.pidfile, 'r').readline().strip())
+        except:
+            _, e, _ = sys.exc_info()
+            print '%s: %s' % (self.pidfile, e.strerror)
+            sys.exit(1)
+
+        os.kill(pid, sig)
+        sys.exit(0)
 
     def help(self, name, _):
         if self.description:
@@ -228,9 +263,15 @@ class Application:
 
         self.parse_args(argv[1:])
 
-        signal.signal(signal.SIGINT,  lambda signum, frame: self.stop())
-        signal.signal(signal.SIGTERM, lambda signum, frame: sys._exit(3))
-        signal.signal(signal.SIGHUP,  lambda signum, frame: self.restart())
+        def _stop(s, f):
+            if s == signal.SIGTERM:
+                os._exit(3)
+            if s == signal.SIGHUP:
+                self.do_restart = 1
+            self.stop()
+        signal.signal(signal.SIGINT, _stop)
+        signal.signal(signal.SIGTERM, _stop)
+        signal.signal(signal.SIGHUP, _stop)
 
         daemonize.closeall(min=3)
 
@@ -245,26 +286,45 @@ class Application:
     def start(self):
         setproctitle(self.name)
 
-        if self.logfile:
-            daemonize.openstdlog(self.logfile)
+        self.log = BitBucket()
+        if self.daemonize and self.logfile:
+            self.log = LogFile(self.logfile)
+            self.reactor.log = self.log
+            warnings.showwarning = self.log.showwarning
 
-        if self.daemonize:
-            daemonize.background(chdir=0, close=0)
-            if not self.logfile:
+        try:
+            if self.daemonize:
+                daemonize.background(chdir=0, close=0)
                 daemonize.openstdio()
 
-        if self.pidfile:
-            daemonize.writepidfile(self.pidfile)
+                if self.pidfile:
+                    daemonize.writepidfile(self.pidfile)
 
-        if not self.group is None:
-            os.setgid(self.group)
-        if not self.user is None:
-            os.setuid(self.user)
+            if not self.group is None:
+                os.setgid(self.group)
+            if not self.user is None:
+                os.setuid(self.user)
 
-        if hasattr(self, 'run'):
-            name = '<Main for %r>' % self
-            self.reactor.createtasklet(self.run, name=name)
-        self.reactor.start()
+            if hasattr(self, 'run'):
+                name = '<Main for %r>' % self
+                self.reactor.createtasklet(self.run, name=name)
+    
+            self.log.normal('%s starting' % self.name)
+            self.log.close()
+
+            self.reactor.start()
+
+            self.log.close()
+            if self.do_restart:
+                self.log.normal('%s restarting' % self.name)
+                self.restart()
+            else:
+                self.log.normal('%s done' % self.name)
+
+        except:
+            self.log.close()
+            self.log.exception(sys.exc_info())
+            os._exit(1)
 
     def restart(self):
         daemonize.closeall(min=3)

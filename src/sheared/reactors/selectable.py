@@ -31,6 +31,7 @@ import warnings
 
 from sheared.python import queue
 from sheared.reactors import base
+from sheared import error
 
 class Reactor(base.Reactor):
     def __init__(self):
@@ -49,7 +50,7 @@ class Reactor(base.Reactor):
         #    print str(self.tasklet_name.get(id(n), '[unknown]'))
         #stackless.set_schedule_callback(cb)
 
-        while not self.stopping:
+        while 1:
             self._wake_sleepers()
             while stackless.getruncount() > 1:
                 stackless.schedule()
@@ -65,6 +66,15 @@ class Reactor(base.Reactor):
                 timeout = max(0.0, self.sleeping.minkey() - now)
             else:
                 timeout = None
+
+            if self.stopping:
+                ex = error.reactor.ReactorShuttingDown()
+                for handler, file, channel, argv in self.waiting.values():
+                    self._safe_send(channel, ex)
+                while not self.sleeping.empty():
+                    channel = self.sleeping.getmin()
+                    self._safe_send(channel, ex)
+                continue
 
             try:
                 r, w, e = select.select(r, w, e, timeout)
@@ -86,8 +96,6 @@ class Reactor(base.Reactor):
                 handler, file, channel, argv = self.waiting[fd]
                 try:
                     handler(file, channel, argv)
-                except SystemExit:
-                    raise
                 except socket.error, (eno, estr):
                     if not eno in (errno.EINTR, errno.EAGAIN):
                         if self.waiting.has_key(fd):
@@ -233,10 +241,10 @@ class Reactor(base.Reactor):
         try:
             try:
                 apply(func, args, kwargs)
-            except SystemExit:
-                raise
+            except error.reactor.ReactorShuttingDown:
+                pass
             except:
-                traceback.print_exc()
+                self.log.exception(sys.exc_info())
 
         finally:
             del self.channel_tasklet[id(c)]

@@ -1,5 +1,6 @@
 from sheared.python.application import Application
-from sheared.python.log import Log
+from sheared.python.log import LogFile
+from sheared.python.bitbucket import BitBucket
 from sheared.web.server import HTTPServer
 from sheared.web.subserver import HTTPSubServer
 from sheared.web.virtualhost import VirtualHost
@@ -50,9 +51,14 @@ class WebserverApplication(Application):
         self.webserver.setDefaultHost(self.hostname)
 
         if self.accesslog:
-            self.webserver.setAccessLog(Log(self.accesslog))
+            self.webserver.setAccessLog(LogFile(self.accesslog))
+        else:
+            self.webserver.setAccessLog(BitBucket())
+
         if self.errorlog:
-            self.webserver.setErrorLog(Log(self.errorlog))
+            self.webserver.setErrorLog(LogFile(self.errorlog))
+        else:
+            self.webserver.setErrorLog(BitBucket())
 
         root = self.configure()
         if root:

@@ -43,7 +43,7 @@ def background(chdir=1, close=1):
     # Programming in the UNIX Environment" for details (ISBN 0201563177)
     if os.fork():
         # exit first parent
-        sys.exit(0) 
+        os._exit(0) 
 
     if chdir:
         os.chdir("/") 
@@ -55,11 +55,13 @@ def background(chdir=1, close=1):
     # do second fork
     if os.fork():
         # exit second parent
-        sys.exit(0) 
+        os._exit(0) 
 
-    # close all open file-descriptors
+    # close all open file-descriptors and make sure 0, 1 and 2 are
+    # redirected properly
     if close:
         closeall()
+        openstdio()
 
 def writepidfile(path):
     f = open(path, 'w')

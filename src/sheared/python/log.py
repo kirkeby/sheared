@@ -18,11 +18,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+import os
 import time
 import traceback
 
 from sheared import reactor
-from sheared import error
 
 dangerous_in_logs = range(0, 33) + range(128, 156)
 dangerous_in_logs.remove(ord('\n'))
@@ -35,19 +35,6 @@ def escape_dangerous(s):
     return s
 
 class Log:
-    def __init__(self, path):
-        self.path = path
-        self.file = None
-
-    def write(self, s):
-        if not self.file:
-            self._open()
-        try:
-            self.file.write(s)
-        except error.reactor.ReactorRunningError:
-            self._open()
-            self.file.write(s)
-    
     def timestamped(self, s):
         s = escape_dangerous(s)
         lines = s.split('\n')
@@ -55,12 +42,18 @@ class Log:
         lines = ['%s%s' % (prefix, line) for line in lines]
         self.write('\n'.join(lines) + '\n')
         
-    def normal(self, s):
+    def prefixed(self, s, p):
         s = escape_dangerous(s)
         lines = s.split('\n')
-        prefix = self._prefix('normal')
+        prefix = self._prefix(p)
         lines = ['%s%s' % (prefix, line) for line in lines]
         self.write('\n'.join(lines) + '\n')
+
+    def debug(self, s):
+        self.prefixed(s, 'debug')
+        
+    def normal(self, s):
+        self.prefixed(s, 'normal')
     
     def exception(self, ex):
         lines = [self._prefix('exception')]
@@ -68,15 +61,38 @@ class Log:
             thing = [ '\t' + line for line in thing.split('\n')[:-1] ]
             lines.extend(thing)
         self.write('\n'.join(lines) + '\n')
+
+    def showwarning(self, message, category, filename, lineno, file=None):
+        lines = [self.prefixed('%s in %s:%d' % (category, filename, lineno), 'warning')]
+        for thing in message:
+            thing = [ '\t' + line for line in thing.split('\n')[:-1] ]
+            lines.extend(thing)
+        self.write('\n'.join(lines) + '\n')
     
     def _prefix(self, cls):
+        prefix = '[%s] [%d] ' % (time.ctime(), os.getpid())
         if cls:
-            return '[%s] [%s] ' % (time.ctime(), cls)
-        else:
-            return '[%s] ' % time.ctime()
+            prefix = prefix + '[%s] ' % cls
+        return prefix
+    
+class LogFile(Log):
+    def __init__(self, path):
+        self.path = path
+        self.file = None
 
-    def _open(self):
-        if self.file:
-            self.file.close()
+    def open(self):
+        self.close()
         self.file = reactor.open(self.path, 'w')
         self.file.seek(0, 2)
+
+    def close(self):
+        if self.file:
+            self.file.close()
+            self.file = None
+
+    def write(self, s):
+        if not self.file:
+            self.open()
+        self.file.write(s)
+
+__all__ = ['LogFile']
