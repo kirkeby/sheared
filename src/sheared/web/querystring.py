@@ -30,18 +30,21 @@ class QueryStringError(error.web.InputError):
 
 def unscape_querystring(qs):
     qs = qs.replace('+', ' ')
-    while 1:
-        try:
-            before, after = qs.split('%', 1)
-        except ValueError:
-            break
 
-        if len(after) < 2:
-            raise QueryStringError, 'percent near end of query-string'
-        hex, after = after[0:2], after[2:]
-        if re.findall('[^0-9a-fA-F]', hex):
-            raise QueryStringError, 'malformed hex-number in query-string'
-        qs = before + chr(int(hex, 16)) + after
+    hex_p = 0
+    frags, qs = qs.split('%'), ''
+    for frag in frags:
+        if hex_p:
+            if len(frag) < 2:
+                raise QueryStringError, \
+                      'malformed hex-number in query-string: %r' % frag
+            hex, frag = frag[:2], frag[2:]
+            if re.findall('[^0-9a-fA-F]', hex):
+                raise QueryStringError, \
+                      'malformed hex-number in query-string: %r' % hex
+            qs = qs + chr(int(hex, 16))
+        qs = qs + frag
+        hex_p = 1
     return qs
 
 def parse_querystring(qs):

@@ -63,6 +63,10 @@ class HTTPQueryStringTestCase(unittest.TestCase):
         self.assertRaises(querystring.QueryStringError,
                           querystring.HTTPQueryString, '=bar')
 
+    def testQ(self):
+        q = querystring.HTTPQueryString('q=%25geek%25')
+        self.assertEquals(q.get_one('q').as_unixstr(), '%geek%')
+
 class UnvalidatedInputTestCase(unittest.TestCase):
     def setUp(self):
         self.int = querystring.UnvalidatedInput('a', '1')
