@@ -48,14 +48,14 @@ def quote(str):
             q_str = q_str + ('%02x' % ord(ch))
     return q_str
 def unquote(q_str):
-    return querystring.unspace_querystring()
+    return querystring.unscape_querystring(q_str)
         
 def parse(str):
     kwargs = {}
 
     parts = str.split(';')
     
-    first = parts.pop(0)
+    part = parts.pop(0)
     name, value = part.split('=')
     kwargs['name'] = unquote(name)
     kwargs['value'] = unquote(value)
@@ -67,7 +67,7 @@ def parse(str):
     
         kwargs[name] = value
 
-    if kwargs['expires']:
+    if kwargs.get('expires', ''):
         kwargs['expires'] = time.mktime(
                 time.strptime(kwargs['expires'],
                               "%A, %d-%b-%Y %H:%M:%S GMT"))
