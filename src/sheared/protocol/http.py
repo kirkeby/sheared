@@ -50,7 +50,7 @@ http_header_classes = {
 def headerVersion(name):
     return http_header_classes[headerKey(name)][0]
 def headerClass(name):
-    return http_header_classes[headerKey(name)][1]
+    return http_header_classes.get(headerKey(name), 'unknown')[1]
 
 HTTP_OK = 200
 HTTP_CREATED = 201
