@@ -92,15 +92,21 @@ class Reactor(base.Reactor):
                     if not eno in (errno.EINTR, errno.EAGAIN):
                         if self.waiting.has_key(fd):
                             del self.waiting[fd]
+                        else:
+                            warnings.warn('self.waiting does not have key %r' % fd)
                         self._safe_send(channel, sys.exc_info()[1])
                 except OSError, e:
                     if not e.errno in (errno.EINTR, errno.EAGAIN):
                         if self.waiting.has_key(fd):
                             del self.waiting[fd]
+                        else:
+                            warnings.warn('self.waiting does not have key %r' % fd)
                         self._safe_send(channel, sys.exc_info()[1])
                 except:
                     if self.waiting.has_key(fd):
                         del self.waiting[fd]
+                    else:
+                        warnings.warn('self.waiting does not have key %r' % fd)
                     self._safe_send(channel, sys.exc_info()[1])
 
     def _buildselectable(self):
@@ -132,6 +138,8 @@ class Reactor(base.Reactor):
                           stacklevel=2)
             if self.waiting.has_key(fd):
                 del self.waiting[fd]
+            else:
+                warnings.warn('self.waiting does not have key %r' % fd)
             self._safe_send(channel, why)
 
     def _wait(self, file, op, argv):
