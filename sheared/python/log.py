@@ -37,6 +37,7 @@ def escape_dangerous(s):
 class Log:
     def __init__(self, path):
         self.path = path
+        self.file = None
 
     def write(self, s):
         if not self.file:
@@ -62,7 +63,7 @@ class Log:
         self.write('\n'.join(lines) + '\n')
     
     def exception(self, ex):
-        lines = [self._prefix('exception') + ex[0].__name__]
+        lines = [self._prefix('exception')]
         for thing in traceback.format_exception(ex[0], ex[1], ex[2]):
             thing = [ '\t' + line for line in thing.split('\n')[:-1] ]
             lines.extend(thing)
@@ -75,7 +76,7 @@ class Log:
             return '[%s] ' % time.ctime()
 
     def _open(self):
-        if self.file():
+        if self.file:
             self.file.close()
         self.file = reactor.open(self.path, 'w')
         self.file.seek(0, 2)
