@@ -88,7 +88,7 @@ def compile(text, exp):
     assert len(context) == 1, 'internal compiler error: %r' % context
     return context[0]
 
-def execute(program, context, builtins, exp):
+def execute(program, context, exp):
     result = ''
     for instruction in program:
         op = instruction[0]
@@ -105,7 +105,7 @@ def execute(program, context, builtins, exp):
                 block = exp.execute(expr, context)
             except:
                 pass
-            result += execute(block, context, builtins, exp)
+            result += execute(block, context, exp)
 
         else:
             raise 'unknown op-code in %s' % `instruction`

@@ -236,7 +236,7 @@ def optimize_tal(program, exp):
     # done!
     return optimized
 
-def execute(program, context, builtins, exp):
+def execute(program, context, exp):
     result = ''
     for instruction in program:
         op = instruction[0]
@@ -260,7 +260,7 @@ def execute(program, context, builtins, exp):
 
         elif op == 'replace':
             (op, expr), block = instruction[1:]
-            result += execute([(op, expr)], context, builtins, exp)
+            result += execute([(op, expr)], context, exp)
 
         elif op == 'dynamic-tag':
             name, sta_attrs, dyn_attrs, omit_tag, replace, block = instruction[1:]
@@ -274,13 +274,13 @@ def execute(program, context, builtins, exp):
             replaced = 0
             if replace:
                 scope, with, expr = replace
-                content = execute([(with, expr)], context, builtins, exp)
+                content = execute([(with, expr)], context, exp)
                 replaced = 1
                 if scope == 'all':
                     omit_tag = 1
 
             if not replaced:
-                content = execute(block, context, builtins, exp)
+                content = execute(block, context, exp)
             
             if not omit_tag:
                 for attr in dyn_attrs:
@@ -300,18 +300,18 @@ def execute(program, context, builtins, exp):
         elif op == 'define':
             olv = {}
 
-            for scope, name, exp in instruction[1]:
-                val = exp.execute(exp, context)
+            for scope, name, e in instruction[1]:
+                val = exp.execute(e, context)
                 if scope == 'local':
                     if context.has_key(name):
                         olv[name] = context[name]
-                    context[name] = value
+                    context[name] = val
                 elif scope == 'global':
                     raise NotImplementedError, 'global scope not implemented'
                 else:
                     raise 'unknown scope'
 
-            result += execute(instruction[2], context, builtins, exp)
+            result += execute(instruction[2], context, exp)
 
             for scope, name, exp in instruction[1]:
                 if scope == 'local':
@@ -333,12 +333,12 @@ def execute(program, context, builtins, exp):
             #builtins.pushRepeatVariable(name, elem)
             for elem in val:
                 context[name] = elem
-                result += execute(block, context, builtins, exp)
+                result += execute(block, context, exp)
             #builtins.popRepeatVariable()
 
             if has_ov:
                 context[name] = ov
-            else:
+            elif context.has_key(name):
                 del context[name]
 
         elif op == 'condition':
@@ -348,7 +348,7 @@ def execute(program, context, builtins, exp):
             except:
                 cond = 0
             if cond:
-                result += execute(instruction[2], context, builtins, exp)
+                result += execute(instruction[2], context, exp)
 
         else:
             raise 'unknown op-code in %s' % `instruction`
