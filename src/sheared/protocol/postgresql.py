@@ -382,6 +382,8 @@ class PostgresqlClient:
                 self.transport.close()
                 raise error.InterfaceError, 'got unexpected %s' % `packet`
 
+        return result
+
     def begin(self):
         self.query('BEGIN TRANSACTION')
     def commit(self):
