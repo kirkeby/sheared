@@ -1,6 +1,9 @@
 # vim:nowrap:textwidth=0
 
-import unittest, os, random, signal, commandsfrom sheared.python import coroutine
+import unittest, os, random, signal, commands
+
+from sheared import reactor
+from sheared.python import coroutine
 from sheared.reactor import transport
 from sheared.protocol import http
 from sheared.web import server
@@ -29,15 +32,15 @@ def parseReply(reply):
     headers = http.HTTPHeaders(headers)
 
     return status, headers, body
- retuclass HTTPServeretOutputestCase(unittest.TestCase):
+
+class HTTPServerTestCase(unittest.TestCase):
     def setUp(self):
         self.reactor = reactor
         self.reactor.reset()
         
-        self.server = server.HTTPServerFactory(self.reactorRequest('/')
-        self.assertEquals(status.code, 403)
-
-suite = unittest.TestSuite()elf.server.addVirtualHost('bar.com', SimpleCollection('bar.com'))
+        self.server = server.HTTPServerFactory(self.reactor, server.HTTPServer)
+        self.server.addVirtualHost('foo.com', SimpleCollection('foo.com'))
+        self.server.addVirtualHost('bar.com', SimpleCollection('bar.com'))
         self.server.setDefaultHost('bar.com')
 
         self.transport = transport.StringTransport()
@@ -89,15 +92,55 @@ suite = unittest.TestSuite()elf.server.addVirtualHost('bar.com', SimpleCollectio
         self.reactor.run()
         self.assertEquals(self.transport.getOutput(), 'Welcome to bar.com!\r\n')
 
-class HtaticCollectionTestCase(unittest.TestCase):
+class HTTPSubServerTestCase(unittest.TestCase):
+    def setUp(self):
+        try:
+            os.unlink('./test/fifoo')
+        except:
+            pass
+
+        self.port = random.random() * 8192 + 22000
+            
+        self.reactor = reactor
+        self.reactor.reset()
+
+        factory = server.HTTPServerFactory(self.reactor, server.HTTPSubServer)
+        factory.addVirtualHost('localhost', SimpleCollection('localhost'))
+        factory.setDefaultHost('localhost')
+        self.reactor.listenUNIX(factory, './test/fifoo')
+
+        factory = server.HTTPServerFactory(reactor, server.HTTPServer)
+        factory.addVirtualHost('localhost', server.HTTPSubServerAdapter(reactor, './test/fifoo'))
+        factory.setDefaultHost('localhost')
+        self.reactor.listenTCP(factory, ('127.0.0.1', self.port))
+
+    def testRequest(self):
+        pid = os.fork()
+        if pid:
+            try:
+                reply = commands.getoutput('curl -D - http://localhost:%d/ 2>/dev/null' % self.port)
+                status, headers, body = parseReply(reply)
+                
+                self.assertEquals(status.version, (1, 0))
+                self.assertEquals(status.code, 200)
+                self.assertEquals(body, 'Welcome to localhost!\r')
+
+            finally:
+                os.kill(pid, signal.SIGTERM)
+            
+        else:
+            self.reactor.run()
+            sys.exit(0)
+
+class StaticCollectionTestCase(unittest.TestCase):
     def setUp(self):
         self.reactor = reactor
         self.reactor.reset()
         
-        self.server = server.HTTPServerFactory(self.reactorlf.assertselfandom.random() * 8192 + 22000uals(status.code, 404)tor
-        self.reactor.reset()
-        
-        se    self.transport = transport.StringTransport()
+        self.server = server.HTTPServerFactory(self.reactor, server.HTTPServer)
+        self.server.addVirtualHost('foo.com', server.StaticCollection(self.reactor, './test/http-docroot'))
+
+        self.transport = transport.StringTransport()
         self.coroutine = self.server.buildCoroutine(self.transport)
         self.reactor.addCoroutine(self.coroutine, ())
 
@@ -131,55 +174,11 @@ class HtaticCollectionTestCase(unittest.TestCase):
         self.assertEquals(status.code, 403)
 
 suite = unittest.TestSuite()
-suite.addTests([unittest.makeSuite(HTTPServer ret-doTestCase, 'test')])
-suite.addTests([unittest.makeSuite(server.buildCoroutine(self.transport)
-        self.reactor.addCoroutine(self.coroutine, ())
+suite.addTests([unittest.makeSuite(HTTPServerTestCase, 'test')])
+suite.addTests([unittest.makeSuite(HTTPSubServerTestCase, 'test')])
+suite.addTests([unittest.makeSuite(StaticCollectionTestCase, 'test')])
 
-    def testFullRequestWithFoo(self):
-        doappendInput(, /':
-           TP/1.0\r\nHost: foo.com\r\n\r\n'''%e(unit    self.reactor.run()
+__all__ = ['suite']
 
-         % /':
- lf.assertEquals(self.transport.getOuretucla
-        
-        self.assertEquals(status.als(headers['cogularFith):
-     def handl.transport.getOutput())'contdoappendIn'/hello.pypath):
-        s self.assertEquals(body, 'Welcome to foo.com!\r\n')
-
-    e', 'te['c       t    ]  reply.x-hearedpath):
-        s self.assertEdef tesprint "Hello, World!"elf):tus.als(headers['Tarball):
-     def handl.transport.getOutput())'contdoappendIn'/all.tar.gzpath):
-        s self.assertEquals(body, 'Welcome to foo.com!\r\n')
-
-    e', 'te['c       t    ]  rapplicaame)/x-ta heame to foo.com!\r\n')
-
-    e', 'te['c       encoding ]  rgzipf):tus.als(headers['ut('xsistantFith):
-     def handl.transport.getOutput())'contdoappendIn'/no-such-fileheame to foo.com!\r\n')
-
-    equest(self):
-    tus.als(headers['ut('xsistantPatInput('''GET / HTT.transport.getOutput())'contdoappendIn'/no-such-/':
-/this-is-also-not-hereheame to foo.com!\r\n')
-
-    equest(self):
-    tus.als(headers['Listing):
-     def handl.transport.getOutput())'contdoappendIn'/heame to foo.com!\r\n')
-
-    equest(self):
- 3)
-
-suitansp
-    def setUSuita()
-suita defestCs([
-    def makeSuita(unittest.TestCase)  repe(se])
-suita defestCs([
-    def makeSuita(unitt:
-    def setUp(  repe(se])
-suita defestCs([
-    def makeSuita(ody = self.doRequest('/n  repe(se])
-
-__all__ = ['suita']
-
-i  see
-
- __ == '__main__method 
-    def maiarse
+if __name__ == '__main__':
+    unittest.main()
