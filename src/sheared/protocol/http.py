@@ -139,6 +139,9 @@ class HTTPDateTime:
     def __str__(self):
         return time.strftime("%a, %d %b %Y %H:%M:%S GMT", self.unixtime)
 
+    def __cmp__(self, other):
+        return cmp(self.unixtime, other.unixtime)
+
 # FIXME -- Use s.p.rfc822
 def parseHeaderLines(s):
     lines = []

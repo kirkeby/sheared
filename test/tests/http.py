@@ -23,6 +23,11 @@ import unittest
 from sheared.protocol import http
 
 class HTTPDateTimeTestCase(unittest.TestCase):
+    def testUnixtime(self):
+        """Test HTTPDateTime against unixtime (seconds since epoch)."""
+        d = http.HTTPDateTime(300229200)
+        self.assertEquals(str(d), "Sat, 07 Jul 1979 21:00:00 GMT")
+
     def testAsctime(self):
         """Test HTTPDateTime against ANSI C's asctime date/time format."""
         d = http.HTTPDateTime("Sun Nov 6 08:49:37 1994")
@@ -43,6 +48,15 @@ class HTTPDateTimeTestCase(unittest.TestCase):
         self.assertEquals(str(d), "Sun, 06 Nov 1994 08:49:37 GMT")
         d = http.HTTPDateTime("Sunday, 06-Nov-94   08:49:37 GMT")
         self.assertEquals(str(d), "Sun, 06 Nov 1994 08:49:37 GMT")
+
+    def testComparison(self):
+        s = http.HTTPDateTime(300000000)
+        t = http.HTTPDateTime(300229200)
+        u = http.HTTPDateTime(300300000)
+
+        self.assertEquals(s < t, 1)
+        self.assertEquals(t < u, 1)
+        self.assertEquals(s < u, 1)
 
 class HTTPHeadersTestCase(unittest.TestCase):
     def testEmpty(self):
