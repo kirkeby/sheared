@@ -24,7 +24,7 @@ class ReactorShutdown(Exception):
 
 class Reactor:
     def safe_send(self, ch, *what):
-        if self.channel_tasklet.has_key(ch):
+        if self.channel_tasklet.has_key(id(ch)):
             apply(ch.send, what)
         else:
             print 'send to dead channel intercepted.'
@@ -83,7 +83,7 @@ class Reactor:
             self.safe_send(channel, None)
 
     def wait(self, file, op, argv):
-        channel = self.tasklet_channel[stackless.getcurrent()]
+        channel = self.tasklet_channel[id(stackless.getcurrent())]
         self.waiting[file.fileno()] = op, file, channel, argv
         return channel.receive()
     
@@ -210,8 +210,8 @@ class Reactor:
     def createtasklet(self, func, args=(), kwargs={}):
         t = stackless.tasklet()
         c = stackless.channel()
-        self.tasklet_channel[t] = c
-        self.channel_tasklet[c] = t
+        self.tasklet_channel[id(t)] = c
+        self.channel_tasklet[id(c)] = t
 
         t.become(c)
         try:
@@ -219,8 +219,8 @@ class Reactor:
         except:
             traceback.print_exc()
 
-        del self.channel_tasklet[c]
-        del self.tasklet_channel[t]
+        del self.channel_tasklet[id(c)]
+        del self.tasklet_channel[id(t)]
 
     def open(self, path, mode):
         f = open(path, mode)
@@ -250,13 +250,13 @@ class Reactor:
         file.close()
 
     def sleep(self, seconds):
-        channel = self.tasklet_channel[stackless.getcurrent()]
+        channel = self.tasklet_channel[id(stackless.getcurrent())]
         self.sleeping.insert(self.time() + seconds, channel)
         return channel.receive()
 
     def schedule(self):
         if self.started and not self.stopped:
-            channel = self.tasklet_channel[stackless.getcurrent()]
+            channel = self.tasklet_channel[id(stackless.getcurrent())]
             self.sleeping.insert(0, channel)
             return channel.receive()
         else:
@@ -281,3 +281,19 @@ class Reactor:
         sock.listen(backlog)
 
         self.createtasklet(self.accept, (factory, sock))
+
+    def listenUNIX(self, factory, addr, backlog=5):
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        fcntl.fcntl(sock.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
+        # we do not want 'address already in use' because of TCP-
+        # connections in TIME_WAIT state; does this call make any
+        # sense on UNIX sockets?!
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        sock.bind(addr)
+        sock.listen(backlog)
+
+        self.createtasklet(self.accept, (factory, sock))
+
+    def createTransport(self, file, other):
+        return transport.ReactorTransport(self, self.prepareFile(file), other)
