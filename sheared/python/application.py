@@ -229,7 +229,7 @@ class Application:
         self.parse_args(argv[1:])
 
         signal.signal(signal.SIGINT,  lambda signum, frame: self.stop())
-        signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(1))
+        signal.signal(signal.SIGTERM, lambda signum, frame: sys._exit(3))
         signal.signal(signal.SIGHUP,  lambda signum, frame: self.restart())
 
         daemonize.closeall(min=3)
@@ -273,7 +273,7 @@ class Application:
         try:
             os.execv(argv[0], argv)
         except:
-            os.exit(2)
+            os._exit(2)
 
     def stop(self):
         self.reactor.stop()
