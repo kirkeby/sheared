@@ -179,11 +179,9 @@ class HTTPReply:
         if not self.transport.closed:
             self.transport.close()
 
-class HTTPServerFactory(basic.ProtocolFactory):
-    def __init__(self, reactor, server):
-        basic.ProtocolFactory.__init__(self, reactor, server)
-        
-        self.hosts = { }
+class HTTPServer:
+    def __init__(self):
+        self.hosts = {}
         self.default_host = None
 
     def addVirtualHost(self, name, vhost):
@@ -192,10 +190,6 @@ class HTTPServerFactory(basic.ProtocolFactory):
     def setDefaultHost(self, name):
         self.default_host = name
 
-class HTTPServer(basic.LineProtocol):
-    def __init__(self, reactor, transport):
-        basic.LineProtocol.__init__(self, reactor, transport, '\n')
-
     def handle(self, request, reply):
         try:
             try:
@@ -203,11 +197,11 @@ class HTTPServer(basic.LineProtocol):
                     reply.sendErrorPage(http.HTTP_FORBIDDEN, 'No HTTP proxying here.')
 
                 if request.headers.has_key('Host'):
-                    vhost = self.factory.hosts.get(request.headers['Host'], None)
+                    vhost = self.hosts.get(request.headers['Host'], None)
                 else:
                     vhost = None
-                if vhost is None and self.factory.default_host:
-                    vhost = self.factory.hosts[self.factory.default_host]
+                if vhost is None and self.default_host:
+                    vhost = self.hosts[self.default_host]
 
                 if vhost:
                     vhost.handle(request, reply, request.path)
@@ -226,8 +220,8 @@ class HTTPServer(basic.LineProtocol):
         finally:
             reply.done()
 
-    def run(self):
-        reader = io.RecordReader(self.transport, '\r\n')
+    def startup(self, transport):
+        reader = io.RecordReader(transport, '\r\n')
         requestline = http.HTTPRequestLine(reader.readline().rstrip())
         querystring = requestline.uri[3]
 
@@ -246,9 +240,9 @@ class HTTPServer(basic.LineProtocol):
                     # FIXME -- need logging
                     print 'need handler for Content-Type %r' % ct
 
-            request = HTTPRequest(requestline, querystring, headers)
-            reply = HTTPReply(request.version, self.transport)
-            self.handle(request, reply)
+        request = HTTPRequest(requestline, querystring, headers)
+        reply = HTTPReply(request.version, transport)
+        self.handle(request, reply)
 
 class HTTPSubServerAdapter:
     def __init__(self, reactor, path):

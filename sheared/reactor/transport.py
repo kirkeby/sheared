@@ -56,7 +56,8 @@ class FileTransport:
 class ReactorTransport:
     def __init__(self, reactor, file, other):
         self.reactor = reactor
-        self.file = self.reactor.prepareFile(file)
+        #self.file = self.reactor.prepareFile(file)
+        self.file = file
         self.other = other
         self.closed = 0
 

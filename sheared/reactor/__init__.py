@@ -1,2 +1,2 @@
 import selectable
-current = selectable
+current = selectable.Reactor()
