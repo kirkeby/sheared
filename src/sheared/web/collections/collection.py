@@ -16,4 +16,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-__all__ = ['collection', 'shadow', 'tilde', 'static', 'filesystem', 'entwined']
+
+from sheared import error
+from sheared.web import resource
+
+class Collection(resource.GettableResource):
+    def getChild(self, request, reply, subpath):
+        raise NotImplementedError
+
+    def handle(self, request, reply, subpath):
+        if request.path.endswith('/'):
+            self.getChild(request, reply, '').handle(request, reply, subpath)
+        else:
+            reply.headers.setHeader('Location', request.path + '/')
+            raise error.web.MovedPermanently

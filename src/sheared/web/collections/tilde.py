@@ -20,11 +20,10 @@
 import os
 
 from sheared import error
-from sheared.web import resource
-
+from sheared.web.collections.collection import Collection
 from sheared.web.collections.filesystem import FilesystemCollection
 
-class TildeUserCollection(resource.GettableResource):
+class TildeUserCollection(Collection):
     def getChild(self, request, reply, subpath):
         if not subpath.startswith('~'):
             raise error.web.NotFoundError, 'not a tilde-user path'
@@ -37,12 +36,3 @@ class TildeUserCollection(resource.GettableResource):
         if os.access(path + os.sep + '.do-not-serve', os.F_OK):
             raise error.web.NotFoundError, 'public_html not servable'
         return FilesystemCollection(path)
-
-    def handle(self, request, reply, subpath):
-        if request.path.endswith('/'):
-            self.getChild(request, reply, '').handle(request, reply, subpath)
-        else:
-            reply.headers.setHeader('Location', request.path + '/')
-            raise error.web.MovedPermanently
-
-

@@ -18,11 +18,11 @@
 #
 
 from sheared import error
-from sheared.web import resource
+from sheared.web.collections.collection import Collection
 
-class StaticCollection(resource.GettableResource):
+class StaticCollection(Collection):
     def __init__(self):
-        resource.GettableResource.__init__(self)
+        Collection.__init__(self)
 
         self.bindings = {}
         self.index = 'index'
@@ -52,12 +52,4 @@ class StaticCollection(resource.GettableResource):
         if not self.bindings.has_key(subpath):
             raise error.web.NotFoundError
         return self.bindings[subpath]
-
-    def handle(self, request, reply, subpath):
-        if request.path.endswith('/'):
-            self.getChild(request, reply, '').handle(request, reply, subpath)
-        else:
-            reply.headers.setHeader('Location', request.path + '/')
-            raise error.web.MovedPermanently
-
 

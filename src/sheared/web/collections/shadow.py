@@ -18,11 +18,11 @@
 #
 
 from sheared import error
-from sheared.web import resource
+from sheared.web.collections.collection import Collection
 
-class ShadowCollection(resource.GettableResource):
+class ShadowCollection(Collection):
     def __init__(self, layers=None):
-        resource.GettableResource.__init__(self)
+        Collection.__init__(self)
 
         self.layers = []
         if layers:
@@ -62,12 +62,3 @@ class ShadowCollection(resource.GettableResource):
                 raise 'multiple subpath matches vs. asocial child for %s' % subpath
             else:
                 return ShadowCollection(children)
-
-    def handle(self, request, reply, subpath):
-        if request.path.endswith('/'):
-            self.getChild(request, reply, '').handle(request, reply, subpath)
-        else:
-            reply.headers.setHeader('Location', request.path + '/')
-            raise error.web.MovedPermanently
-
-

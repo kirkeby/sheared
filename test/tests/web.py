@@ -203,7 +203,9 @@ class FilesystemCollectionTestCase(unittest.TestCase):
         self.assertEquals(status.code, 403)
 
 class Gadget:
-    pass
+    def handle(self, request, reply, subpath):
+        reply.headers.setHeader('gadget', 'gadget')
+        raise NotImplementedError
 class StaticCollectionTestCase(unittest.TestCase):
     def testOneLevel(self):
         gadget = Gadget()
@@ -224,6 +226,36 @@ class StaticCollectionTestCase(unittest.TestCase):
         self.assertEquals(coll.lookup('bar/foo'), g1)
         self.assertEquals(coll.lookup('bar/bar'), g2)
         self.assertEquals(coll.lookup('bar/baz'), g3)
+
+    def testHandleIndex(self):
+        gadget = Gadget()
+        class FakeRequest:
+            path = '/'
+        request = FakeRequest()
+        class FakeReply:
+            headers = http.HTTPHeaders()
+        reply = FakeReply()
+    
+        coll = StaticCollection()
+        coll.bind('index', gadget)
+        
+        self.assertRaises(NotImplementedError, coll.handle, request, reply, '')
+        self.assertEquals(reply.headers['gadget'], 'gadget')
+
+    def testHandleRedirect(self):
+        gadget = Gadget()
+        class FakeRequest:
+            path = 'foo'
+        request = FakeRequest()
+        class FakeReply:
+            headers = http.HTTPHeaders()
+        reply = FakeReply()
+    
+        coll = StaticCollection()
+        coll.bind('foo/bar', gadget)
+        
+        self.assertRaises(error.web.Moved, coll.handle, request, reply, 'foo')
+        self.assertEquals(reply.headers['location'], 'foo/')
 
 class HTTPQueryStringTestCase(unittest.TestCase):
     def setUp(self):
