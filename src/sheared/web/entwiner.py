@@ -61,6 +61,8 @@ class Entwiner(resource.NormalResource):
         for i in range(len(self.template_pages)):
             last = i == range(len(self.template_pages))
             self.execute(self.template_pages[i], throwaway=last)
+        if self.result is None:
+            raise TemplateError, 'no result'
     
         reply.headers.setHeader('Content-Length', str(len(self.result)))
 
