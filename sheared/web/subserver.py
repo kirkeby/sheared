@@ -35,20 +35,15 @@ class HTTPSubServerCollection:
 
     def handle(self, request, reply, subpath):
         transport = reactor.connectUNIX(self.path)
-        fdpass.send(transport.fileno(), reply.transport.fileno(), pickle.dumps(reply.transport.other))
+        fdpass.send(transport.fileno(), reply.transport.fileno(),
+                    pickle.dumps(reply.transport.other))
         pickle.dump((request, reply, subpath), transport)
         transport.close()
 
 class HTTPSubServer(server.HTTPServer):
     def startup(self, server_transport):
-        for i in range(3):
-            try:
-                sock, addr = fdpass.recv(server_transport.fileno())
-                break
-            except:
-                pass
-        else:
-            raise
+        server_transport.read(0)
+        sock, addr = fdpass.recv(server_transport.fileno())
 
         try:
             addr = pickle.loads(addr)
