@@ -28,7 +28,7 @@ class VirtualHost:
     def walkPath(self, request, reply, pth):
         child = self.collection
 
-        authenticated = 1
+        authenticated = 0
         pieces = path.canonical_path(pth.split('/'))
         while pieces:
             if getattr(child, 'authenticate', None):
