@@ -30,7 +30,7 @@ from sheared.database import dummy
 # Postgresql -> Python type mappings, type-OIDs lifted from
 # /usr/include/postgresql/server/catalog/pg_type.h
 pg_type = {
-        16: bool,   # bool
+        16: lambda s: s == 't',   # bool
         20: long,   # int8
         21: int,    # int2
         23: int,    # int4
@@ -263,7 +263,7 @@ def parsePacket(client, data, columns=None):
         return None, orig_data
 
     raise UnknownPacket(orig_data)
-    
+
 # FIXME -- From the Postgresql Developers Manual section 4.2.1:
 #
 # A frontend must be prepared to accept ErrorResponse and NoticeResponse
@@ -295,7 +295,6 @@ class PostgresqlClient:
             crypted = crypt.crypt(password, reply.salt)
             self._sendPacket(PasswordPacket(crypted))
             reply = self._readPacket()
-            raise `reply`
     
         else:
             s = 'Got request for unsupported authentication: %d' % reply.authentication
@@ -311,6 +310,11 @@ class PostgresqlClient:
         return self._quote(str, "'")
     def quote_name(self, str):
         return self._quote(str, '"')
+    def quote_bool(self, b):
+        if b:
+            return 'true'
+        else:
+            return 'false'
 
     def query(self, query):
         self._sendPacket(QueryPacket(query))
