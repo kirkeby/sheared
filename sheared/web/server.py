@@ -4,9 +4,7 @@ import os, stat, errno, mimetypes, sys, pickle, re, types
 
 from sheared import error
 from sheared import reactor
-from sheared.protocol import basic
 from sheared.protocol import http
-from sheared.internet import shocket
 from sheared.python import fdpass
 from sheared.python import io
 
@@ -219,7 +217,7 @@ class HTTPServer:
         querystring = requestline.uri[3]
 
         if requestline.version[0] == 0:
-            pass
+            headers = http.HTTPHeaders()
         elif requestline.version[0] == 1:
             reader = io.RecordReader(reader, '\r\n\r\n')
             headers = reader.readline()
@@ -247,22 +245,20 @@ class HTTPServer:
         reply.done()
 
 class HTTPSubServerAdapter:
-    def __init__(self, reactor, path):
-        self.reactor = reactor
+    def __init__(self, path):
         self.path = path
 
     def handle(self, request, reply, subpath):
-        client = shocket.UNIXClient(self.reactor, self.path, None)
-        transport = client.connect()
+        transport = reactor.current.connectUNIX(self.path)
         fdpass.send(transport.fileno(), reply.transport.fileno(), pickle.dumps(reply.transport.other))
         pickle.dump((request, subpath), transport)
         transport.close()
 
 class HTTPSubServer(HTTPServer):
-    def run(self):
+    def startup(self, transport):
         for i in range(3):
             try:
-                sock, addr = fdpass.recv(self.transport.fileno())
+                sock, addr = fdpass.recv(transport.fileno())
                 break
             except:
                 pass
@@ -273,13 +269,13 @@ class HTTPSubServer(HTTPServer):
         data = ''
         read = None
         while not read == '':
-            read = self.transport.read()
+            read = transport.read()
             data = data + read
-        self.transport.close()
-
+        transport.close()
         request, subpath = pickle.loads(data)
-        self.transport = self.reactor.createTransport(sock, addr)
-        reply = HTTPReply(request.version, self.transport)
+
+        transport = reactor.current.createTransport(sock, addr)
+        reply = HTTPReply(request.version, transport)
         self.handle(request, reply)
 
 class VirtualHost:
@@ -308,10 +304,12 @@ class StaticCollection:
             if piece == '..':
                 if len(path) > 1:
                     path.pop()
+            elif piece == '.' or piece == '':
+                pass
             else:
                 path.append(piece)
 
-        path = '/'.join(path)
+        path = os.sep.join(path)
         type, encoding = mimetypes.guess_type(path)
         if not type:
             type = 'application/octet-stream'
@@ -341,4 +339,4 @@ class StaticCollection:
             else:
                 reply.sendErrorPage(http.HTTP_FORBIDDEN, 'You may not view this resource.')
 
-__all__ = ['HTTPServerFactory', 'VirtualHost', 'StaticCollection']
+__all__ = ['HTTPServer', 'VirtualHost', 'StaticCollection']

@@ -3,7 +3,7 @@
 import unittest, os, random, signal, commands
 
 from sheared import reactor
-from sheared.python import coroutine
+from sheared import error
 from sheared.reactor import transport
 from sheared.protocol import http
 from sheared.web import server
@@ -35,17 +35,15 @@ def parseReply(reply):
 
 class HTTPServerTestCase(unittest.TestCase):
     def setUp(self):
-        self.reactor = reactor.current
-        self.reactor.reset()
-        
-        self.server = server.HTTPServerFactory(self.reactor, server.HTTPServer)
+        self.reactor = reactor.current.__class__()
+
+        self.server = server.HTTPServer()
         self.server.addVirtualHost('foo.com', SimpleCollection('foo.com'))
         self.server.addVirtualHost('bar.com', SimpleCollection('bar.com'))
         self.server.setDefaultHost('bar.com')
 
         self.transport = transport.StringTransport()
-        self.coroutine = self.server.buildCoroutine(self.transport)
-        self.reactor.addCoroutine(self.coroutine, ())
+        self.reactor.createtasklet(self.server.startup, (self.transport,))
 
     def testFullRequestWithFoo(self):
         self.transport.appendInput('''GET / HTTP/1.0\r\nHost: foo.com\r\n\r\n''')
@@ -102,15 +100,14 @@ class HTTPSubServerTestCase(unittest.TestCase):
         self.port = random.random() * 8192 + 22000
             
         self.reactor = reactor.current
-        self.reactor.reset()
 
-        factory = server.HTTPServerFactory(self.reactor, server.HTTPSubServer)
+        factory = server.HTTPSubServer()
         factory.addVirtualHost('localhost', SimpleCollection('localhost'))
         factory.setDefaultHost('localhost')
         self.reactor.listenUNIX(factory, './test/fifoo')
 
-        factory = server.HTTPServerFactory(reactor, server.HTTPServer)
-        factory.addVirtualHost('localhost', server.HTTPSubServerAdapter(self.reactor, './test/fifoo'))
+        factory = server.HTTPServer()
+        factory.addVirtualHost('localhost', server.HTTPSubServerAdapter('./test/fifoo'))
         factory.setDefaultHost('localhost')
         self.reactor.listenTCP(factory, ('127.0.0.1', self.port))
 
@@ -134,15 +131,13 @@ class HTTPSubServerTestCase(unittest.TestCase):
 
 class StaticCollectionTestCase(unittest.TestCase):
     def setUp(self):
-        self.reactor = reactor.current
-        self.reactor.reset()
+        self.reactor = reactor.current.__class__()
         
-        self.server = server.HTTPServerFactory(self.reactor, server.HTTPServer)
-        self.server.addVirtualHost('foo.com', server.StaticCollection(self.reactor, './test/http-docroot'))
+        self.server = server.HTTPServer()
+        self.server.addVirtualHost('foo.com', server.StaticCollection('./test/http-docroot'))
 
         self.transport = transport.StringTransport()
-        self.coroutine = self.server.buildCoroutine(self.transport)
-        self.reactor.addCoroutine(self.coroutine, ())
+        self.reactor.createtasklet(self.server.startup, (self.transport,))
 
     def doRequest(self, path):
         self.transport.appendInput('''GET %s HTTP/1.0\r\nHost: foo.com\r\n\r\n''' % path)
@@ -182,8 +177,8 @@ class HTTPQueryStringTestCase(unittest.TestCase):
         self.assertEquals(self.qs.get_one('int').as_name(), '1')
         self.assertEquals(self.qs.get_one('hex').as_name(), 'babe')
         self.assertEquals(self.qs.get_one('str').as_name(), 'foo')
-        self.assertRaises(server.InputError, self.qs.get_one, 'flag')
-        self.assertRaises(server.InputError, self.qs.get_one, 'many')
+        self.assertRaises(error.web.InputError, self.qs.get_one, 'flag')
+        self.assertRaises(error.web.InputError, self.qs.get_one, 'many')
 
     def testGetMany(self):
         self.assertEquals(len(self.qs.get_many('int')), 1)
@@ -202,7 +197,7 @@ class UnvalidatedInputTestCase(unittest.TestCase):
         self.assertEquals(self.int.as_int(), 1)
         self.assertEquals(self.hex.as_int(16), 0xBABE)
         self.assertEquals(self.hex.as_name(), 'babe')
-        self.assertRaises(server.InputError, self.str.as_int)
+        self.assertRaises(error.web.InputError, self.str.as_int)
 
 suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(HTTPServerTestCase, 'test')])
