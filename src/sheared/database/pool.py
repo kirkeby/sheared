@@ -18,6 +18,24 @@
 #
 from sheared.python import queue
 
+class DatabaseConnection:
+    def __init__(self, real, pool):
+        self.pool = pool
+        self.real = real
+
+        self.query = real.query
+        
+        self.begin = real.begin
+        self.commit = real.commit
+        self.rollback = real.rollback
+
+        self.quote_str = real.quote_str
+        self.quote_name = real.quote_name
+        self.quote_bool = real.quote_bool
+
+    def __del__(self):
+        self.pool.releaseConnection(self.real)
+
 class DatabaseConnectionPool:
     def __init__(self, factory, max=4):
         self.factory = factory
@@ -25,6 +43,9 @@ class DatabaseConnectionPool:
 
         self.connected = []
         self.available = queue.StacklessQueue()
+
+    def borrow(self):
+        return DatabaseConnection(self.leaseConnection(), self)
 
     def leaseConnection(self):
         if (len(self.available) == 0) and (len(self.connected) < self.max):
