@@ -38,9 +38,15 @@ class HTTPReply:
         self.decapitated = 0
 
     def __getstate__(self):
-        return self.status, self.version, self.headers, self.decapitated
+        return {
+           'status': self.status, 
+           'version': self.version, 
+           'headers': self.headers, 
+           'decapitated': self.decapitated, 
+           'cookies': self.cookies,
+        }
     def __setstate__(self, state):
-        self.status, self.version, self.headers, self.decapitated = state
+        self.__dict__.update(state)
         self.transport = None
 
     def setStatusCode(self, status):
