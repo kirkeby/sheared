@@ -19,10 +19,7 @@
 from sheared import reactor
 
 def readfile(path):
-    if reactor.running:
-        f = reactor.open(path, 'r')
-    else:
-        f = open(path, 'r')
+    f = reactor.open(path, 'r')
     return readall(f)
 
 def readall(f):
