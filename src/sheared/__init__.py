@@ -1,6 +1,6 @@
 #
 # Sheared -- non-blocking network programming library for Python
-# Copyright (C) 2003  Sune Kirkeby <sune@mel.interspace.dk>
+# Copyright (C) 2003  Sune Kirkeby
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -54,10 +54,11 @@ are implmented.
 Helpers for various things related to network and daemon programming
 with Sheared (e.g. a logging infrastructure and helpers for daemonizing)."""
 
-from sheared import reactors
-reactor = reactors.default.Reactor()
+import sheared.reactors.greenlet
+reactor = sheared.reactors.greenlet.Reactor()
 
-version_string = '0.1'
+__author__ = 'Sune Kirkeby'
+__version__ = '0.1'
 
 __all__ = ['python', 'reactor', 'reactors', 'protocol',
-           'database', 'web', 'error', 'version_string']
+           'database', 'web', 'error']
