@@ -31,22 +31,7 @@ BEWARE: The following is _not_ yet implemented.
 
 from __future__ import generators
 
-import abml
-
-#def match(program, tree):
-#    if not program:
-#        return 1
-#
-#    if tree.type == 'start-tag' and program[0] == tree.name:
-#        program = program[1:]
-#
-#    for child in tree.children:
-#        if match(program, child):
-#            return 1
-#
-#    return not program
-
-def treeify(xml):
+def treeify(events):
     """treeify(str) -> xml-parse-tree
 
     Generates a parse tree for the XML-document, str.  Each subtree in
@@ -59,7 +44,7 @@ def treeify(xml):
             self.children = []
     stack = [Tree()]
 
-    for ev in abml.parse(xml):
+    for ev in events:
         stack[-1].children.append(ev)
         ev.children = []
         if ev.type == 'start-tag':
@@ -69,6 +54,19 @@ def treeify(xml):
 
     assert len(stack) == 1
     return stack[0]
+
+class Fragment:
+    def __init__(self, capture, **kwargs):
+        self.capture = capture
+        self.fields = kwargs
+
+    def matches(self, subtree):
+        for k, v in self.fields.items():
+            if not hasattr(subtree, k):
+                return 0
+            if not getattr(subtree, k) == v:
+                return 0
+        return 1
 
 def compile(ir):
     """compile(str) -> compiled-ir-fragment"""
@@ -86,10 +84,14 @@ def compile(ir):
         else:
             capture = 0
 
-        if not fragment[0] == '<' and fragment[-1] == '>':
-            raise 'malformed XML-fragment: %r' % fragment
+        if fragment[0] == '<' and fragment[-1] == '>':
+            fragments.append(Fragment(capture, type='start-tag', name=fragment[1:-1]))
 
-        fragments.append((capture, fragment[1:-1]))
+        elif fragment == 'text':
+            fragments.append(Fragment(capture, type='text'))
+
+        else:
+            raise 'malformed IR-fragment: %r' % fragment
 
     return fragments
 
@@ -97,7 +99,7 @@ def match(program, tree):
     if not program:
         return 1
 
-    if tree.type == 'start-tag' and program[0][1] == tree.name:
+    if program[0].matches(tree):
         program = program[1:]
 
     for child in tree.children:
@@ -107,8 +109,9 @@ def match(program, tree):
     return not program
 
 def find(fragments, subtree, captured=()):
-    if subtree.type == 'start-tag' and fragments[0][1] == subtree.name:
-        if fragments[0][0]:
+    fragment = fragments[0]
+    if fragment.matches(subtree):
+        if fragment.capture:
             captured = captured + (subtree,)
         fragments = fragments[1:]
 
@@ -131,7 +134,8 @@ if __name__ == '__main__':
                '<bar />' \
           '</xml>'
 
-    tree = treeify(xml)
+    import abml
+    tree = treeify(abml.parse(xml))
 
     assert match(compile(''), tree)
     assert match(compile('<xml>'), tree)
@@ -148,8 +152,9 @@ if __name__ == '__main__':
     assert not match(compile('<baz>'), tree)
     assert not match(compile('<foo> <baz>'), tree)
 
-    for foo, in find(compile('<xml> (<foo>)'), tree):
-        print `foo.children`
+    # FIXME -- turn into an assert
+    #for foo, in find(compile('<xml> <foo> (text)'), tree):
+    #    print `foo.raw`
 
     print 'All tests passed.'
 
