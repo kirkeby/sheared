@@ -17,6 +17,15 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+"""Sheared top-level module.
+
+Sheared is a low-level network (I/O in general, really, but it makes
+most sense in networked programs) programming library for Python. It is
+built on top of Stackless Python, and instead of threads and blocking
+I/O Sheared uses Stackless tasklets and asynchronous I/O. But, apart
+from other asynchronous network libraries, programming Sheared is almost
+entirely like programming a normal blocking network library."""
+
 from sheared import reactors
 reactor = reactors.default.Reactor()
 
