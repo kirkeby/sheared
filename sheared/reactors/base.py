@@ -80,7 +80,7 @@ class Reactor:
         try:
             self.running = 1
             t = stackless.tasklet()
-            t.become()
+            t.capture()
             self._run()
         finally:
             self.running = 0
