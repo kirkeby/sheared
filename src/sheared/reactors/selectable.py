@@ -69,8 +69,10 @@ class Reactor(base.Reactor):
 
             if self.stopping:
                 ex = error.reactor.ReactorShuttingDown()
-                for handler, file, channel, argv in self.waiting.values():
+                for _, _, channel, _ in self.waiting.values():
                     self._safe_send(channel, ex)
+                self.waiting = {}
+    
                 while not self.sleeping.empty():
                     channel = self.sleeping.getmin()
                     self._safe_send(channel, ex)
