@@ -46,6 +46,13 @@ class ParseContentTypeTestCase(unittest.TestCase):
         self.assertEquals(rfc1521.parse_content_type('text/plain ;q=1;v=2'),
                           ('text/plain', {'q': '1', 'v': '2'}))
 
+    def testWithQuotedParam(self):
+        "Test parse_content_type with a content-type with a quoted parameter."
+        self.assertEquals(rfc1521.parse_content_type('text/plain ;q="foo"'),
+                          ('text/plain', {'q': 'foo'}))
+        self.assertEquals(rfc1521.parse_content_type('text/plain ;q="foo bar"'),
+                          ('text/plain', {'q': 'foo bar'}))
+
 suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(ParseContentTypeTestCase, 'test')])
 
