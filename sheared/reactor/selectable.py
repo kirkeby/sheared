@@ -28,16 +28,6 @@ def do_add(oco, nco, args):
 def do_done(co):
     co()
 
-def do_open(co, path, mode):
-    flags = os.O_NONBLOCK
-    if mode == 'r':
-        flags = flags | os.O_RDONLY
-    elif mode == 'w':
-        flags = flags | os.O_RDWR
-    else:
-        co.sendException(ValueError, 'bad flags')
-    os.open(path, flags)
-
 def do_accept(co, fd, sock):
     accepting[fd] = co, sock
 
@@ -177,6 +167,25 @@ def mainloop():
                     call(co, err)
 
     finally:
+        files = {}
+        files.update(accepting)
+        files.update(connecting)
+        files.update(reading)
+        files.update(writing)
+
+        for fd in files.keys():
+            if accepting.has_key(fd) or connecting.has_key(fd):
+                _, sock = files[fd]
+                try:
+                    sock.close()
+                except:
+                    pass
+            else:
+                try:
+                    os.close(fd)
+                except:
+                    pass
+
         reactor.running = 0
 
 running = 0
@@ -216,8 +225,15 @@ def call_main(*args, **kwargs):
 def sleep(n):
     return call_main(do_sleep, (n,))
 
-def open(path):
-    return call_main(do_open, (path,))
+def open(path, mode):
+    flags = os.O_NONBLOCK
+    if mode == 'r':
+        flags = flags | os.O_RDONLY
+    elif mode == 'w':
+        flags = flags | os.O_RDWR
+    else:
+        raise ValueError, 'bad flags'
+    return os.open(path, flags)
 
 def getfd(file):
     if isinstance(file, types.IntType):
@@ -294,4 +310,4 @@ def createTransport(fd, addr):
 
 __all__ = ['run', 'reset', 'read', 'write', 'accept', 'connect', 'bind', 'listen', 'close',
            'prepareFile', 'addCoroutine', 'listenTCP', 'connectTCP', 'createTransport',
-           'listenUNIX', 'connectUNIX', 'sleep', 'shutdown']
+           'listenUNIX', 'connectUNIX', 'sleep', 'shutdown', 'open']
