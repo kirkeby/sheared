@@ -42,7 +42,7 @@ class ShadowCollection(resource.GettableResource):
                 continue
             break
         else:
-            raise error.web.NotFoundError
+            raise error.web.NotFoundError, subpath
         return child
 
     def handle(self, request, reply, subpath):
@@ -101,18 +101,18 @@ class FilesystemCollection(resource.NormalResource):
                     abs_path = self.root + os.sep + subpath
                     if os.access(abs_path, os.F_OK):
                         return FilesystemCollection(abs_path, self.path_info, self.mimetypes)
-                raise error.web.ForbiddenError, 'indexing forbidden'
+                return None
             elif stat.S_ISREG(st.st_mode):
                 path_info = self.path_info + '/' + subpath
                 return FilesystemCollection(self.root, path_info, self.mimetypes)
             else:
-                raise error.web.ForbiddenError
+                raise error.web.ForbiddenError, 'not a file or directory'
 
         except OSError, ex:
             if ex.errno == errno.ENOENT:
-                raise error.web.NotFoundError
+                raise error.web.NotFoundError, 'ENOENT'
             else:
-                raise error.web.ForbiddenError
+                raise error.web.ForbiddenError, 'other OSError'
 
     def handle(self, request, reply, subpath):
         assert not subpath
@@ -121,24 +121,33 @@ class FilesystemCollection(resource.NormalResource):
             st = os.stat(self.root)
             if stat.S_ISDIR(st.st_mode):
                 if request.path.endswith('/'):
-                    self.getChild(request, reply, '').handle(request, reply, subpath)
+                    index = self.getChild(request, reply, '')
+                    if index:
+                        index.handle(request, reply, subpath)
+                    else:
+                        if os.access(self.root, os.X_OK):
+                            self.handle_index(request, reply, subpath)
+                        else:
+                            raise error.web.ForbiddenError, 'directory not listable'
                 else:
                     reply.headers.setHeader('Location', request.path + '/')
                     raise error.web.MovedPermanently
             elif stat.S_ISREG(st.st_mode):
                 if os.access(self.root, os.X_OK):
                     self.handle_exec(request, reply, subpath)
-                if os.access(self.root, os.R_OK):
+                elif os.access(self.root, os.R_OK):
                     self.stat = st
                     self.handle_normal(request, reply, subpath)
+                else:
+                    raise error.web.ForbiddenError, 'not X or R'
             else:
-                raise error.web.ForbiddenError
+                raise error.web.ForbiddenError, 'not a file or directory'
 
         except OSError, ex:
             if ex.errno == errno.ENOENT:
-                raise error.web.NotFoundError
+                raise error.web.NotFoundError, 'ENOENT'
             else:
-                raise error.web.ForbiddenError
+                raise error.web.ForbiddenError, 'other OSError'
 
     def handle_normal(self, request, reply, subpath):
         type, encoding = self.mimetypes.guess_type(self.root)
@@ -158,4 +167,4 @@ class FilesystemCollection(resource.NormalResource):
         reply.done()
 
     def handle_exec(self, request, reply, subpath):
-        raise error.web.ForbiddenError
+        raise error.web.ForbiddenError, 'cgi-scripts not allowed: %s' % self.root

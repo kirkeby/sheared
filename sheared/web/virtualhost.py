@@ -45,8 +45,10 @@ class VirtualHost:
         child, subpath = self.walkPath(request, reply, path)
 
         try:
+            if child is None:
+                raise error.web.NotFoundError, path
             if not getattr(child, 'handle', None):
-                raise error.web.ForbiddenError
+                raise error.web.ForbiddenError, `child`
 
             mp = child.getMethodParser(request.requestline.method)
             if not mp:

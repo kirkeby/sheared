@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys, traceback, types
+import sys, traceback, types, errno
 
 from sheared import error
 from sheared.protocol import http
@@ -43,10 +43,16 @@ class HTTPServer:
     def startup(self, transport):
         try:
             transport = io.BufferedReader(transport)
+
+            rl = transport.readline().rstrip()
+            if not rl:
+                transport.close()
+                return
+
             try:
-                requestline = http.HTTPRequestLine(transport.readline().rstrip())
+                requestline = http.HTTPRequestLine(rl)
             except ValueError:
-                raise error.web.BadRequestError, 'could not parse request-line'
+                raise error.web.BadRequestError, 'could not parse request-line: %r' % rl
 
             if requestline.version[0] == 0: # HTTP/0.9
                 request, reply = self.oh_nine.parse(transport, requestline)
@@ -62,7 +68,7 @@ class HTTPServer:
 
         except error.web.WebServerError, e:
             if e.args:
-                traceback.print_exception(tpe, val, tb, 1)
+                traceback.print_exc(1)
 
             if len(e.args) == 1 and isinstance(e.args[0], types.StringType):
                 err = e.args[0]
@@ -72,6 +78,12 @@ class HTTPServer:
             transport.write('HTTP/1.0 %d %s\r\n' % (e.statusCode, err))
             transport.write('Content-Type: text/plain\r\n\r\n')
             transport.write('Crashing in flames!\r\n')
+
+        except OSError, e:
+            if e.errno == errno.ECONNRESET:
+                pass
+            else:
+                raise
 
         except:
             self.logInternalError(sys.exc_info())
@@ -105,9 +117,27 @@ class HTTPServer:
             if not reply.decapitated:
                 reply.setStatusCode(e.statusCode)
                 reply.headers.setHeader('Content-Type', 'text/plain')
-                reply.send("I am terribly sorry, but an error (%d) occured "
-                           "while processing your request.\r\n" % e.statusCode)
+                self.handleWebServerError(e, request, reply)
 
+    def handleWebServerError(self, e, request, reply):
+        if isinstance(e, error.web.Moved):
+            reply.send("This page has moved. You can now find it here:\r\n"
+                       "  %s\r\n" % reply.headers.get('Location'))
+
+        elif isinstance(e, error.web.UnauthorizedError):
+            reply.send("I need to see some credentials.\r\n")
+
+        elif isinstance(e, error.web.ForbiddenError):
+            reply.send("Forbidden.\r\n")
+
+        elif isinstance(e, error.web.NotFoundError):
+            reply.send("Not found.\r\n")
+
+        else:
+            reply.send("I am terribly sorry, but an error (%d) occured "
+                       "while processing your request.\r\n" % e.statusCode)
+            traceback.print_exc()
+        
     def logInternalError(self, (tpe, val, tb)):
         traceback.print_exception(tpe, val, tb)
 
