@@ -93,6 +93,9 @@ def index_handler(request, reply, collection, walker):
     reply.transport.write('</body></html>\r\n')
     reply.transport.close()
 
+def forbidden_handler(request, reply, collection, walker):
+    raise error.web.ForbiddenError
+
 class FilesystemCollection(resource.NormalResource):
     def __init__(self, root):
         resource.NormalResource.__init__(self)
@@ -104,8 +107,8 @@ class FilesystemCollection(resource.NormalResource):
 
         self.authenticator = htaccess_authenticator
         self.normal_handler = normal_handler
-        self.index_handler = index_handler
-        self.exec_handler = None
+        self.index_handler = forbidden_handler
+        self.exec_handler = forbidden_handler
 
     def authenticate(self, request, reply):
         return self.walker.authenticate(request, reply)
