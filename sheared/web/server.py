@@ -12,7 +12,11 @@ class HTTPReply:
         self.transport = transport
 
         self.status = 200
-        self.version = version
+
+        if version[0] == 0:
+            self.version = 0, 9
+        else:
+            self.version = 1, 0
         
         self.headers = http.HTTPHeaders()
         self.headers.addHeader('Date', str(http.HTTPDateTime()))
@@ -136,6 +140,8 @@ class HTTPSubServer(HTTPServer):
                 break
             except:
                 pass
+        else:
+            raise
         addr = pickle.loads(addr)
 
         data = ''
