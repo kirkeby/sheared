@@ -22,35 +22,31 @@ from __future__ import generators
 
 import time, urlparse, types
 
-# FIXME -- use rfc822
-def headerKey(n):
-    return n.lower()
-
 http_header_classes = {
-    headerKey('Date'):              ((1,0), 'general'),
-    headerKey('Pragma'):            ((1,0), 'general'),
+    'date':              ((1,0), 'general'),
+    'pragma':            ((1,0), 'general'),
     
-    headerKey('Authorization'):     ((1,0), 'request'),
-    headerKey('From'):              ((1,0), 'request'),
-    headerKey('If-Modified-Since'): ((1,0), 'request'),
-    headerKey('Referer'):           ((1,0), 'request'),
-    headerKey('User-Agent'):        ((1,0), 'request'),
+    'authorization':     ((1,0), 'request'),
+    'from':              ((1,0), 'request'),
+    'if-modified-since': ((1,0), 'request'),
+    'referer':           ((1,0), 'request'),
+    'user-agent':        ((1,0), 'request'),
     
-    headerKey('Location'):          ((1,0), 'response'),
-    headerKey('Server'):            ((1,0), 'response'),
-    headerKey('WWW-Authenticate'):  ((1,0), 'response'),
+    'location':          ((1,0), 'response'),
+    'server':            ((1,0), 'response'),
+    'www-authenticate':  ((1,0), 'response'),
 
-    headerKey('Allow'):             ((1,0), 'entity'),
-    headerKey('Content-Encoding'):  ((1,0), 'entity'),
-    headerKey('Content-Length'):    ((1,0), 'entity'),
-    headerKey('Content-Type'):      ((1,0), 'entity'),
-    headerKey('Expires'):           ((1,0), 'entity'),
-    headerKey('Last-Modified'):     ((1,0), 'entity'),
+    'allow':             ((1,0), 'entity'),
+    'content-encoding':  ((1,0), 'entity'),
+    'content-length':    ((1,0), 'entity'),
+    'content-type':      ((1,0), 'entity'),
+    'expires':           ((1,0), 'entity'),
+    'last-modified':     ((1,0), 'entity'),
 }
 def headerVersion(name):
-    return http_header_classes[headerKey(name)][0]
+    return http_header_classes[name.lower()][0]
 def headerClass(name):
-    return http_header_classes.get(headerKey(name), 'unknown')[1]
+    return http_header_classes.get(name.lower(), 'unknown')[1]
 
 HTTP_OK = 200
 HTTP_CREATED = 201
@@ -144,33 +140,23 @@ class HTTPDateTime:
     def __cmp__(self, other):
         return cmp(self.unixtime, other.unixtime)
 
-# FIXME -- Use s.p.rfc822
-def parseHeaderLines(s):
-    lines = []
-    physical = s.split('\r\n')
-    for line in physical:
-        if line == '':
-            continue
-        if line[0] in '\t ':
-            if not lines:
-                raise ValueError('first line cannot be a continued line')
-            lines[-1] = lines[-1] + line
+from sheared.python.rfc822 import RFC822Headers
+class HTTPHeaders(RFC822Headers):
+    def addHeader(self, name, value):
+        key = self.headerKey(name)
+        if self.headers.has_key(key):
+            self.headers[key].value = self.headers[key].value + ', ' + value
         else:
-            lines.append(line)
+            self._set(name, value)
+    def setHeader(self, name, value):
+        self._set(name, value)
 
-    for line in lines:
-        yield parseHeaderLine(line)
-
-def parseHeaderLine(s):
-    try:
-        name, value = s.split(':', 1)
-        if not name:
-            raise ValueError
-        name = name.strip()
-        value = value.strip()
-    except ValueError:
-        raise ValueError('"%s" is not a proper HTTP header' % s)
-    return name, value
+    def __getstate__(self):
+        return self.items()
+    def __setstate__(self, items):
+        self.__init__()
+        for k, v in items:
+            self.addHeader(k, v)
 
 def splitHeaderList(s):
     l = []
@@ -179,60 +165,6 @@ def splitHeaderList(s):
         if e:
             l.append(e)
     return l
-
-class HTTPHeaders:
-    def __init__(self, s=None):
-        self.order = []
-        self.headers = {}
-        if not s is None:
-            for name, value in parseHeaderLines(s):
-                self.addHeader(name, value)
-
-    def addHeader(self, name, value):
-        key = headerKey(name)
-        if not self.headers.has_key(key):
-            self.order.append(key)
-            self.headers[key] = (name, value)
-        else:
-            self.headers[key] = (self.headers[key][0], self.headers[key][1] + ', ' + value)
-    
-    def setHeader(self, name, value):
-        key = headerKey(name)
-        if not self.headers.has_key(key):
-            self.order.append(key)
-        self.headers[key] = (name, value)
-
-    def delHeader(self, name):
-        key = headerKey(name)
-        del self.headers[key]
-        self.order.remove(key)
-        
-    def get(self, name, *argv):
-        assert len(argv) < 2, 'get takes one or two arguments'
-
-        if self.headers.has_key(headerKey(name)):
-            return self.headers[headerKey(name)][1]
-        elif len(argv):
-            return argv[0]
-        else:
-            raise KeyError, name
-    def __getitem__(self, name):
-        return self.get(name)
-    def keys(self):
-        return [ self.headers[key][0] for key in self.order ]
-    def has_key(self, name):
-        return self.headers.has_key(headerKey(name))
-    def item(self, name):
-        return name, self.get(name)
-    def items(self):
-        return map(self.item, self.keys())
-
-    def __getstate__(self):
-        return self.items()
-    def __setstate__(self, items):
-        self.__init__()
-        for k, v in items:
-            self.addHeader(k, v)
 
 class HTTPRequestLine:
     def __init__(self, s):

@@ -50,10 +50,10 @@ class RFC822HeadersTestCase(unittest.TestCase):
         h = rfc822.RFC822Headers("Header: value")
         self.assertEquals(h['header'], ['value'])
         # Should we be white-space preserving?
-        #h = http.HTTPHeaders("Header: value ")
-        #self.assertEquals(h['header'], 'value ')
-        #h = http.HTTPHeaders("Header:  value")
-        #self.assertEquals(h['header'], ' value')
+        h = rfc822.RFC822Headers("Header: value ")
+        self.assertEquals(h['header'], ['value'])
+        h = rfc822.RFC822Headers("Header:  value")
+        self.assertEquals(h['header'], ['value'])
 
     def testMultiLine(self):
         """Test RFC822Headers with multi-line headers."""
@@ -64,13 +64,12 @@ class RFC822HeadersTestCase(unittest.TestCase):
         """Test RFC822Headers with multiple of the same headers."""
         h = rfc822.RFC822Headers("Header: value\r\nHeader: and this too")
         self.assertEquals(len(h['header']), 2)
-        self.assertEquals(h['header'][0], 'value')
-        self.assertEquals(h['header'][1], 'and this too')
+        self.assertEquals(h['header'],
+                          ['value', 'and this too'])
 
         h = rfc822.RFC822Headers("Header: value, and this too\r\n")
-        self.assertEquals(len(h['header']), 2)
-        self.assertEquals(h['header'][0], 'value')
-        self.assertEquals(h['header'][1], 'and this too')
+        self.assertEquals(h['header'],
+                          ['value, and this too'])
 
     def testItems(self):
         """Test RFC822Headers items method."""

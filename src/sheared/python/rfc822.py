@@ -44,9 +44,13 @@ def parseHeaderLine(s):
         name = name.strip()
         value = value.strip()
     except ValueError:
-        raise ValueError('"%s" is not a proper RFC 822 header' % s)
+        raise ValueError, '"%s" is not a proper RFC 822 header' % s
     return name, value
 
+class Header:
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
 class RFC822Headers:
     def __init__(self, s=None, canonical=0):
         self.order = []
@@ -65,19 +69,25 @@ class RFC822Headers:
         if not self.headers.has_key(key):
             self.setHeader(name, value)
         else:
-            self.headers[key][1].append(value)
-    
+            self.headers[key].value.append(value)
     def setHeader(self, name, value):
+        self._set(name, [value])
+    def _set(self, name, value):
         key = self.headerKey(name)
         if not self.headers.has_key(key):
-            self.order.append(name)
-        self.headers[key] = (name, [value])
+            self.order.append(key)
+        self.headers[key] = Header(name, value)
+    def delHeader(self, name):
+        key = self.headerKey(name)
+        del self.headers[key]
+        self.order.remove(key)
         
     def get(self, name, *argv):
         assert len(argv) < 2, 'get takes one or two arguments'
 
-        if self.headers.has_key(self.headerKey(name)):
-            return self.headers[self.headerKey(name)][1]
+        key = self.headerKey(name)
+        if self.headers.has_key(key):
+            return self.headers[key].value
         elif len(argv):
             return argv[0]
         else:
@@ -86,10 +96,11 @@ class RFC822Headers:
         return self.get(name)
     def has_key(self, name):
         return self.headers.has_key(self.headerKey(name))
-    def item(self, name):
-        return name, self.get(name)
     def items(self):
-        return map(self.item, self.order)
+        return [ (self.headers[key].name, self.headers[key].value)
+                 for key in self.order ]
+    def keys(self):
+        return [ self.headers[key].name for key in self.order ]
 
 class RFC822Message:
     def __init__(self, s=None):
