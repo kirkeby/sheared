@@ -16,7 +16,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+import warnings
+warnings.warn('use sheared.web.collections instead of sheared.web.collection',
+              DeprecationWarning)
+
 from sheared.web.collections.shadow import ShadowCollection
 from sheared.web.collections.tilde import TildeUserCollection
 from sheared.web.collections.static import StaticCollection
 from sheared.web.collections.filesystem import FilesystemCollection
+
+__all__ = ['ShadowCollection', 'TildeUserCollection',
+           'StaticCollection', 'FilesystemCollection']
