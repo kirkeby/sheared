@@ -21,6 +21,7 @@
 import unittest
 
 from sheared.web import entwiner
+from sheared import error
 
 from tests.web import FakeReply, FakeRequest
 
@@ -61,6 +62,32 @@ class EntwinerTestCase(unittest.TestCase):
         foo.handle(request, reply, '')
         
         self.assertEquals(reply.sent, 'fubar\n')
+
+    def testConditionalGet(self):
+        class FooEntwiner(entwiner.Entwiner):
+            template_page = './test/http-docroot/foo.html'
+            def entwine(self, request, reply, subpath):
+                pass
+
+        # test with no match
+        request = FakeRequest('/')
+        request.context = {'foo': 'fubar'}
+        request.headers.setHeader('If-None-Match', 'abc')
+        reply = FakeReply()
+
+        foo = FooEntwiner()
+        foo.handle(request, reply, '')
+        
+        self.assertEquals(reply.status, 200)
+        self.assertEquals(reply.sent, 'fubar\n')
+
+        # test with match
+        request.headers.setHeader('If-None-Match', reply.headers['ETag'])
+        reply = FakeReply()
+
+        self.assertRaises(error.web.NotModified, foo.handle, request, reply, '')
+        self.assertEquals(reply.sent, '')
+
 
 suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(EntwinerTestCase, 'test')])

@@ -24,6 +24,7 @@ from entwine import entwine
 
 from sheared.python import io
 from sheared.web import resource
+from sheared import error
 
 class Entwiner(resource.NormalResource):
     def __init__(self):
