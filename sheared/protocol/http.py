@@ -229,12 +229,14 @@ class HTTPRequestLine:
         if len(pieces) == 2 and pieces[0] == 'GET':
             # simple HTTP request-line
             self.method = 'GET'
+            self.wire_uri = pieces[1]
             self.uri = urlparse.urlsplit(pieces[1])
             self.version = 0, 9
 
         elif len(pieces) == 3 and pieces[2].startswith('HTTP/'):
             # full HTTP request-line
             self.method = pieces[0]
+            self.wire_uri = pieces[1]
             self.uri = urlparse.urlsplit(pieces[1])
             self.version = tuple(map(int, pieces[2][5:].split('.')))
             if not len(self.version) == 2:
