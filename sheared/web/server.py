@@ -225,8 +225,9 @@ class HTTPServer:
 
             if headers.has_key('Content-Type'):
                 ct = headers.get('Content-Type')
+                cl = int(headers.get('Content-Length'))
                 if ct == 'application/x-www-form-urlencoded':
-                    querystring = io.Drainer(reader).read().lstrip()
+                    querystring = reader.read(cl).lstrip()
                 else:
                     # FIXME -- need logging
                     print 'need handler for Content-Type %r' % ct
