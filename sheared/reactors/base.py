@@ -179,9 +179,9 @@ class Reactor:
     def connect(self, where):
         domain, address = parse_address_uri(where)
         if domain == 'tcp':
-            return self.connectTCP(factory, address)
+            return self.connectTCP(address)
         elif domain == 'unix':
-            return self.connectUNIX(factory, address)
+            return self.connectUNIX(address)
 
     def connectTCP(self, addr):
         raise NotImplementedError
