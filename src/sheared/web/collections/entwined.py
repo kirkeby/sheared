@@ -36,6 +36,7 @@ def entwined_handler(request, reply, collection, walker):
 
 class EntwinedFile(Entwiner):
     def __init__(self, path):
+        Entwiner.__init__(self)
         self.path = path
     def entwine(self, request, reply, subpath):
         self.execute(self.path)
