@@ -3,9 +3,11 @@
 import unittest, sys, traceback, os
 
 print 'Making the world . . .'
-os.system('make >/dev/null 2>&1')
+if os.system('make >/dev/null 2>&1'):
+    raise 'make failed'
 print 'Building the world . . .'
-os.system('python setup.py build >/dev/null 2>&1')
+if os.system('%s setup.py build >/dev/null 2>&1' % sys.executable):
+    raise 'setup.py build failed'
 for path in os.listdir('build'):
     if path.startswith('lib.'):
         pythonpath = 'build/' + path
