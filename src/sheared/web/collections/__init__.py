@@ -20,5 +20,6 @@ import shadow
 import tilde
 import static
 import filesystem
+import entwined
 
-__all__ = ['shadow', 'tilde', 'static', 'filesystem']
+__all__ = ['shadow', 'tilde', 'static', 'filesystem', 'entwined']
