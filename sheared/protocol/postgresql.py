@@ -221,13 +221,6 @@ def parsePacket(client, data, columns=None):
     raise UnknownPacket(orig_data)
 
 class PostgresqlClientFactory:
-    def __init__(self, user, password='', database='', args='', tty=''):
-        self.user = user
-        self.password = password
-        self.database = database
-        self.args = args
-        self.tty = tty
-
     def connected(self, transport):
         cl = PostgresqlClient(transport)
         cl.factory = self
@@ -252,11 +245,10 @@ class PostgresqlClientFactory:
 class PostgresqlClient:
     def __init__(self, transport):
         self.transport = transport
-
         self.buffer = ''
 
-    def connected(self):
-        self._sendPacket(StartupPacket(self.factory.user, self.factory.database))
+    def authenticate(self, user, password='', database='', args='', tty=''):
+        self._sendPacket(StartupPacket(user, database))
         reply = self._readPacket(AuthenticationPacket)
         if not reply.authentication == 0:
             s = 'Got request for unsupported authentication: %d' % reply.authentication
