@@ -22,7 +22,7 @@ from __future__ import generators
 
 def parseHeaderLines(s):
     lines = []
-    physical = s.split('\r\n')
+    physical = s.split('\n')
     for line in physical:
         if line == '':
             continue
@@ -48,10 +48,12 @@ def parseHeaderLine(s):
     return name, value
 
 class RFC822Headers:
-    def __init__(self, s=None):
+    def __init__(self, s=None, canonical=0):
         self.order = []
         self.headers = {}
         if not s is None:
+            if not canonical:
+                s = s.replace('\r\n', '\n')
             for name, value in parseHeaderLines(s):
                 self.addHeader(name, value)
 
@@ -92,8 +94,8 @@ class RFC822Headers:
 class RFC822Message:
     def __init__(self, s=None):
         if s:
-            h, b = s.split('\r\n\r\n', 1)
-            self.headers = RFC822Headers(h)
+            h, b = s.replace('\r\n', '\n').split('\n\n', 1)
+            self.headers = RFC822Headers(h, canonical=1)
             self.body = b
         else:
             self.headers = RFC822Headers()
