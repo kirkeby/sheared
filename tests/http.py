@@ -107,15 +107,18 @@ class HTTPRequestLineTestCase(unittest.TestCase):
         self.assertRaises(ValueError, http.HTTPRequestLine, "GET\t/ HTTP/1.0")
         self.assertRaises(ValueError, http.HTTPRequestLine, "GET /  HTTP/1.0")
 
-class SimpleHTTPServer(http.HTTPServer):
+class VirtualHost:
+    def __init__(self, name):
+        self.name = name
+
     def handle(self, request, reply):
         if request.uri == ('', '', '/', '', ''):
             if not request.method == 'GET':
-                reply.sendError(http.HTTP_METHOD_NOT_SUPPORTED)
+                reply.sendErrorPage(http.HTTP_METHOD_NOT_SUPPORTED)
 
             else:
                 reply.headers.setHeader('Content-Type', 'text/plain')
-                reply.send("""Hello, World!\r\n""")
+                reply.send("""Welcome to %s!\r\n""" % self.name)
                 reply.done()
 
         else:
@@ -126,29 +129,67 @@ class HTTPServerTestCase(unittest.TestCase):
         self.reactor = reactor
         self.reactor.reset()
         
-        self.factory = basic.ProtocolFactory(SimpleHTTPServer)
+        self.server = http.HTTPServer()
+        self.server.addVirtualHost('foo.com', VirtualHost('foo.com'))
+        self.server.addVirtualHost('bar.com', VirtualHost('bar.com'))
+        self.server.setDefaultHost('bar.com')
+
         self.transport = transport.StringTransport()
-        self.coroutine = self.factory.buildCoroutine(self.transport)
+        self.coroutine = self.server.buildCoroutine(self.transport)
         self.reactor.addCoroutine(self.coroutine, ())
 
-    def testFullRequest(self):
-        self.transport.appendInput('''GET / HTTP/1.0\r\nHost: www.domain.com\r\n\r\n''')
+    def parseReply(self, reply):
+        headers, body = reply.split('\r\n\r\n', 1)
+        status, headers = headers.split('\r\n', 1)
+        status = http.HTTPStatusLine(status)
+        headers = http.HTTPHeaders(headers)
+
+        return status, headers, body
+    
+    def testFullRequestWithFoo(self):
+        self.transport.appendInput('''GET / HTTP/1.0\r\nHost: foo.com\r\n\r\n''')
         self.reactor.run()
 
-        all = self.transport.getOutput()
-        headers, body = all.split('\r\n\r\n', 1)
-        reply, headers = headers.split('\r\n', 1)
-        headers = http.HTTPHeaders(headers)
-        version, status, reason = reply.split(' ', 3)
+        status, headers, body = self.parseReply(self.transport.getOutput())
         
-        self.assertEquals(version, 'HTTP/1.0')
-        self.assertEquals(status, '200')
-        self.assertEquals(body, 'Hello, World!\r\n')
+        self.assertEquals(status.version, (1, 0))
+        self.assertEquals(status.code, 200)
+        self.assertEquals(body, 'Welcome to foo.com!\r\n')
+
+    def testFullRequestWithBar(self):
+        self.transport.appendInput('''GET / HTTP/1.0\r\nHost: bar.com\r\n\r\n''')
+        self.reactor.run()
+
+        status, headers, body = self.parseReply(self.transport.getOutput())
+        
+        self.assertEquals(status.version, (1, 0))
+        self.assertEquals(status.code, 200)
+        self.assertEquals(body, 'Welcome to bar.com!\r\n')
+
+    def testFullRequestWithBlech(self):
+        self.transport.appendInput('''GET / HTTP/1.0\r\nHost: blech.com\r\n\r\n''')
+        self.reactor.run()
+
+        status, headers, body = self.parseReply(self.transport.getOutput())
+        
+        self.assertEquals(status.version, (1, 0))
+        self.assertEquals(status.code, 200)
+        self.assertEquals(body, 'Welcome to bar.com!\r\n')
+
+    def testFullRequestWithoutDefault(self):
+        self.server.setDefaultHost(None)
+        self.transport.appendInput('''GET / HTTP/1.0\r\nHost: blech.com\r\n\r\n''')
+        self.reactor.run()
+
+        status, headers, body = self.parseReply(self.transport.getOutput())
+        
+        self.assertEquals(status.version, (1, 0))
+        self.assertEquals(status.code, 404)
 
     def testSimpleRequest(self):
         self.transport.appendInput('''GET /''')
         self.reactor.run()
-        self.assertEquals(self.transport.getOutput(), 'Hello, World!\r\n')
+        self.assertEquals(self.transport.getOutput(), 'Welcome to bar.com!\r\n')
 
 suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(HTTPDateTimeTestCase, 'test')])

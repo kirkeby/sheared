@@ -42,7 +42,7 @@ class HTTPReply:
             self.sendHead()
         self.transport.write(data)
 
-    def sendError(self, status):
+    def sendErrorPage(self, status):
         self.setStatusCode(status)
         self.headers.setHeader('Content-Type', 'text/plain')
         self.sendHead()
@@ -53,14 +53,37 @@ class HTTPReply:
         self.closed = 1
         self.transport.close()
 
-class HTTPServer(basic.LineProtocol):
+class HTTPServer(basic.ProtocolFactory):
+    def __init__(self):
+        basic.ProtocolFactory.__init__(self, HTTPSubServer)
+        
+        self.hosts = { }
+        self.default_host = None
+
+    def addVirtualHost(self, name, vhost):
+        self.hosts[name] = vhost
+
+    def setDefaultHost(self, name):
+        self.default_host = name
+
+class HTTPSubServer(basic.LineProtocol):
     def __init__(self, transport):
         basic.LineProtocol.__init__(self, transport, '\n')
         self.where = 'request-line'
         self.collected = ''
 
     def handle(self, request, reply):
-        reply.sendError(http.HTTP_NOT_FOUND)
+        if request.headers.has_key('Host'):
+            vhost = self.factory.hosts.get(request.headers['Host'], None)
+        else:
+            vhost = None
+        if vhost is None and self.factory.default_host:
+            vhost = self.factory.hosts[self.factory.default_host]
+
+        if vhost:
+            vhost.handle(request, reply)
+        else:
+            reply.sendErrorPage(http.HTTP_NOT_FOUND)
 
     def receivedLine(self, line):
         self.collected = self.collected + line
@@ -74,21 +97,18 @@ class HTTPServer(basic.LineProtocol):
     
         elif self.where == 'headers':
             if line == '\r\n':
-                self.collected = self.collected[ : -2]
                 self.request.headers = http.HTTPHeaders(self.collected)
                 self.reply = HTTPReply(self.request.version, self.transport)
-                self.handle(self.request, self.reply)
-    
-                self.collected = ''
-                self.where = 'body'
-
-        elif self.where == 'body':
-            self.collected = self.collected + line
-
-        else:
-            assert 'pigs'.can_fly
+                try:
+                    self.handle(self.request, self.reply)
+                except:
+                    if not self.reply.decapitated:
+                        self.reply.sendErrorPage(http.HTTP_INTERNAL_SERVER_ERROR)
+                    if not self.reply.closed:
+                        self.reply.close()
+                    raise
 
     def lastLineReceived(self):
-        self.where = ''
-        
+        pass
+ 
 __all__ = ['HTTPServer']
