@@ -62,7 +62,8 @@ class Log:
         self.write('\n'.join(lines) + '\n')
 
     def showwarning(self, message, category, filename, lineno, file=None):
-        lines = [self.prefixed('%s in %s:%d' % (category, filename, lineno), 'warning')]
+        lines = [self._prefix('warning')
+                 + '%s in %s:%d' % (category, filename, lineno)]
         for thing in message:
             thing = [ '\t' + line for line in thing.split('\n')[:-1] ]
             lines.extend(thing)
