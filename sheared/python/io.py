@@ -39,7 +39,14 @@ class BufferedReader:
         self.other = getattr(file, 'other', None)
         self.buffer = ''
 
-    def read(self, cnt):
+    def read(self, cnt=None):
+        if cnt is None:
+            if self.buffer:
+                d, self.buffer = self.buffer, ''
+                return d
+            else:
+                return self.file.read()
+
         while len(self.buffer) < cnt:
             got = self.file.read()
             if got == '':
