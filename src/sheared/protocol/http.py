@@ -244,12 +244,12 @@ def parse_accepts_header(value):
     widgets.sort(lambda a, b: cmp(a[1], b[1]))
     return widgets
     
-def choose_content_type(accepts, content_types):
-    """chooseContentType(request, content_types) -> content_type
+def choose_content_type(accepts, widgets):
+    """choose_content_type(accepts, widgets) -> widget
     
-    Find the preferred content type for a given request, among a list of
-    possible content types. Or, if none of the possible content types
-    are acceptable raise sheared.error.web.NotAcceptable."""
+    Find the preferred widget by content type for a given request, among a list
+    of possible (widget, content type) pairs. Or, if none of the possible
+    widgets are acceptable return None."""
 
     if accepts is None:
         accepts = '*/*'
@@ -262,15 +262,15 @@ def choose_content_type(accepts, content_types):
 
     chosen = None
     acceptable = parse_accepts_header(accepts)
-    for content_type in content_types:
+    for widget, content_type in widgets:
         for gizmo, qval in acceptable:
             if is_acceptable(content_type, gizmo):
                 if not chosen or qval > chosen[1]:
-                    chosen = content_type, qval
+                    chosen = widget, qval
 
     if chosen is None:
-        raise NotAcceptable, 'cannot serve any of %s' % accepts
-
-    return chosen[0]
+        return None
+    else:
+        return chosen[0]
 
 #__all__ = ['HTTPDateTime', 'HTTPHeaders', 'HTTPRequestLine', 'HTTPStatusLine', 'split_header_list']
