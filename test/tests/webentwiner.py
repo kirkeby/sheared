@@ -27,7 +27,7 @@ from tests.web import FakeReply, FakeRequest
 class EntwinerTestCase(unittest.TestCase):
     def testTemplatePage(self):
         class Foo(entwiner.Entwiner):
-            template_page = './test/http-docroot/page.html'
+            template_page = './test/http-docroot/foo.html'
             def entwine(self, request, reply, subpath):
                 self.context['foo'] = 'foo'
         ent = Foo()
@@ -37,7 +37,7 @@ class EntwinerTestCase(unittest.TestCase):
 
     def testTemplatePages(self):
         class Foo(entwiner.Entwiner):
-            template_pages = ['./test/http-docroot/page.html']
+            template_pages = ['./test/http-docroot/foo.html']
             def entwine(self, request, reply, subpath):
                 self.context['foo'] = 'foo'
         ent = Foo()
@@ -47,7 +47,7 @@ class EntwinerTestCase(unittest.TestCase):
 
     def testRequestContext(self):
         class FooEntwiner(entwiner.Entwiner):
-            template_page = './test/http-docroot/page.html'
+            template_page = './test/http-docroot/foo.html'
             def entwine(self, request, reply, subpath):
                 pass
 
