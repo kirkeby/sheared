@@ -86,12 +86,18 @@ class Reactor(base.Reactor):
                 handler, file, channel, argv = self.waiting[fd]
                 try:
                     handler(file, channel, argv)
-                except socket.error, (eno, estr):
-                    if not eno in (errno.EINTR, errno.EAGAIN):
-                        self._safe_send(channel, sys.exc_info()[1])
                 except SystemExit:
                     raise
+                except socket.error, (eno, estr):
+                    if not eno in (errno.EINTR, errno.EAGAIN):
+                        del self.waiting[fd]
+                        self._safe_send(channel, sys.exc_info()[1])
+                except OSError, e:
+                    if not e.errno in (errno.EINTR, errno.EAGAIN):
+                        del self.waiting[fd]
+                        self._safe_send(channel, sys.exc_info()[1])
                 except:
+                    del self.waiting[fd]
                     self._safe_send(channel, sys.exc_info()[1])
 
     def _buildselectable(self):
