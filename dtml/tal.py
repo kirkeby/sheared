@@ -72,6 +72,7 @@ def parse_replace_expression(text):
     TAL attributes (replace, content and on-error).
     """
     (type, expression), = re_replace.findall(text)
+    type = type.strip()
     if type == '':
         type = 'text'
     return type, expression
