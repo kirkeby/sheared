@@ -48,8 +48,8 @@ def entwined_handler(request, reply, collection, walker):
         return normal_handler(request, reply, collection, walker)
 
 class EntwinedCollection(FilesystemCollection):
-    def __init__(self, page_templates, *a):
-        FilesystemCollection.__init__(self, *a)
+    def __init__(self, page_templates, *a, **kw):
+        FilesystemCollection.__init__(self, *a, **kw)
         self.page_templates = page_templates
         self.normal_handler = entwined_handler
         self.template_ext = '.html'
