@@ -29,6 +29,11 @@ class Resource:
     def getMethodParser(self, method):
         return self.method_parsers.get(method, None)
 
+    def handle(self, request, reply, subpath):
+        raise NotImplementedError
+    def authenticate(self, request, reply):
+        pass
+
 class GettableResource(Resource):
     def __init__(self):
         Resource.__init__(self)
@@ -60,8 +65,8 @@ class PostableResource(Resource):
             request.args = querystring.HTTPQueryString(qs)
 
         else:
-            print 'need handler for POST with Content-Type %r' % ct
-            raise error.web.NotImplementedError
+            raise error.web.NotImplementedError, \
+                  'need handler for POST with Content-Type %r' % ct
 
 class NormalResource(GettableResource, PostableResource):
     def __init__(self):
