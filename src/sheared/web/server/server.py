@@ -28,6 +28,28 @@ from sheared.web import cookie
 
 import oh_nine, one_oh
 
+def movedHandler(server, exception, request, reply):
+    reply.send("This page has moved. You can now find it here:\r\n"
+               "  %s\r\n" % reply.headers.get('Location'))
+
+def unauthorizedErrorHandler(server, exception, request, reply):
+    reply.send("I need to see some credentials.\r\n")
+
+def forbiddenErrorHandler(server, exception, request, reply):
+    reply.send("Forbidden.\r\n")
+
+def notFoundErrorHandler(server, exception, request, reply):
+    reply.send("Not found.\r\n")
+
+def internalServerErrorHandler(server, exception, request, reply):
+    reply.send('Internal Server Error.\r\n')
+    self.logInternalError(exception.args)
+
+def defaultErrorHandler(server, exception, request, reply):
+    reply.send("I am terribly sorry, but an error (%d) occured "
+               "while processing your request.\r\n" % e.statusCode)
+    server.logInternalError(exception)
+
 class HTTPServer:
     def __init__(self):
         self.hosts = {}
@@ -40,6 +62,20 @@ class HTTPServer:
 
         self.massageRequestCallbacks = []
         self.requestCompletedCallbacks = []
+        self.errorHandlers = [
+            (Exception,
+                defaultErrorHandler),
+            (error.web.InternalServerError,
+                internalServerErrorHandler),
+            (error.web.NotFoundError,
+                notFoundErrorHandler),
+            (error.web.ForbiddenError,
+                forbiddenErrorHandler),
+            (error.web.UnauthorizedError,
+                unauthorizedErrorHandler),
+            (error.web.Moved,
+                movedHandler),
+        ]
 
     def addVirtualHost(self, name, vhost):
         self.hosts[name] = vhost
@@ -80,9 +116,6 @@ class HTTPServer:
                 raise error.web.NotImplementedError, 'HTTP Version not supported'
 
         except error.web.WebServerError, e:
-            if e.args:
-                traceback.print_exc(1)
-
             if len(e.args) == 1 and isinstance(e.args[0], types.StringType):
                 err = e.args[0]
             else:
@@ -129,8 +162,7 @@ class HTTPServer:
             except error.web.WebServerError:
                 raise
             except:
-                self.logInternalError(sys.exc_info())
-                raise error.web.InternalServerError
+                raise error.web.InternalServerError, sys.exc_info()
 
         except error.web.WebServerError, e:
             if not reply.decapitated:
@@ -142,27 +174,23 @@ class HTTPServer:
             try:
                 cb(request, reply)
             except:
-                log.default.exception(sys.exc_info())
+                self.logInternalError(sys.exc_info())
      
-    def handleWebServerError(self, e, request, reply):
-        if isinstance(e, error.web.Moved):
-            reply.send("This page has moved. You can now find it here:\r\n"
-                       "  %s\r\n" % reply.headers.get('Location'))
+    def handleWebServerError(self, exception, request, reply):
+        handler = None
+        for kls, hnd in self.errorHandlers:
+            if isinstance(exception, kls):
+                if handler:
+                    if issubclass(kls, handler[0]):
+                        handler = kls, hnd
+                else:
+                    handler = kls, hnd
 
-        elif isinstance(e, error.web.UnauthorizedError):
-            reply.send("I need to see some credentials.\r\n")
+        if not handler:
+            raise error.web.InternalServerError
 
-        elif isinstance(e, error.web.ForbiddenError):
-            reply.send("Forbidden.\r\n")
+        handler[1](self, exception, request, reply)
 
-        elif isinstance(e, error.web.NotFoundError):
-            reply.send("Not found.\r\n")
-
-        else:
-            reply.send("I am terribly sorry, but an error (%d) occured "
-                       "while processing your request.\r\n" % e.statusCode)
-            self.logInternalError(sys.exc_info())
-        
     def logInternalError(self, ex):
         if self.errorlog:
             self.errorlog.exception(ex)
