@@ -54,6 +54,22 @@ class ShadowCollection(resource.GettableResource):
             reply.headers.setHeader('Location', request.path + '/')
             raise error.web.MovedPermanently
 
+class TildeUserCollection(resource.GettableResource):
+    def getChild(self, request, reply, subpath):
+        if not subpath[0] == '~':
+            raise error.web.NotFoundError, 'not a tilde-user path'
+        path = os.path.expanduser(subpath)
+        if path == subpath:
+            raise error.web.NotFoundError, 'no such user'
+        return FilesystemCollection(path + os.sep + 'public_html')
+
+    def handle(self, request, reply, subpath):
+        if request.path.endswith('/'):
+            self.getChild(request, reply, '').handle(request, reply, subpath)
+        else:
+            reply.headers.setHeader('Location', request.path + '/')
+            raise error.web.MovedPermanently
+
 class StaticCollection(resource.GettableResource):
     def __init__(self):
         resource.GettableResource.__init__(self)
