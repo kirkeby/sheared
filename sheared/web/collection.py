@@ -90,8 +90,17 @@ class StaticCollection(resource.GettableResource):
         self.bindings = {}
         self.index = 'index'
 
-    def bind(self, root, thing):
-        self.bindings[root] = thing
+    def bind(self, name, thing):
+        if '/' in name:
+            child, subpath = name.split('/', 1)
+            if self.bindings.has_key(child):
+                assert isinstance(self.bindings[child], StaticCollection)
+            else:
+                self.bindings[child] = StaticCollection()
+            self.bindings[child].bind(subpath, thing)
+        else:
+            assert not self.bindings.has_key(name)
+            self.bindings[name] = thing
 
     def getChild(self, request, reply, subpath):
         if not subpath:
