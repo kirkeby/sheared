@@ -18,6 +18,7 @@ class Protocol:
     def __init__(self, reactor, transport):
         self.reactor = reactor
         self.transport = transport
+        self.closed = 0
 
     def dataReceived(self, data):
         raise NotImplementedError
@@ -32,12 +33,14 @@ class Protocol:
         raise NotImplementedError
 
     def _run(self):
-        while 1:
+        while not self.transport.closed:
             data = self.transport.read()
             if data == '':
                 break
             self.dataReceived(data)
         self.connectionClosed()
+        if not self.transport.closed:
+            self.transport.close()
 
 class LineProtocol(Protocol):
     def __init__(self, reactor, transport, newline='\n'):

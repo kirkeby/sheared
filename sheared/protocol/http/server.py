@@ -1,6 +1,6 @@
 # vim:nowrap:textwidth=0
 
-import os, stat, errno, mimetypes
+import os, stat, errno, mimetypes, sys, traceback
 
 from sheared.protocol import basic
 
@@ -17,7 +17,6 @@ class HTTPReply:
         self.headers.addHeader('Date', str(http.HTTPDateTime()))
 
         self.decapitated = 0
-        self.closed = 0
 
     def setStatusCode(self, status):
         self.status = status
@@ -39,7 +38,6 @@ class HTTPReply:
         self.transport.write('\r\n')
 
     def send(self, data):
-        assert not self.closed
         if not self.decapitated:
             self.sendHead()
         self.transport.write(data)
@@ -52,8 +50,8 @@ class HTTPReply:
         self.done()
 
     def done(self):
-        self.closed = 1
-        self.transport.close()
+        if not self.transport.closed:
+            self.transport.close()
 
 class HTTPServer(basic.ProtocolFactory):
     def __init__(self, reactor):
@@ -105,13 +103,14 @@ class HTTPSubServer(basic.LineProtocol):
                 self.request.headers = http.HTTPHeaders(self.collected)
                 self.reply = HTTPReply(self.request.version, self.transport)
                 try:
-                    self.handle(self.request, self.reply)
-                except:
-                    if not self.reply.decapitated:
-                        self.reply.sendErrorPage(http.HTTP_INTERNAL_SERVER_ERROR)
-                    if not self.reply.closed:
-                        self.reply.close()
-                    raise
+                    try:
+                        self.handle(self.request, self.reply)
+                    except:
+                        if not self.reply.decapitated and not self.reply.transport.closed:
+                            self.reply.sendErrorPage(http.HTTP_INTERNAL_SERVER_ERROR)
+                        raise
+                finally:
+                    self.reply.done()
 
     def lastLineReceived(self):
         pass
@@ -156,7 +155,7 @@ class StaticCollection:
 
             elif stat.S_ISREG(st.st_mode):
                 file = open(path, 'r')
-                self.reactor.prepareFile(file)
+                file = self.reactor.prepareFile(file)
                 reply.headers.setHeader('Last-Modified', http.HTTPDateTime(st.st_mtime))
                 reply.headers.setHeader('Content-Length', st.st_size)
                 reply.headers.setHeader('Content-Type', type)

@@ -62,9 +62,18 @@ class PostgresqlClientTestCase(DatabaseClientTestCase):
 class DummyDatabaseClientTestCase(DatabaseClientTestCase):
     def connect(self):
         return database.dummy.DummyDatabaseClient()
-    
+
+def can_connect(port):
+    try:
+        sock = socket.socket()
+        sock.connect(addr)
+        sock.close()
+        return 1
+    except:
+        return 0
+
 suite = unittest.TestSuite()
-if hasattr(database, 'postgresql'):
+if hasattr(database, 'postgresql') and can_connect(5432):
     suite.addTests([unittest.makeSuite(PostgresqlClientTestCase, "test")])
 suite.addTests([unittest.makeSuite(DummyDatabaseClientTestCase, "test")])
 

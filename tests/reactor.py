@@ -1,3 +1,4 @@
+# First line.
 # vim:nowrap:textwidth=0
 
 import unittest
@@ -21,6 +22,33 @@ class ReactorTestCase(unittest.TestCase):
     def testNothingToDo(self):
         """Test that the reactor cleanly exits when there is nothing to do."""
         self.reactor.run()
+
+    def singleCoroutineRun(self, f):
+        try:
+            co = coroutine.Coroutine(f)
+            self.reactor.addCoroutine(co, (self.reactor,))
+            self.reactor.run()
+            return getattr(self.reactor, 'result', None)
+        except coroutine.CoroutineFailed, ex:
+            raise ex[0].exc_info[0], ex[0].exc_info[1], ex[0].exc_info[2]
+
+    def testRead(self):
+        """Test reading from an open file."""
+        def f(reactor):
+            fd = os.open('tests/reactor.py', os.O_RDONLY)
+            fd = reactor.prepareFile(fd)
+            lines = reactor.read(fd, 4096).split('\n')
+            self.assertEquals(lines[0], '# First line.')
+        self.singleCoroutineRun(f)
+        
+#    def testBadFile(self):
+#        """Test the reactor against a closed file-descriptor."""
+#        def f(reactor):
+#            fd = os.open('tests/reactor.py', os.O_RDONLY)
+#            fd = elf.reactor.prepareFile(fd)
+#            self.reactor.close(fd)
+#            self.reactor.read(fd, 1024)
+#        self.assertRaises(os.error, self.singleCoroutineRun, f)
 
     def testImmediateStop(self):
         """Test that the reactor cleanly exits upon an immediate shutdown-command."""
@@ -53,7 +81,7 @@ class ReactorTestCase(unittest.TestCase):
     def testRefusedConnection(self):
         def g(reactor, port):
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            reactor.prepareFile(sock)
+            sock = reactor.prepareFile(sock)
             try:
                 reactor.connect(sock, ('127.0.0.1', port))
                 reactor.shutdown(0)
@@ -82,19 +110,19 @@ class ReactorTestCase(unittest.TestCase):
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.bind(('0.0.0.0', port))
             sock.listen(1)
-            reactor.prepareFile(sock)
+            sock = reactor.prepareFile(sock)
             fd, addr = reactor.accept(sock)
-            sock.close()
+            reactor.close(sock)
             d = reactor.read(fd, 4096)
             fd.close()
             return d
 
         def g(reactor, port):
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            reactor.prepareFile(sock)
+            sock = reactor.prepareFile(sock)
             reactor.connect(sock, ('127.0.0.1', port))
             reactor.write(sock, 'Hello, World\n')
-            sock.close()
+            reactor.close(sock)
 
         def h(reactor):
             reactor.sleep(1.0)
@@ -118,9 +146,9 @@ class ReactorTestCase(unittest.TestCase):
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.bind(('0.0.0.0', port))
             sock.listen(1)
-            reactor.prepareFile(sock)
+            sock = reactor.prepareFile(sock)
             fd, addr = reactor.accept(sock)
-            sock.close()
+            reactor.close(sock)
             d = reactor.read(fd, 4096)
             fd.close()
             return d
@@ -144,12 +172,12 @@ class ReactorTestCase(unittest.TestCase):
     def testTransport(self):
         """Test that the reactor can working Transports."""
         def read(reactor, file, count):
-            t = reactor.createTransport(open(file, 'r'), 'file://' + file)
+            t = reactor.createTransport(os.open(file, os.O_RDONLY), 'file://' + file)
             v = t.read(count)
             t.close()
             return v
         def write(reactor, file, data):
-            t = reactor.createTransport(open(file, 'w'), 'file://' + file)
+            t = reactor.createTransport(os.open(file, os.O_WRONLY), 'file://' + file)
             t.write(data)
             t.close()
             return 1

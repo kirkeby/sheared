@@ -102,6 +102,8 @@ def mainloop():
             if not read and not write and not sleeping:
                 return
 
+            # FIXME -- if we are passed a bad file-descriptor (a closed one for instance) select.select
+            # will bonk out. so we should do clean-up in that case.
             if sleeping:
                 timeout = sleeping[0][0] - now
                 if timeout >= 0:
@@ -190,11 +192,17 @@ def sleep(n):
 #def open(fd, n):
 #    return main_co(do_open, (path,))
 
+def getfd(file):
+    if isinstance(file, types.IntType):
+        return file
+    else:
+        return file.fileno()
+
 def read(fd, n):
-    return main_co(do_read, (fd, n))
+    return main_co(do_read, (getfd(fd), n))
 
 def write(fd, d):
-    main_co(do_write, (fd, d))
+    main_co(do_write, (getfd(fd), d))
 
 def accept(fd):
     return main_co(do_accept, (fd,))
@@ -204,13 +212,15 @@ def connect(fd, addr):
     if err:
         raise socket.error, (err, os.strerror(err))
 
+def close(fd):
+    return os.close(getfd(fd))
+
 def shutdown(r):
     main_co(do_shutdown, (r,))
 
-def prepareFile(fd):
-    if not isinstance(fd, types.IntType):
-        fd = fd.fileno()
-    fcntl.fcntl(fd, fcntl.F_SETFL, os.O_NONBLOCK)
+def prepareFile(file):
+    fcntl.fcntl(getfd(file), fcntl.F_SETFL, os.O_NONBLOCK)
+    return file
 
 def addCoroutine(coroutine, args):
     if running:

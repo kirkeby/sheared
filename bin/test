@@ -12,4 +12,7 @@ else:
 runner = unittest.TextTestRunner()
 for test in tests:
     module = __import__('tests.%s' % test, globals(), locals(), (test,))
-    runner.run(module.suite)
+    if getattr(module, 'skip', 0):
+        print "Skipping tests in %s" % module
+    else:
+        runner.run(module.suite)

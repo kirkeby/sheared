@@ -50,10 +50,9 @@ class FileTransport:
 class ReactorTransport:
     def __init__(self, reactor, file, other):
         self.reactor = reactor
-        self.file = file
+        self.file = self.reactor.prepareFile(file)
         self.other = other
-
-        self.reactor.prepareFile(self.file)
+        self.closed = 0
 
     def read(self, max=4096):
         return self.reactor.read(self.file, max)
@@ -61,4 +60,5 @@ class ReactorTransport:
         self.reactor.write(self.file, data)
 
     def close(self):
-        self.file.close()
+        self.reactor.close(self.file)
+        self.closed = 1
