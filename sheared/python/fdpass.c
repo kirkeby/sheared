@@ -93,8 +93,8 @@ static PyObject* fdpass_recv(PyObject *self, PyObject *args)
 }
 
 static PyMethodDef FdPassMethods[] = {
-    {"send",  fdpass_send, METH_VARARGS, "send(sock, fd, iovec)\nsend fd over socket."},
-    {"recv",  fdpass_recv, METH_VARARGS, "recv(sock) -> fd, iovec\nreceive fd over socket."},
+    {"send",  fdpass_send, METH_VARARGS, "send(sock, fd, str)\nsend fd over socket."},
+    {"recv",  fdpass_recv, METH_VARARGS, "recv(sock) -> fd, str\nreceive fd over socket."},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
