@@ -28,11 +28,12 @@ from sheared.python import conffile
 from sheared import reactor
 
 app_options = [
-   [ 'set_bool',   0, 'daemonize', '',  'daemonize',  'application.daemonize' ],
-   [ 'clear_bool', 0, 'daemonize', '',  'foreground', 'application.foreground' ],
-   [ 'set_str',    1, 'logfile',   'l', 'log-file',   'application.log-file' ],
-   [ 'set_str',    1, 'pidfile',   'p', 'pid-file',   'application.pid-file' ],
-   [ 'parse_conf_opt', 1, '',      'c', 'conf-file',  '' ],
+   [ 'set_bool',     0, 'daemonize', '',  'daemonize',  'application.daemonize' ],
+   [ 'clear_bool',   0, 'daemonize', '',  'foreground', 'application.foreground' ],
+   [ 'set_str',      1, 'logfile',   'l', 'log-file',   'application.log-file' ],
+   [ 'set_str',      1, 'pidfile',   'p', 'pid-file',   'application.pid-file' ],
+   [ 'opt_conf',     1, '',          'c', 'conf-file',  '' ],
+   [ 'opt_confstmt', 1, '',          'C', 'conf',       '' ],
 ]
 
 class Application:
@@ -66,8 +67,12 @@ class Application:
     def set_int(self, name, value):
         setattr(self, name, int(value))
     
-    def parse_conf_opt(self, _, path):
+    def opt_conf(self, _, path):
         self.parse_conf(path)
+
+    def opt_confstmt(self, _, stmt):
+        opt, val = conffile.parsestmt(stmt)
+        self.handle_confstmt(opt, val)
 
 
     def parse_conf(self, path):
@@ -75,16 +80,19 @@ class Application:
 
     def parse_conffd(self, file):
         for opt, val in conffile.parsefd(file):
-            for handler, value, name, short, long, conf in self.options:
-                if opt == conf:
-                    break
-            else:
-                raise 'Unknown option: %s' % opt
-            
-            try:
-                getattr(self, handler)(name, val)
-            except:
-                raise 'Internal error: handler failed: %r' % handler
+            self.handle_confstmt(opt, val)
+
+
+    def handle_confstmt(self, opt, val):
+        for handler, value, name, short, long, conf in self.options:
+            if not conf:
+                continue
+            if opt == conf:
+                break
+        else:
+            raise 'Unknown option: %s' % opt
+        
+        getattr(self, handler)(name, val)
        
     
     def parse_args(self, argv):
@@ -110,10 +118,7 @@ class Application:
             else:
                 raise 'Internal error, dropped an option on the floor: %r' % opt
 
-            try:
-                getattr(self, handler)(name, val)
-            except:
-                raise 'Internal error: handler failed: %r' % handler
+            getattr(self, handler)(name, val)
 
         return args
 
