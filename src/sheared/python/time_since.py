@@ -1,6 +1,6 @@
 import time
 
-def time_since(when, now=None):
+def time_since(when, now=None, multipliers=(12, 30, 24, 60, 60)):
     """\
     time_since(when, now) -> (years, months, days, hours, minutes, seconds)
     
@@ -16,46 +16,16 @@ def time_since(when, now=None):
     if when > now:
         raise ValueError, 'when > now'
 
-    when = list(time.localtime(when))
-    now = list(time.localtime(now))
+    durations = list(multipliers)
+    for i in range(len(durations) - 1, 0, -1):
+        durations[i - 1] = durations[i - 1] * durations[i]
 
-    def time_tuple_cmp(a, b):
-        assert len(a) == len(b)
-        for i in range(len(a)):
-            if a[i] < b[i]:
-                return -1
-            elif a[i] > b[i]:
-                return 1
-        else:
-            return 0
+    diff = now - when
+    result = [0] * (len(durations) + 1)
+    for i in range(len(durations)):
+        while diff >= durations[i]:
+            diff = diff - durations[i]
+            result[i] = result[i] + 1
+    result[-1] = diff
 
-    # years
-    years, now[0], when[0] = now[0] - when[0], 0, 0
-    if years and time_tuple_cmp(when, now) > 0:
-        years = years - 1
-
-    # months
-    months, now[1], when[1] = now[1] - when[1], 0, 0
-    if months and time_tuple_cmp(when, now) > 0:
-        months = years - 1
-
-    # days
-    days, now[2], when[2] = now[2] - when[2], 0, 0
-    if days and time_tuple_cmp(when, now) > 0:
-        days = years - 1
-
-    # hours
-    hours, now[3], when[3] = now[3] - when[3], 0, 0
-    if hours and time_tuple_cmp(when, now) > 0:
-        hours = years - 1
-
-    # minutes
-    minutes, now[4], when[4] = now[4] - when[4], 0, 0
-    if minutes and time_tuple_cmp(when, now) > 0:
-        minutes = years - 1
-
-    # years
-    seconds = now[5] - when[5]
-
-    # done, whee!
-    return years, months, days, hours, minutes, seconds
+    return tuple(result)
