@@ -22,6 +22,7 @@ import os
 import sys
 import time
 import traceback
+import types
 
 dangerous_in_logs = range(0, 33) + range(128, 156)
 dangerous_in_logs.remove(ord('\n'))
@@ -55,6 +56,7 @@ class Log:
         self.prefixed(s, 'normal')
     
     def exception(self, ex):
+        assert type(ex) is types.TupleType and len(ex) == 3, `ex`
         lines = [self._prefix('exception')]
         for thing in traceback.format_exception(ex[0], ex[1], ex[2]):
             thing = [ '\t' + line for line in thing.split('\n')[:-1] ]
