@@ -11,8 +11,12 @@ def spawn(cmd, argv):
     if pid:
         os.close(stdin_r)
         os.close(stdout_w)
-        stdin = reactor.current.prepareFile(stdin_w)
-        stdout = reactor.current.prepareFile(stdout_r)
+        if reactor.current.started:
+            stdin = reactor.current.prepareFile(stdin_w)
+            stdout = reactor.current.prepareFile(stdout_r)
+        else:
+            stdin = stdin_w
+            stdout = stdout_r
 
     else:
         try:
@@ -29,17 +33,28 @@ def spawn(cmd, argv):
         
     return pid, stdin, stdout
 
+def getoutput(cmd, argv):
+    return getstatusoutput(cmd, argv)[1]
+
 def getstatusoutput(cmd, argv):
     pid, stdin, stdout = spawn(cmd, argv)
-    reactor.current.close(stdin)
+    if reactor.current.started:
+        reactor.current.close(stdin)
+    else:
+        os.close(stdin)
     
     out = ''
     while 1:
-        d = reactor.current.read(stdout, 4096)
+        if reactor.current.started:
+            d = reactor.current.read(stdout, 4096)
+        else:
+            d = os.read(stdout, 4096)
         if d == '':
             break
         out = out + d
 
+    # FIXME -- just because a process closes stdout does not mean
+    # it is done
     status = os.waitpid(pid, os.WNOHANG)
     return status[1], out
 
