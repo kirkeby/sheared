@@ -23,6 +23,9 @@ def readfile(path):
         f = reactor.open(path, 'r')
     else:
         f = open(path, 'r')
+    return readall(f)
+
+def readall(f):
     all = ''
     while 1:
         read = f.read()
@@ -31,56 +34,51 @@ def readfile(path):
         all += read
     return all
 
-class Drainer:
+class BufferedReader:
     def __init__(self, file):
         self.file = file
+        self.other = getattr(file, 'other', None)
+        self.buffer = ''
 
-    def read(self):
-        data = ''
-        read = None
-        while not read == '':
-            read = self.file.read()
-            data = data + read
-        return data
-def readall(file):
-    return Drainer(file).read()
-
-class RecordReader:
-    def __init__(self, file, newline):
-        self.buffered = ''
-        self.file = file
-        self.newline = newline
-
-    def read(self, max=None):
-        if self.buffered:
-            if max is None:
-                data, self.buffered = self.buffered, ''
-            else:
-                if len(self.buffered) >= max:
-                    data = self.buffered[:max]
-                    self.buffered = self.buffered[max:]
-                else:
-                    data, self.buffered = self.buffered, ''
-                    data = data + self.file.read(max - len(data))
-        else:
-            if max is None:
-                data = self.file.read()
-            else:
-                data = self.file.read(max)
-        return data
-
-    def readline(self):
-        while self.buffered.find(self.newline) < 0:
-            data = self.file.read()
-            if data == '':
+    def read(self, cnt):
+        while len(self.buffer) < cnt:
+            got = self.file.read()
+            if got == '':
                 break
-            self.buffered = self.buffered + data
+            self.buffer = self.buffer + got
 
-        i = self.buffered.find(self.newline)
-        if i < 0:
-            data, self.buffered = self.buffered, ''
+        if cnt > len(self.buffer):
+            got, self.buffer = self.buffer, ''
         else:
-            data = self.buffered[ : i + len(self.newline)]
-            self.buffered = self.buffered[i + len(self.newline) : ]
+            got = self.buffer[:cnt]
+            self.buffer = self.buffer[cnt:]
+
+        return got
+
+    def readline(self, nl='\r\n'):
+        while 1:
+            i = self.buffer.find(nl)
+            if i >= 0:
+                break
+
+            got = self.file.read()
+            if got == '':
+                break
+            self.buffer = self.buffer + got
         
-        return data
+        if i < 0:
+            got, self.buffer = self.buffer, ''
+        else:
+            got = self.buffer[ : i + len(nl)]
+            self.buffer = self.buffer[i + len(nl) : ]
+
+        return got
+
+    def write(self, data):
+        self.file.write(data)
+    def sendfile(self, file):
+        self.file.sendfile(file)
+    def fileno(self):
+        return self.file.fileno()
+    def close(self):
+        self.file.close()

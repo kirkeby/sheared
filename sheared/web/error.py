@@ -41,6 +41,9 @@ class NotFoundError(WebServerError):
 class MovedPermanently(WebServerError):
     statusCode = HTTP_MOVED_PERMANENTLY
 
+class BadRequestError(WebServerError):
+    statusCode = HTTP_BAD_REQUEST
+
 class InternalServerError(WebServerError):
     statusCode = HTTP_INTERNAL_SERVER_ERROR
 

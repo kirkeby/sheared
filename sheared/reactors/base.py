@@ -45,8 +45,8 @@ class ReactorFile:
     def seek(self, o, i):
         return os.lseek(self.fd, o, i)
     def close(self):
-        assert not self.closed
-        os.close(self.fd)
+        if not self.closed:
+            os.close(self.fd)
         self.closed = 1
 
 class ReactorSocket(ReactorFile):

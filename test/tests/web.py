@@ -165,7 +165,10 @@ class FilesystemCollectionTestCase(unittest.TestCase):
         self.server.addVirtualHost('foo.com', vhost)
 
         self.transport = transport.StringTransport()
-        self.reactor.createtasklet(self.server.startup, (self.transport,))
+        def startup():
+            self.server.startup(self.transport)
+            self.reactor.stop()
+        self.reactor.createtasklet(startup)
 
     def doRequest(self, path):
         self.transport.appendInput('''GET %s HTTP/1.0\r\nHost: foo.com\r\n\r\n''' % path)
@@ -237,4 +240,4 @@ suite.addTests([unittest.makeSuite(UnvalidatedInputTestCase, 'test')])
 __all__ = ['suite']
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.TextTestRunner().run(suite)

@@ -16,11 +16,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-import pickle
+import pickle, types
 
+from sheared import error
 from sheared import reactor
 from sheared.web import server
 from sheared.python import fdpass
+from sheared.python import io
 
 class HTTPSubServerCollection:
     def __init__(self, path):
@@ -34,31 +36,28 @@ class HTTPSubServerCollection:
     def handle(self, request, reply, subpath):
         transport = reactor.connectUNIX(self.path)
         fdpass.send(transport.fileno(), reply.transport.fileno(), pickle.dumps(reply.transport.other))
-        pickle.dump((request, subpath), transport)
+        pickle.dump((request, reply, subpath), transport)
         transport.close()
 
 class HTTPSubServer(server.HTTPServer):
-    def startup(self, transport):
+    def startup(self, server_transport):
         for i in range(3):
             try:
-                sock, addr = fdpass.recv(transport.fileno())
+                sock, addr = fdpass.recv(server_transport.fileno())
                 break
             except:
                 pass
         else:
             raise
+
         addr = pickle.loads(addr)
+        client_transport = reactor.openfd(sock, addr)
 
-        data = ''
-        read = None
-        while not read == '':
-            read = transport.read()
-            data = data + read
-        transport.close()
-        request, subpath = pickle.loads(data)
+        data = io.readall(server_transport)
+        server_transport.close()
 
-        transport = reactor.openfd(sock, addr)
-        reply = server.HTTPReply(request.requestline.version, transport)
+        request, reply, subpath = pickle.loads(data)
+        reply.transport = client_transport
 
         self.handle(request, reply)
 

@@ -45,8 +45,6 @@ class StringTransport:
             d = file.read()
 
     def close(self):
-        if self.closed:
-            raise IOError, 'already closed'
         self.closed = 1
 
     def appendInput(self, data):

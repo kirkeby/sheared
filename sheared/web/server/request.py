@@ -1,4 +1,4 @@
-# vim:syntax=python:textwidth=0
+# vim:nowrap:textwidth=0
 #
 # Sheared -- non-blocking network programming library for Python
 # Copyright (C) 2003  Sune Kirkeby <sune@mel.interspace.dk>
@@ -18,22 +18,24 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+class HTTPRequest:
+    def __init__(self, requestline, headers, body):
+        self.requestline = requestline
+        self.method = requestline.method
+        self.path = requestline.uri[2]
+        self.headers = headers
+        self.body = body
 
-from distutils.core import setup, Extension
-setup(name = "Sheared", version = "0.1",
-      author = "Sune Kirkeby",
-      author_email = "sune@mel.interspace.dk",
-      url = "http://mel.interspace.dk/~sune/sheared/",
-      packages = [
-        'sheared', 'sheared.database', 'sheared.protocol',
-        'sheared.python', 'sheared.reactors', 'sheared.web',
-        'sheared.web.server'
-      ],
-      ext_modules = [
-        Extension("sheared.python.fdpass",
-                  ["sheared/python/fdpass.c"]),
-        Extension("sheared.python.aio",
-                  ["sheared/python/aio.c"],
-                  libraries = ['rt']),
-      ],
-    )
+    def parent(self):
+        return self.path[self.path.rfind('/') : ]
+    
+    def sibling(self, uri):
+        return self.parent() + '/' + uri
+
+    def child(self, uri):
+        if self.path.endswith('/'):
+            return self.path + uri
+        else:
+            return self.path + '/' + uri
+
+__all__ = ['HTTPRequest']

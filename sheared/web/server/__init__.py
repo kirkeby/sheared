@@ -1,4 +1,4 @@
-# vim:syntax=python:textwidth=0
+# vim:nowrap:textwidth=0
 #
 # Sheared -- non-blocking network programming library for Python
 # Copyright (C) 2003  Sune Kirkeby <sune@mel.interspace.dk>
@@ -18,22 +18,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from server import HTTPServer
 
-from distutils.core import setup, Extension
-setup(name = "Sheared", version = "0.1",
-      author = "Sune Kirkeby",
-      author_email = "sune@mel.interspace.dk",
-      url = "http://mel.interspace.dk/~sune/sheared/",
-      packages = [
-        'sheared', 'sheared.database', 'sheared.protocol',
-        'sheared.python', 'sheared.reactors', 'sheared.web',
-        'sheared.web.server'
-      ],
-      ext_modules = [
-        Extension("sheared.python.fdpass",
-                  ["sheared/python/fdpass.c"]),
-        Extension("sheared.python.aio",
-                  ["sheared/python/aio.c"],
-                  libraries = ['rt']),
-      ],
-    )
+__all__ = ['HTTPServer']
