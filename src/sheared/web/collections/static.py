@@ -39,6 +39,13 @@ class StaticCollection(resource.GettableResource):
             assert not self.bindings.has_key(name)
             self.bindings[name] = thing
 
+    def lookup(self, name):
+        if '/' in name:
+            child, subpath = name.split('/', 1)
+            return self.bindings[child].lookup(subpath)
+        else:
+            return self.bindings[name]
+
     def getChild(self, request, reply, subpath):
         if not subpath:
             subpath = self.index

@@ -25,6 +25,7 @@ from sheared import error
 from sheared.protocol import http
 from sheared.web import server, subserver, querystring, virtualhost, resource
 from sheared.web.collections.filesystem import FilesystemCollection
+from sheared.web.collections.static import StaticCollection
 from sheared.python import commands
 
 from tests import transport
@@ -201,6 +202,29 @@ class FilesystemCollectionTestCase(unittest.TestCase):
         status, headers, body = self.doRequest('/sub/')
         self.assertEquals(status.code, 403)
 
+class Gadget:
+    pass
+class StaticCollectionTestCase(unittest.TestCase):
+    def testOneLevel(self):
+        gadget = Gadget()
+        coll = StaticCollection()
+        coll.bind('foo', gadget)
+        self.assertEquals(coll.lookup('foo'), gadget)
+
+    def testMultiLevel(self):
+        g1 = Gadget()
+        g2 = Gadget()
+        g3 = Gadget()
+        coll = StaticCollection()
+        coll.bind('foo', g1)
+        coll.bind('bar/foo', g1)
+        coll.bind('bar/bar', g2)
+        coll.bind('bar/baz', g3)
+        self.assertEquals(coll.lookup('foo'), g1)
+        self.assertEquals(coll.lookup('bar/foo'), g1)
+        self.assertEquals(coll.lookup('bar/bar'), g2)
+        self.assertEquals(coll.lookup('bar/baz'), g3)
+
 class HTTPQueryStringTestCase(unittest.TestCase):
     def setUp(self):
         qs = 'int=1&hex=babe&str=foo&flag&many=1&many=2'
@@ -236,6 +260,7 @@ suite = unittest.TestSuite()
 suite.addTests([unittest.makeSuite(HTTPServerTestCase, 'test')])
 suite.addTests([unittest.makeSuite(HTTPSubServerTestCase, 'test')])
 suite.addTests([unittest.makeSuite(FilesystemCollectionTestCase, 'test')])
+suite.addTests([unittest.makeSuite(StaticCollectionTestCase, 'test')])
 suite.addTests([unittest.makeSuite(HTTPQueryStringTestCase, 'test')])
 suite.addTests([unittest.makeSuite(UnvalidatedInputTestCase, 'test')])
 
