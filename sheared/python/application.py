@@ -133,9 +133,13 @@ class Application:
             self.pidfile = self.name + '.pid'
 
         def stop(signum, frame):
-            self.stop()
+            if signum == signal.SIGQUIT:
+                sys.exit(0)
+            else:
+                self.stop()
         signal.signal(signal.SIGINT, stop)
         signal.signal(signal.SIGTERM, stop)
+        signal.signal(signal.SIGQUIT, stop)
 
         daemonize.closeall(min=3)
 
