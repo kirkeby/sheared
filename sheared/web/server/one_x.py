@@ -81,7 +81,7 @@ class Server:
             
             # FIXME
             if len(lines) > 1024:
-                raise error.web.BadRequestError
+                raise error.web.BadRequestError, 'too long head'
 
         headers = http.HTTPHeaders(lines)
 
@@ -90,7 +90,7 @@ class Server:
             cl = int(headers.get('Content-Length'))
             # FIXME
             if cl > 1024 * 100:
-                raise error.web.BadRequestError
+                raise error.web.BadRequestError, 'too long body'
             body = transport.read(cl)
         else:
             body = ''

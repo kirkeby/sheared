@@ -43,7 +43,10 @@ class HTTPServer:
     def startup(self, transport):
         try:
             transport = io.BufferedReader(transport)
-            requestline = http.HTTPRequestLine(transport.readline().rstrip())
+            try:
+                requestline = http.HTTPRequestLine(transport.readline().rstrip())
+            except ValueError:
+                raise error.web.BadRequestError, 'could not parse request-line'
 
             if requestline.version[0] == 0: # HTTP/0.9
                 request, reply = self.oh_nine.parse(transport, requestline)
@@ -58,7 +61,8 @@ class HTTPServer:
                 raise error.web.NotImplementedError, 'HTTP Version not supported'
 
         except error.web.WebServerError, e:
-            self.logInternalError(sys.exc_info())
+            if e.args:
+                traceback.print_exception(tpe, val, tb, 1)
 
             if len(e.args) == 1 and isinstance(e.args[0], types.StringType):
                 err = e.args[0]
