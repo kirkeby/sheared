@@ -18,59 +18,46 @@
 #
 from sheared import reactor
 from sheared import error
+from sheared.python import path
 from sheared.protocol import http
 
 import os, mimetypes, stat, errno
 
-def rooted_path(root, subpath):
-    path = [root]
-    for piece in subpath.split('/'):
-        if piece == '..':
-            if len(path) > 1:
-                path.pop()
-        elif piece == '.' or piece == '':
-            pass
-        else:
-            path.append(piece)
-
-    return os.sep.join(path)
-
 class StaticCollection:
-    isWalkable = 1
-
     def __init__(self):
         self.bindings = {}
 
-    def getChild(self, path):
+    def bind(self, root, thing):
+        self.bindings[root] = thing
+
+    def getChild(self, request, reply, path):
         if not path:
             path = 'index'
         if not self.bindings.has_key(path):
             raise error.web.NotFoundError('Resource not found.')
         return self.bindings[path]
 
-    def bind(self, root, thing):
-        self.bindings[root] = thing
-
 class FilesystemCollection:
-    isWalkable = 0
-
-    def __init__(self, root):
+    def __init__(self, root, mt=None):
         self.root = root
-        self.mimetypes = mimetypes.MimeTypes()
+        if mt:
+            self.mimetypes = mt
+        else:
+            self.mimetypes = mimetypes.MimeTypes()
 
     def handle(self, request, reply, subpath):
-        path = rooted_path(self.root, subpath)
-        type, encoding = self.mimetypes.guess_type(path)
+        abs_path = path.rooted_path(self.root, subpath)
+        type, encoding = self.mimetypes.guess_type(abs_path)
         if not type:
             type = 'application/octet-stream'
 
         try:
-            st = os.stat(path)
+            st = os.stat(abs_path)
             if stat.S_ISDIR(st.st_mode):
-                reply.sendErrorPage(http.HTTP_FORBIDDEN, 'Indexing forbidden.')
+                raise error.web.ForbiddenError
 
             elif stat.S_ISREG(st.st_mode):
-                file = reactor.open(path, 'r')
+                file = reactor.open(abs_path, 'r')
                 reply.headers.setHeader('Last-Modified', http.HTTPDateTime(st.st_mtime))
                 reply.headers.setHeader('Content-Length', st.st_size)
                 reply.headers.setHeader('Content-Type', type)
@@ -80,10 +67,10 @@ class FilesystemCollection:
                 reply.done()
 
             else:
-                reply.sendErrorPage(http.HTTP_FORBIDDEN, 'You may not view this resource.')
+                raise error.web.ForbiddenError
 
         except OSError, ex:
             if ex.errno == errno.ENOENT:
-                reply.sendErrorPage(http.HTTP_NOT_FOUND, 'No such file or directory.')
+                raise error.web.NotFoundError
             else:
-                reply.sendErrorPage(http.HTTP_FORBIDDEN, 'You may not view this resource.')
+                raise error.web.ForbiddenError

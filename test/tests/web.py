@@ -23,7 +23,7 @@ import unittest, os, random, signal, time
 from sheared import reactor
 from sheared import error
 from sheared.protocol import http
-from sheared.web import server, subserver, collection
+from sheared.web import server, subserver, collection, querystring, virtualhost
 from sheared.python import commands
 
 from tests import transport
@@ -131,24 +131,26 @@ class HTTPSubServerTestCase(unittest.TestCase):
         self.reactor.listenUNIX(factory, './test/fifoo')
 
         factory = server.HTTPServer()
-        vhost = server.VirtualHost(subserver.HTTPSubServerCollection('./test/fifoo'))
+        vhost = virtualhost.VirtualHost(subserver.HTTPSubServerCollection('./test/fifoo'))
         factory.addVirtualHost('localhost', vhost)
         factory.setDefaultHost('localhost')
         self.reactor.listenTCP(factory, ('127.0.0.1', self.port))
 
     def testRequest(self):
         def f():
-            argv = ['/bin/sh', '-c',
-                    'curl -D - '
-                    'http://localhost:%d/ 2>/dev/null' % self.port]
-            reply = commands.getoutput(argv[0], argv)
-            status, headers, body = parseReply(reply)
+            try:
+                argv = ['/bin/sh', '-c',
+                        'curl -D - '
+                        'http://localhost:%d/ 2>/dev/null' % self.port]
+                reply = commands.getoutput(argv[0], argv)
+                status, headers, body = parseReply(reply)
             
-            self.assertEquals(status.version, (1, 0))
-            self.assertEquals(status.code, 200)
-            self.assertEquals(body, 'Welcome to localhost!\r\n')
+                self.assertEquals(status.version, (1, 0))
+                self.assertEquals(status.code, 200)
+                self.assertEquals(body, 'Welcome to localhost!\r\n')
 
-            self.reactor.stop()
+            finally:
+                self.reactor.stop()
 
         self.reactor.createtasklet(f)
         self.reactor.start()
@@ -158,7 +160,7 @@ class FilesystemCollectionTestCase(unittest.TestCase):
         self.reactor = reactor
         
         self.server = server.HTTPServer()
-        vhost = server.VirtualHost(collection.FilesystemCollection('./test/http-docroot'))
+        vhost = virtualhost.VirtualHost(collection.FilesystemCollection('./test/http-docroot'))
         self.server.addVirtualHost('foo.com', vhost)
 
         self.transport = transport.StringTransport()
@@ -196,7 +198,7 @@ class FilesystemCollectionTestCase(unittest.TestCase):
 class HTTPQueryStringTestCase(unittest.TestCase):
     def setUp(self):
         qs = 'int=1&hex=babe&str=foo&flag&many=1&many=2'
-        self.qs = server.HTTPQueryString(qs)
+        self.qs = querystring.HTTPQueryString(qs)
 
     def testGetOne(self):
         self.assertEquals(self.qs.get_one('int').as_name(), '1')
@@ -214,9 +216,9 @@ class HTTPQueryStringTestCase(unittest.TestCase):
 
 class UnvalidatedInputTestCase(unittest.TestCase):
     def setUp(self):
-        self.int = server.UnvalidatedInput('1')
-        self.hex = server.UnvalidatedInput('babe')
-        self.str = server.UnvalidatedInput('foo')
+        self.int = querystring.UnvalidatedInput('a', '1')
+        self.hex = querystring.UnvalidatedInput('b', 'babe')
+        self.str = querystring.UnvalidatedInput('c', 'foo')
 
     def testInteger(self):
         self.assertEquals(self.int.as_int(), 1)

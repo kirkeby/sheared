@@ -18,113 +18,24 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import os, stat, errno, mimetypes, sys, pickle, re, types
+import os, stat, errno, mimetypes, sys, pickle, re, types, traceback
 
 from sheared import error
 from sheared.protocol import http
 from sheared.python import fdpass
 from sheared.python import io
-
-def unscape_querystring(qs):
-    qs = qs.replace('+', ' ')
-    while 1:
-        try:
-            before, after = qs.split('%', 1)
-        except ValueError:
-            break
-
-        if len(after) < 2:
-            raise error.web.InputError, 'percent near end of query-string'
-        hex, after = after[0:2], after[2:]
-        if re.findall('[^0-9a-fA-F]', hex):
-            raise error.web.InputError, 'malformed hex-number in query-string'
-        qs = before + chr(int(hex, 16)) + after
-    return qs
-
-def parse_querystring(qs):
-    args = {}
-    if not len(qs):
-        return args
-    for part in qs.split('&'):
-        thing = map(unscape_querystring, part.split('=', 1))
-        if len(thing) == 1:
-            thing = thing[0], ''
-        name, value = thing
-        if len(name) == 0:
-            raise error.web.InputError, 'zero-length name not allowed'
-        if re.findall('[^a-zA-Z0-9-_]', name):
-            raise error.web.InputError, 'invalid name in query-string'
-        if not args.has_key(name):
-            args[name] = []
-        if len(value):
-            args[name].append(UnvalidatedInput(value))
-    return args
-
-class UnvalidatedInput:
-    def __init__(self, str):
-        self.__str = str
-
-    def as_int(self, radix=10):
-        try:
-            return int(self.__str, radix)
-        except ValueError:
-            raise error.web.InputError, '%r: invalid integer' % self.__str
-
-    def as_bool(self):
-        return bool(self.__str)
-    
-    def as_str(self, valid):
-        if re.findall('[^%s]' % valid, self.__str):
-            raise error.web.InputError, '%r: invalid characters in value' % self.__str
-        return self.__str
-
-    def as_unixstr(self):
-        return self.as_str('\x01-\xff')
-
-    def as_name(self):
-        return self.as_str('a-zA-Z0-9_-')
-
-    def as_word(self):
-        return self.as_str('\x21-\x7e')
-
-    def as_text(self):
-        return self.as_str('\t\n\r\x20-\x7e')
-    
-class HTTPQueryString:
-    def __init__(self, qs):
-        self.dict = parse_querystring(qs)
-
-    def get_one(self, name, *default):
-        assert len(default) <= 1
-        v = self.get_many(name, list(default))
-        if len(v) == 0 and default:
-            v = UnvalidatedInput(default[0])
-        elif len(v) == 1:
-            v = v[0]
-        else:
-            raise error.web.InputError, '%s: expected scalar-arg, ' \
-                                             'got %r' % (name, v)
-        return v
-
-    def get_many(self, name, default=None):
-        try:
-            return self.dict[name]
-        except KeyError:
-            if default is None:
-                raise error.web.InputError, '%s: required argument missing' % name
-            else:
-                return map(UnvalidatedInput, default)
+from sheared.web import querystring
 
 class HTTPRequest:
-    def __init__(self, requestline, querystring, headers):
+    def __init__(self, requestline, qs, headers):
         self.method = requestline.method
         self.version = requestline.version
         self.scheme = requestline.uri[0]
         self.host = requestline.uri[1]
         self.path = requestline.uri[2]
-        self.querystring = querystring
+        self.querystring = qs
         self.fragment = requestline.uri[4]
-        self.args = HTTPQueryString(self.querystring)
+        self.args = querystring.HTTPQueryString(self.querystring)
         self.headers = headers
 
     def parent(self):
@@ -180,18 +91,6 @@ class HTTPReply:
             self.sendHead()
         self.transport.sendfile(file)
 
-    def sendErrorPage(self, status, text=None):
-        self.setStatusCode(status)
-        self.headers.setHeader('Content-Type', 'text/plain')
-        if not self.decapitated:
-            self.sendHead()
-        if text:
-            self.send(text)
-        else:
-            self.send("I am terribly sorry, but an error (%d) occured "
-                      "while processing your request.\r\n" % status)
-        self.done()
-
     def isdone(self):
         return self.transport.closed
 
@@ -209,27 +108,6 @@ class HTTPServer:
 
     def setDefaultHost(self, name):
         self.default_host = name
-
-    def handle(self, request, reply):
-        try:
-            if request.scheme or request.host:
-                reply.sendErrorPage(http.HTTP_FORBIDDEN, 'No HTTP proxying here.')
-
-            if request.headers.has_key('Host'):
-                vhost = self.hosts.get(request.headers['Host'], None)
-            else:
-                vhost = None
-            if vhost is None and self.default_host:
-                vhost = self.hosts[self.default_host]
-
-            if vhost:
-                vhost.handle(request, reply, request.path)
-            else:
-                reply.sendErrorPage(http.HTTP_NOT_FOUND, 'No such host.')
-
-        except error.web.WebServerError, e:
-            if not reply.decapitated and not reply.transport.closed:
-                reply.sendErrorPage(e.statusCode, e.args[0])
 
     def startup(self, transport):
         reader = io.RecordReader(transport, '\r\n')
@@ -260,41 +138,41 @@ class HTTPServer:
         request = HTTPRequest(requestline, querystring, headers)
         reply = HTTPReply(request.version, transport)
 
-        try:
-            self.handle(request, reply)
+        self.handle(request, reply)
 
-        except:
-            if not reply.decapitated and not reply.transport.closed:
-                reply.sendErrorPage(http.HTTP_INTERNAL_SERVER_ERROR)
-            raise
-            
+    def handle(self, request, reply):
+        try:
+            if request.scheme or request.host:
+                raise error.web.ForbiddenError
+
+            if request.headers.has_key('Host'):
+                vhost = self.hosts.get(request.headers['Host'], None)
+            else:
+                vhost = None
+            if vhost is None and self.default_host:
+                vhost = self.hosts[self.default_host]
+
+            if vhost:
+                try:
+                    vhost.handle(request, reply, request.path)
+                except error.web.WebServerError:
+                    raise
+                except:
+                    self.logInternalError(sys.exc_info())
+                    raise error.web.InternalServerError
+            else:
+                raise error.web.NotFoundError
+
+        except error.web.WebServerError, e:
+            if not reply.decapitated:
+                reply.setStatusCode(e.statusCode)
+                reply.headers.setHeader('Content-Type', 'text/plain')
+                reply.send("I am terribly sorry, but an error (%d) occured "
+                           "while processing your request.\r\n" % e.statusCode)
+                
         reply.done()
 
-class VirtualHost:
-    def __init__(self, collection):
-        self.collection = collection
+    def logInternalError(self, (tpe, val, tb)):
+        traceback.print_exception(tpe, val, tb)
 
-    def walkPath(self, path):
-        roots = [self.collection]
-        subpath = ''
-        for piece in path.split('/'):
-            if piece == '..':
-                if len(path) > 1:
-                    roots.pop()
-            elif piece == '.' or piece == '':
-                pass
-            else:
-                if getattr(roots[-1], 'isWalkable', 0):
-                    roots.append(roots[-1].getChild(piece))
-                else:
-                    subpath = subpath + '/' + piece
-        return roots[-1], subpath
-
-    def handle(self, request, reply, path):
-        child, subpath = self.walkPath(path)
-        if child is self.collection and child.isWalkable:
-            child = self.collection.getChild('')
-        child.handle(request, reply, subpath)
-
-__all__ = ['HTTPRequest', 'HTTPReply', 'UnvalidatedInput',
-           'HTTPQueryString', 'HTTPServer', 'VirtualHost']
+__all__ = ['HTTPRequest', 'HTTPReply', 'HTTPServer']

@@ -1,4 +1,3 @@
-# vim:nowrap:textwidth=0
 #
 # Sheared -- non-blocking network programming library for Python
 # Copyright (C) 2003  Sune Kirkeby <sune@mel.interspace.dk>
@@ -17,5 +16,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-__all__ = ['server', 'subserver', 'querystring', 'virtualhost',
-           'collection', 'error', 'entwiner', 'xmlrpc']
+
+import os
+
+def canonical_path(pieces):
+    canonical = []
+    for piece in pieces:
+        if piece == '..':
+            if len(path):
+                canonical.pop()
+        elif piece == '.' or piece == '':
+            pass
+        else:
+            canonical.append(piece)
+    return canonical
+
+def rooted_path(root, subpath):
+    return root + os.sep + os.sep.join(canonical_path(subpath.split('/')))
+

@@ -17,4 +17,4 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 __all__ = ['coroutine', 'fdpass', 'aio', 'daemonize', 'commands', 'io',
-           'benchmark', 'queue']
+           'benchmark', 'queue', 'path']

@@ -40,5 +40,8 @@ class NotFoundError(WebServerError):
 class MovedPermanently(WebServerError):
     statusCode = HTTP_MOVED_PERMANENTLY
 
+class InternalServerError(WebServerError):
+    statusCode = HTTP_INTERNAL_SERVER_ERROR
+
 __all__ = ['WebServerError', 'UnauthorizedError', 'ForbiddenError',
     'NotFoundError', 'MovedPermanently']
