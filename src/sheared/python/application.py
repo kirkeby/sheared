@@ -23,6 +23,8 @@ import traceback
 import warnings
 import signal
 import os
+import pwd
+import grp
 
 from sheared.python import daemonize
 from sheared.python import conffile
@@ -60,11 +62,11 @@ app_options = [
    [ 'set_str',      1, 'pidfile',   'p', 'pid-file',   'application.pid-file',
      'Write pid-file.' ],
 
-   [ 'set_int',      1, 'user',      'u', 'user',       'application.user',
-     'Change to this uid after configuring application.' ],
+   [ 'set_str',      1, 'user',      'u', 'user',       'application.user',
+     'Change to this uid (or user name) after configuring application.' ],
      
-   [ 'set_int',      1, 'group',     'g', 'group',      'application.group',
-     'Change to this gid after configuring application.' ],
+   [ 'set_str',      1, 'group',     'g', 'group',      'application.group',
+     'Change to this gid (or group name) after configuring application.' ],
      
    [ 'opt_conf',     1, '',          'c', 'conf-file',  '',
      'Read configuration file (may be given multiple\n'
@@ -310,9 +312,17 @@ class Application:
                     daemonize.writepidfile(self.pidfile)
 
             if not self.group is None:
-                os.setgid(self.group)
+                try:
+                    gid = int(self.group)
+                except ValueError:
+                    gid = grp.getgrnam(self.group)[2]
+                os.setgid(gid)
             if not self.user is None:
-                os.setuid(self.user)
+                try:
+                    uid = int(self.user)
+                except ValueError:
+                    uid = pwd.getpwnam(self.user)[2]
+                os.setuid(uid)
 
             if hasattr(self, 'run'):
                 name = '<Main for %r>' % self
