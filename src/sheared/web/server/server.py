@@ -69,7 +69,7 @@ def notFoundErrorHandler(server, exc_info, request, reply):
 
 def internalServerErrorHandler(server, exc_info, request, reply):
     send_http_error_page(reply, None)
-    server.logInternalError(exc_info[1].args)
+    server.logInternalError(exc_info)
 
 def defaultErrorHandler(server, exc_info, request, reply):
     if len(exc_info[1].args) == 1 and isinstance(exc_info[1].args[0], types.StringTypes):
