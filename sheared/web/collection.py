@@ -46,10 +46,14 @@ class ShadowCollection(resource.GettableResource):
                 f(request, reply)
 
     def getChild(self, request, reply, subpath):
+        lone = None
         children = []
         for layer in self.layers:
             try:
-                children.append(layer.getChild(request, reply, subpath))
+                child = layer.getChild(request, reply, subpath)
+                children.append(child)
+                if not hasattr(child, 'getChild'):
+                    lone = child
             except error.web.NotFoundError:
                 pass
 
@@ -58,7 +62,14 @@ class ShadowCollection(resource.GettableResource):
         elif len(children) == 1:
             return children[0]
         else:
-            return ShadowCollection(children)
+            if lone:
+                # if one our children does not have a getChild method we
+                # want to hand the request over to it from then on,
+                # which should not be done if there are multiple
+                # children on this subptah
+                raise 'multiple subpath matches vs. asocial child'
+            else:
+                return ShadowCollection(children)
 
     def handle(self, request, reply, subpath):
         if request.path.endswith('/'):
@@ -74,7 +85,12 @@ class TildeUserCollection(resource.GettableResource):
         path = os.path.expanduser(subpath)
         if path == subpath:
             raise error.web.NotFoundError, 'no such user'
-        return FilesystemCollection(path + os.sep + 'public_html')
+        path = path + os.sep + 'public_html'
+        if not os.access(path, os.F_OK):
+            raise error.web.NotFoundError, 'no public_html'
+        #if os.access(path + os.sep + '.do-not-serve', os.F_OK):
+        #    raise error.web.NotFoundError, 'public_html not servable'
+        return FilesystemCollection(path)
 
     def handle(self, request, reply, subpath):
         if request.path.endswith('/'):
@@ -177,7 +193,7 @@ class FilesystemCollection(resource.NormalResource):
                     abs_path = self.root + os.sep + subpath
                     if os.access(abs_path, os.F_OK):
                         return FilesystemCollection(abs_path, self.path_info, self.mimetypes)
-                return None
+                raise error.web.NotFoundError
             elif stat.S_ISREG(st.st_mode):
                 path_info = self.path_info + '/' + subpath
                 return FilesystemCollection(self.root, path_info, self.mimetypes)
@@ -197,10 +213,10 @@ class FilesystemCollection(resource.NormalResource):
             st = os.stat(self.root)
             if stat.S_ISDIR(st.st_mode):
                 if request.path.endswith('/'):
-                    index = self.getChild(request, reply, '')
-                    if index:
+                    try:
+                        index = self.getChild(request, reply, '')
                         index.handle(request, reply, subpath)
-                    else:
+                    except error.web.NotFoundError:
                         if os.access(self.root, os.X_OK):
                             self.handle_index(request, reply, subpath)
                         else:
