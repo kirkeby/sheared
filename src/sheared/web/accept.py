@@ -43,26 +43,27 @@ def chooseContentType(request, content_types):
     possible content types. Or, if none of the possible content types
     are acceptable raise sheared.error.web.NotAcceptable."""
 
+    if request.headers.get('User-Agent', '').find('MSIE') > 0:
+        accepts = 'text/html, */*'
+    else:
+        accepts = request.headers.get('Accept', '*/*')
+
     def is_acceptable(widget, gizmo):
         return (widget == gizmo) or \
                (gizmo.endswith('/*') and widget.startswith(gizmo[:-1])) or \
                (gizmo == '*/*') or \
                (gizmo == '*')
 
-    if request.headers.has_key('Accept'):
-        chosen = None
-        acceptable = parse_accepts_header(request.headers['Accept'])
-        for content_type in content_types:
-            for gizmo, qval in acceptable:
-                if is_acceptable(content_type, gizmo):
-                    if not chosen or qval > chosen[1]:
-                        chosen = content_type, qval
+    chosen = None
+    acceptable = parse_accepts_header(accepts)
+    for content_type in content_types:
+        for gizmo, qval in acceptable:
+            if is_acceptable(content_type, gizmo):
+                if not chosen or qval > chosen[1]:
+                    chosen = content_type, qval
 
-        if chosen is None:
-            raise error.web.NotAcceptable, \
-                  'cannot serve any of %s' % request.headers['Accept']
-
-    else:
-        chosen = content_types[0], 1.0
+    if chosen is None:
+        raise error.web.NotAcceptable, \
+              'cannot serve any of %s' % accepts
 
     return chosen[0]
