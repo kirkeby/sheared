@@ -10,6 +10,18 @@ from sheared.python import coroutine
 from sheared.database import error
 from sheared.database import dummy
 
+# Postgresql -> Python type mappings, type-OIDs lifted from
+# /usr/include/postgresql/server/catalog/pg_type.h
+pg_type = {
+        16: bool,   # bool
+        20: long,   # int8
+        21: int,    # int2
+        23: int,    # int4
+        25: str,    # text
+        1042: str,  # char(length)
+        1043: str,  # varchar(length)
+    }
+
 class ProtocolError(error.OperationalError):
     pass
 
@@ -168,7 +180,8 @@ def parsePacket(client, data, columns=None):
                 type_oid, data = parseInt32(data)
                 type_size, data = parseInt16(data)
                 type_modifier, data = parseInt32(data)
-                columns.append((name, (type_oid, type_size, type_modifier)))
+                desc = dummy.DummyRowDescription(name, type_oid, type_size)
+                columns.append(desc)
             return RowDescriptionPacket(tuple(columns)), data
 
         if tag == 'D':
@@ -278,6 +291,14 @@ class PostgresqlClient:
             elif type is CompletedResponsePacket:
                 words = packet.command.split()
                 if words[0] == 'SELECT':
+                    try:
+                        for r in range(len(rows)):
+                            for c in range(len(columns)):
+                                if not rows[r][c] is None:
+                                    conv = pg_type.get(columns[c].type, None)
+                                    rows[r][c] = conv(rows[r][c])
+                    except KeyError:
+                        raise ProtocolError, 'no converter for pg_type OID %d' % columns[c].type
                     result = dummy.DummyCursor(columns, rows)
                 elif len(words) == 1:
                     result = None
