@@ -38,7 +38,8 @@ class HTTPServer:
 
         self.errorlog = None
 
-        self.requestCallbacks = []
+        self.massageRequestCallbacks = []
+        self.requestCompletedCallbacks = []
 
     def addVirtualHost(self, name, vhost):
         self.hosts[name] = vhost
@@ -120,6 +121,9 @@ class HTTPServer:
                 else:
                     raise error.web.NotFoundError, 'unknown host and no default host'
 
+            for cb in self.massageRequestCallbacks:
+                cb(request, reply)
+
             try:
                 vhost.handle(request, reply)
             except error.web.WebServerError:
@@ -134,7 +138,7 @@ class HTTPServer:
                 reply.headers.setHeader('Content-Type', 'text/plain')
                 self.handleWebServerError(e, request, reply)
 
-        for cb in self.requestCallbacks:
+        for cb in self.requestCompletedCallbacks:
             try:
                 cb(request, reply)
             except:

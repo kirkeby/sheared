@@ -54,7 +54,7 @@ class WebserverApplication(Application):
 
         if self.accesslog:
             accesslog = CombinedLog(LogFile(self.accesslog))
-            self.webserver.requestCallback.append(accesslog.logRequest)
+            self.webserver.requestCompletedCallback.append(accesslog.logRequest)
         if self.errorlog:
             self.webserver.setErrorLog(LogFile(self.errorlog))
 
