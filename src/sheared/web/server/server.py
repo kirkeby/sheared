@@ -43,11 +43,11 @@ def notFoundErrorHandler(server, exception, request, reply):
 
 def internalServerErrorHandler(server, exception, request, reply):
     reply.send('Internal Server Error.\r\n')
-    server.logInternalError(exception.args)
+    server.logInternalError(exception[1].args)
 
 def defaultErrorHandler(server, exception, request, reply):
     reply.send("I am terribly sorry, but an error (%d) occured "
-               "while processing your request.\r\n" % e.statusCode)
+               "while processing your request.\r\n" % exception[1].statusCode)
     server.logInternalError(exception)
 
 class HTTPServer:
@@ -167,7 +167,7 @@ class HTTPServer:
         except error.web.WebServerError, e:
             reply.setStatusCode(e.statusCode)
             reply.headers.setHeader('Content-Type', 'text/plain')
-            self.handleWebServerError(e, request, reply)
+            self.handleWebServerError(sys.exc_info(), request, reply)
 
         for cb in self.requestCompletedCallbacks:
             try:
@@ -178,7 +178,7 @@ class HTTPServer:
     def handleWebServerError(self, exception, request, reply):
         handler = None
         for kls, hnd in self.errorHandlers:
-            if isinstance(exception, kls):
+            if isinstance(exception[1], kls):
                 if handler:
                     if issubclass(kls, handler[0]):
                         handler = kls, hnd
