@@ -1,11 +1,7 @@
 #!/usr/bin/env python
 
-import unittest
-
-import sys
+import unittest, sys, traceback
 sys.path.insert(0, '.')
-
-from tests import coroutine, reactor
 
 if len(sys.argv) == 1:
     import tests

@@ -218,6 +218,13 @@ def addCoroutine(coroutine, args):
     else:
         coroutines.append((coroutine, args))
 
+def connectTCP(factory, address, *args, **kwargs):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    reactor.prepareFile(sock)
+    reactor.connect(sock, address)
+    transport = createTransport(sock, address)
+    return apply(factory, (reactor, transport) + args, kwargs)
+
 def listenTCP(factory, address):
     port = tcp.TCPPort(reactor, factory, address)
     port.listen()
@@ -226,4 +233,4 @@ def createTransport(fd, addr):
     return transport.ReactorTransport(reactor, fd, addr)
 
 __all__ = ['run', 'reset', 'read', 'write', 'accept',
-           'prepareFile', 'addCoroutine', 'listenTCP']
+           'prepareFile', 'addCoroutine', 'listenTCP', 'connectTCP']
