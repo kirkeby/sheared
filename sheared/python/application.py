@@ -39,6 +39,9 @@ class Application:
     def __init__(self, name, options):
         self.name = name
 
+        self.conf_files = ['/etc/%s.conf', '~/.%s.conf']
+        self.conf_files = [c % self.name for c in self.conf_files]
+
         self.options = []
         self.options.extend(app_options)
         self.options.extend(options)
@@ -114,13 +117,11 @@ class Application:
 
         return args
 
-    def main(self, conf=None, argv=sys.argv):
-        if conf:
-            self.parse_conf(conf)
-    
-        conf = os.path.expanduser('~/.%src' % self.name)
-        if os.access(conf, os.R_OK):
-            self.parse_conf(conf)
+    def main(self, argv=sys.argv):
+        for path in self.conf_files:
+            conf = os.path.expanduser(path)
+            if os.access(conf, os.R_OK):
+                self.parse_conf(conf)
 
         self.parse_args(argv[1:])
 
