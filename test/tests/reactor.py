@@ -96,7 +96,7 @@ class ReactorTestCaseMixin:
             t = reactor.connectTCP(('localhost', port))
             t.close()
             reactor.sleep(0.2)
-            t = reactor.connectTCP(('localhost', port))
+            t = reactor.connect('tcp:localhost:%d' % port)
             t.close()
         reactor.listenTCP(Server(), ('', port), max_client_count=2)
         reactor.createtasklet(f)
