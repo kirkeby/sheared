@@ -20,6 +20,7 @@
 
 from sheared import error
 from sheared import reactor
+from sheared.python import io
 
 class DumbProxy:
     def __init__(self, host, port):
@@ -37,6 +38,41 @@ class DumbProxy:
                     transport.write('%s: %s\r\n' % (k, v))
                 transport.write('\r\n')
                 transport.write(request.body)
+
+            reply.transport.sendfile(transport)
+
+        except OSError:
+            pass
+
+        transport.close()
+
+class ReversePassProxy:
+    def __init__(self, host, port, location):
+        self.host = host
+        self.port = port
+        self.location = location
+
+    def handle(self, request, reply):
+        try:
+            version = request.requestline.version[0]
+            transport = reactor.connectTCP((self.host, self.port))
+            transport = io.BufferedReader(transport)
+            
+            transport.write('%s\r\n' % request.requestline.raw)
+            if version == 1:
+                for k, v in request.headers.items():
+                    transport.write('%s: %s\r\n' % (k, v))
+                transport.write('\r\n')
+                transport.write(request.body)
+
+            while 1:
+                l = transport.readline()
+                if l.startswith('Location: '):
+                    l = l.replace('http://%s:%d' % (self.host, self.port),
+                              self.location)
+                reply.transport.write(l)
+                if l == '\r\n':
+                    break
 
             reply.transport.sendfile(transport)
 
