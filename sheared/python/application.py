@@ -228,17 +228,9 @@ class Application:
 
         self.parse_args(argv[1:])
 
-        def stop(signum, frame):
-            if signum == signal.SIGQUIT:
-                sys.exit(0)
-            elif signum == signal.SIGHUP:
-                self.restart()
-            else:
-                self.stop()
-        signal.signal(signal.SIGINT, stop)
-        signal.signal(signal.SIGHUP, stop)
-        signal.signal(signal.SIGTERM, stop)
-        signal.signal(signal.SIGQUIT, stop)
+        signal.signal(signal.SIGINT,  lambda signum, frame: self.stop())
+        signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(1))
+        signal.signal(signal.SIGHUP,  lambda signum, frame: self.restart())
 
         daemonize.closeall(min=3)
 
@@ -273,7 +265,15 @@ class Application:
         self.reactor.start()
 
     def restart(self):
-        self.reactor.stop()
+        daemonize.closeall()
+
+        argv = [sys.executable]
+        argv.extend(sys.argv)
+
+        try:
+            os.execv(argv[0], argv)
+        except:
+            os.exit(2)
 
     def stop(self):
         self.reactor.stop()
