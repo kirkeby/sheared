@@ -119,6 +119,8 @@ class ReactorSocket(ReactorFile):
     def __init__(self, reactor, sock):
         ReactorFile.__init__(self, reactor, sock.fileno())
         self.sock = sock
+        self.here = self.sock.getsockname()
+        self.peer = self.sock.getpeername()
 
     def shutdown(self, how):
         self.sock.shutdown(how)
