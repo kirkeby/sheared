@@ -29,24 +29,36 @@ from sheared.web import resource
 from entwine import abml
 
 class ShadowCollection(resource.GettableResource):
-    def __init__(self):
+    def __init__(self, layers=None):
         resource.GettableResource.__init__(self)
 
         self.layers = []
+        if layers:
+            self.layers.extend(layers)
 
     def addLayer(self, layer):
         self.layers.append(layer)
 
+    def authenticate(self, request, reply):
+        for layer in self.layers:
+            f = getattr(layer, 'authenticate', None)
+            if f:
+                f(request, reply)
+
     def getChild(self, request, reply, subpath):
+        children = []
         for layer in self.layers:
             try:
-                child = layer.getChild(request, reply, subpath)
+                children.append(layer.getChild(request, reply, subpath))
             except error.web.NotFoundError:
-                continue
-            break
+                pass
+
+        if len(children) == 0:
+            raise error.web.NotFoundError
+        elif len(children) == 1:
+            return children[0]
         else:
-            raise error.web.NotFoundError, subpath
-        return child
+            return ShadowCollection(children)
 
     def handle(self, request, reply, subpath):
         if request.path.endswith('/'):
