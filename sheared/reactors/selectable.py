@@ -37,12 +37,18 @@ class Reactor(base.Reactor):
         base.Reactor.__init__(self)
     
         self.tasklet_channel = {}
+        self.tasklet_name = {}
         self.channel_tasklet = {}
 
         self.waiting = {}
         self.sleeping = queue.MinQueue()
 
     def _run(self):
+        self.tasklet_name[id(stackless.getcurrent())] = '<Reactor core>'
+        #def cb(p, n):
+        #    print str(self.tasklet_name.get(id(n), '[unknown]'))
+        #stackless.set_schedule_callback(cb)
+
         while not self.stopping:
             self._wake_sleepers()
             while stackless.getruncount() > 1:
@@ -157,7 +163,8 @@ class Reactor(base.Reactor):
             s, a = self._wait(sock, self._handleaccept, ())
             fcntl.fcntl(s.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
             t = base.ReactorSocket(s, a, self)
-            self.createtasklet(self._startup, (factory, t))
+            name = '<server for %r>' % factory
+            self.createtasklet(self._startup, (factory, t), name=name)
 
     def _connectSocket(self, family, type, addr):
         sock = socket.socket(family, type)
@@ -193,10 +200,11 @@ class Reactor(base.Reactor):
                 break
             self._write(o, d)
 
-    def createtasklet(self, func, args=(), kwargs={}):
+    def createtasklet(self, func, args=(), kwargs={}, name=None):
         t = stackless.tasklet()
         c = stackless.channel()
         self.tasklet_channel[id(t)] = c
+        self.tasklet_name[id(t)] = name
         self.channel_tasklet[id(c)] = t
 
         t.setatomic(1)
@@ -212,6 +220,7 @@ class Reactor(base.Reactor):
         finally:
             del self.channel_tasklet[id(c)]
             del self.tasklet_channel[id(t)]
+            del self.tasklet_name[id(t)]
 
     def sleep(self, seconds):
         assert self.running
@@ -257,7 +266,8 @@ class Reactor(base.Reactor):
         sock.bind(addr)
         sock.listen(backlog)
 
-        self.createtasklet(self._accept, (factory, sock))
+        name = '<TCP listener for %r>' % factory
+        self.createtasklet(self._accept, (factory, sock), name=name)
 
     def listenUNIX(self, factory, addr, backlog=5):
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -270,4 +280,5 @@ class Reactor(base.Reactor):
         sock.bind(addr)
         sock.listen(backlog)
 
-        self.createtasklet(self._accept, (factory, sock))
+        name = '<UNIX listener for %r>' % factory
+        self.createtasklet(self._accept, (factory, sock), name=name)
