@@ -26,6 +26,7 @@ class Semaphore:
         self.waiting = 0
 
     def grab(self):
+        atom = stackless.atomic()
         if self.taken:
             self.waiting = self.waiting + 1
             self.channel.receive()
@@ -34,6 +35,7 @@ class Semaphore:
             self.taken = 1
             
     def release(self):
+        atom = stackless.atomic()
         if self.waiting:
             self.channel.send(None)
         else:
