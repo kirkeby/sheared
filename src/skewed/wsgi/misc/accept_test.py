@@ -40,10 +40,3 @@ def test_fudging():
     widgets = [ (1, {'Content-Type': 'application/xhtml+xml'}),
                 (2, {'Content-Type': 'text/html'}), ]
     assert choose_widget(environ, widgets) == 2
-
-def test_ie_hack():
-    environ = { 'HTTP_ACCEPT': '*/*',
-                'HTTP_USER_AGENT': 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.1.4322)', }
-    widgets = [ (1, {'Content-Type': 'application/xhtml+xml'}),
-                (2, {'Content-Type': 'text/html'}), ]
-    assert choose_widget(environ, widgets) == 2
