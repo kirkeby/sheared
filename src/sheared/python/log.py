@@ -62,12 +62,8 @@ class Log:
         self.write('\n'.join(lines) + '\n')
 
     def showwarning(self, message, category, filename, lineno, file=None):
-        lines = [self._prefix('warning')
-                 + '%s in %s:%d' % (category, filename, lineno)]
-        for thing in message:
-            thing = [ '\t' + line for line in thing.split('\n')[:-1] ]
-            lines.extend(thing)
-        self.write('\n'.join(lines) + '\n')
+        line = '%s in %s:%d; %s' % (category, filename, lineno, message)
+        self.write(self._prefix('warning') + line + '\n')
     
     def _prefix(self, cls):
         prefix = '[%s] [%d] ' % (time.ctime(), os.getpid())
