@@ -19,7 +19,7 @@
 __all__ = [
     'reactor', 'database', 'pool', 'commands',
     'time_since',
-    'http', 'cookie',
-    'web', 'webresource', 'webcollections', 'webentwiner',
-    'webclient',
+    'http', 'querystring', 'cookie',
+    'webresource', 'webcollections', 'webentwiner',
+    'webserver', 'webclient', 'web',
 ]
