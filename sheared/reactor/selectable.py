@@ -29,8 +29,9 @@ class Reactor:
         else:
             print 'send to dead channel intercepted.'
 
-    def shutdown(self):
+    def shutdown(self, err=None):
         self.stop = 1
+        self.error = err
 
     def buildselectable(self):
         r, w = [], []
@@ -133,6 +134,8 @@ class Reactor:
         self.started = 0
         self.stopped = 0
         self.stop = 0
+        self.error = None
+        self.exc_info = None
 
     def wake_sleepers(self):
         now = self.time()
@@ -186,9 +189,9 @@ class Reactor:
                     except:
                         self.safe_send(channel, sys.exc_info()[1])
 
-        finally:
-            self.stopped = 1
+        except:
             self.exc_info = sys.exc_info()
+        self.stopped = 1
 
     def run(self):
         if not stackless.getmain() is stackless.getcurrent():
@@ -198,6 +201,11 @@ class Reactor:
         if self.stopped:
             raise RuntimeError, 'reactor already stopped'
         stackless.run()
+
+        if self.exc_info:
+            raise self.exc_info[0], self.exc_info[1], self.exc_info[2]
+        else:
+            return self.error
 
     def createtasklet(self, func, args=(), kwargs={}):
         t = stackless.tasklet()
