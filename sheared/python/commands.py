@@ -46,10 +46,7 @@ def spawn(cmd, argv, with_stderr=0):
             daemonize.closeall(3)
             os.execv(cmd, argv)
         except:
-            # sys.exit raises SystemExit which is caught by
-            # try/excepts deep in the bowels of the reactor
-            # core. So we do this instead:
-            os.execv("/bin/false", ["/bin/false"])
+            os._exit(1)
         
     if with_stderr:
         return pid, stdin, stdout, stderr

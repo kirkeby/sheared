@@ -44,6 +44,4 @@ def runInChildProcess(f, args=(), kwargs={}):
             v = None, sys.exc_info()[1]
         os.write(w, pickle.dumps(v))
 
-        # sys.exit raises SystemExit which is caught by try/excepts deep
-        # in the bowels of the reactor core. So we do this instead:
-        os.execv("/bin/true", ["/bin/true"])
+        os._exit(0)
