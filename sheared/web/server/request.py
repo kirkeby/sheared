@@ -18,6 +18,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+import base64
+
+from sheared import error
+
 class HTTPRequest:
     def __init__(self, requestline, headers, body):
         self.requestline = requestline
@@ -37,5 +41,27 @@ class HTTPRequest:
             return self.path + uri
         else:
             return self.path + '/' + uri
+
+    def authentication(self, require=1):
+        login, password = None, None
+
+        if self.headers.has_key('authorization'):
+            auth = self.headers['authorization']
+            try:
+                type, auth = auth.split(' ', 2)
+
+                if type == 'Basic':
+                    auth = base64.decodestring(auth)
+                    login, password = auth.split(':', 2)
+                else:
+                    return None, None
+
+            except:
+                pass
+
+        if require and login is None:
+            raise UnauthorizedException, 'authorization required'
+        else:
+            return login, password
 
 __all__ = ['HTTPRequest']

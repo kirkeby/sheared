@@ -20,7 +20,7 @@
 
 from __future__ import generators
 
-import time, urlparse, types, base64
+import time, urlparse, types
 
 def headerKey(n):
     return n.lower()
@@ -204,27 +204,10 @@ class HTTPHeaders:
     def items(self):
         return map(self.item, self.order)
 
-def getAuthentication(request):
-    login, password = None, None
-
-    if request.headers.has_key('authorization'):
-        auth = request.headers['authorization']
-        try:
-            type, auth = auth.split(' ', 2)
-
-            if type == 'Basic':
-                auth = base64.decodestring(auth)
-                login, password = auth.split(':', 2)
-            else:
-                return None, None
-
-        except:
-            pass
-
-    return login, password
-
 class HTTPRequestLine:
     def __init__(self, s):
+        self.raw = s
+
         pieces = s.split(' ')
         if len(pieces) == 2 and pieces[0] == 'GET':
             # simple HTTP request-line
