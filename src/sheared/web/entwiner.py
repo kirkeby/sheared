@@ -21,6 +21,7 @@ import sys
 import sha
 import warnings
 import traceback
+import encodings
 
 from entwine import entwine
 
@@ -40,12 +41,15 @@ class Entwiner(resource.NormalResource):
         'text/html',
         'text/xml',
     ]
+    encoder = encodings.search_function('utf8')[0]
     
     def __init__(self):
         resource.NormalResource.__init__(self)
-        self.result = None
 
     def handle(self, request, reply, subpath):
+        # Reset state
+        self.result = None
+
         # Accept support
         ct = accept.chooseContentType(request, self.content_types)
         reply.headers.setHeader('Content-Type', ct)
@@ -56,11 +60,10 @@ class Entwiner(resource.NormalResource):
             self.context.update(request.context)
 
         for template in self.macro_pages:
-            self.execute(template, throwaway=1)
+            self.execute(template)
         self.entwine(request, reply, subpath)
-        for i in range(len(self.template_pages)):
-            last = i == range(len(self.template_pages))
-            self.execute(self.template_pages[i], throwaway=last)
+        for template in self.template_pages:
+            self.execute(template)
         if self.result is None:
             raise TemplateError, 'no result'
     
@@ -79,14 +82,14 @@ class Entwiner(resource.NormalResource):
 
         reply.send(self.result)
 
-    def execute(self, path, throwaway=0):
+    def execute(self, path):
         root = getattr(self, 'template_root', '')
         if root:
             path = [root] + path.split('/')
             path = os.sep.join(path)
 
         result = entwine(io.readfile(path), self.context, source=path)
-        if not throwaway:
-            self.result = result
-        if result and throwaway:
-            warnings.warn('%s: ignored non-macro content' % path)
+        if result.strip():
+            if not self.result is None:
+                warnings.warn('%s: multiple results' % path)
+            self.result = self.encoder(result)[0]
