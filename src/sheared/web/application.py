@@ -1,5 +1,6 @@
 from sheared.python.application import Application
-from sheared.python.log import LogFile
+from sheared.python import log
+from sheared.python.logfile import LogFile
 from sheared.python.bitbucket import BitBucket
 from sheared.web.server import HTTPServer
 from sheared.web.subserver import HTTPSubServer
@@ -57,8 +58,6 @@ class WebserverApplication(Application):
 
         if self.errorlog:
             self.webserver.setErrorLog(LogFile(self.errorlog))
-        else:
-            self.webserver.setErrorLog(BitBucket())
 
         root = self.configure()
         if root:

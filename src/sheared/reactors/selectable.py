@@ -29,6 +29,7 @@ import traceback
 import time
 import warnings
 
+from sheared.python import log
 from sheared.python import queue
 from sheared.reactors import base
 from sheared import error
@@ -246,7 +247,7 @@ class Reactor(base.Reactor):
             except error.reactor.ReactorShuttingDown:
                 pass
             except:
-                self.log.exception(sys.exc_info())
+                log.default.exception(sys.exc_info())
 
         finally:
             del self.channel_tasklet[id(c)]

@@ -26,7 +26,8 @@ import os
 
 from sheared.python import daemonize
 from sheared.python import conffile
-from sheared.python.log import LogFile
+from sheared.python import log
+from sheared.python.logfile import LogFile
 from sheared.python.bitbucket import BitBucket
 from sheared.python.proctitle import setproctitle
 from sheared import reactor
@@ -286,11 +287,9 @@ class Application:
     def start(self):
         setproctitle(self.name)
 
-        self.log = BitBucket()
         if self.daemonize and self.logfile:
-            self.log = LogFile(self.logfile)
-            self.reactor.log = self.log
-            warnings.showwarning = self.log.showwarning
+            log.default = LogFile(self.logfile)
+            warnings.showwarning = log.showwarning
 
         try:
             if self.daemonize:
@@ -309,21 +308,21 @@ class Application:
                 name = '<Main for %r>' % self
                 self.reactor.createtasklet(self.run, name=name)
     
-            self.log.normal('%s starting' % self.name)
-            self.log.close()
+            log.default.normal('%s starting' % self.name)
+            log.default.close()
 
             self.reactor.start()
 
-            self.log.close()
+            log.default.close()
             if self.do_restart:
-                self.log.normal('%s restarting' % self.name)
+                log.default.normal('%s restarting' % self.name)
                 self.restart()
             else:
-                self.log.normal('%s done' % self.name)
+                log.default.normal('%s done' % self.name)
 
         except:
-            self.log.close()
-            self.log.exception(sys.exc_info())
+            log.default.close()
+            log.default.exception(sys.exc_info())
             os._exit(1)
 
     def restart(self):

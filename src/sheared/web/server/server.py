@@ -23,6 +23,7 @@ import sys, traceback, types, errno, time
 from sheared import error
 from sheared.protocol import http
 from sheared.python import io
+from sheared.python import log
 
 import oh_nine, one_oh
 
@@ -181,5 +182,7 @@ class HTTPServer:
     def logInternalError(self, ex):
         if self.errorlog:
             self.errorlog.exception(ex)
+        else:
+            log.default.exception(ex)
 
 __all__ = ['HTTPServer']

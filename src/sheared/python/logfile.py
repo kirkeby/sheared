@@ -1,3 +1,4 @@
+# vim:nowrap:textwidth=0
 #
 # Sheared -- non-blocking network programming library for Python
 # Copyright (C) 2003  Sune Kirkeby <sune@mel.interspace.dk>
@@ -16,6 +17,29 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-__all__ = ['coroutine', 'fdpass', 'aio', 'daemonize', 'commands', 'io',
-           'benchmark', 'queue', 'path', 'application', 'conffile',
-           'process', 'log', 'logfile', 'proctitle', 'bitbucket']
+
+from sheared import reactor
+
+from sheared.python.log import Log
+
+class LogFile(Log):
+    def __init__(self, path):
+        self.path = path
+        self.file = None
+
+    def open(self):
+        self.close()
+        self.file = reactor.open(self.path, 'w')
+        self.file.seek(0, 2)
+
+    def close(self):
+        if self.file:
+            self.file.close()
+            self.file = None
+
+    def write(self, s):
+        if not self.file:
+            self.open()
+        self.file.write(s)
+
+__all__ = ['LogFile']

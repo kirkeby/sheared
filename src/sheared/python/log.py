@@ -19,10 +19,9 @@
 #
 
 import os
+import sys
 import time
 import traceback
-
-from sheared import reactor
 
 dangerous_in_logs = range(0, 33) + range(128, 156)
 dangerous_in_logs.remove(ord('\n'))
@@ -74,25 +73,15 @@ class Log:
         if cls:
             prefix = prefix + '[%s] ' % cls
         return prefix
-    
-class LogFile(Log):
-    def __init__(self, path):
-        self.path = path
-        self.file = None
 
-    def open(self):
-        self.close()
-        self.file = reactor.open(self.path, 'w')
-        self.file.seek(0, 2)
-
+class StderrLog(Log): # sounds a bit like StdAirlock...
     def close(self):
-        if self.file:
-            self.file.close()
-            self.file = None
-
+        pass
     def write(self, s):
-        if not self.file:
-            self.open()
-        self.file.write(s)
+        return sys.stderr.write(s)
 
-__all__ = ['LogFile']
+default = StderrLog()
+def showwarning(*a):
+    default.showwarning(*a)
+
+__all__ = ['default', 'showwarning']

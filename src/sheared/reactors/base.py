@@ -22,7 +22,6 @@ import stackless
 import os
 import warnings
 
-from sheared.python.bitbucket import BitBucket
 from sheared import error
 
 def parse_address_uri(where):
@@ -117,8 +116,6 @@ class Reactor:
         self.running = 0
         self.stopping = 0
         self.result = None
-
-        self.log = BitBucket()
 
     def _safe_send(self, ch, *what):
         assert self.running
