@@ -36,8 +36,9 @@ class Entwiner(resource.NormalResource):
 
     def execute(self, path, throwaway=1):
         root = getattr(self, 'template_root', '')
-        path = [root] + path.split('/')
-        path = os.sep.join(path)
+        if root:
+            path = [root] + path.split('/')
+            path = os.sep.join(path)
 
         r = entwine(io.readfile(path), self.context)
 
