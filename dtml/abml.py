@@ -28,11 +28,12 @@ def lex_outer(text):
         elif i > 0:
             # there is text between here and next tag
             yield 'text', text[:i]
+        text = text[i:]
 
         # search for end of tag
         quotes = None
         escaped = 0
-        for j in range(i, len(text)):
+        for j in range(len(text)):
             if escaped:
                 escaped = 0
                 continue
@@ -46,20 +47,20 @@ def lex_outer(text):
             if text[j] == '>':
                 break
             if text[j] in '\"\'':
-                quotes = text[k]
+                quotes = text[j]
 
         else:
             raise LexicalError, 'never-ending tag spotted'
 
-        yield 'tag', text[:k+1]
-        text = text[k+1:]
+        yield 'tag', text[1:j]
+        text = text[j+1:]
 
-try:
-    import cabml
-    lex_outer = cabml.lex_outer
-except:
-    raise
-    pass
+#try:
+#    import cabml
+#    lex_outer = cabml.lex_outer
+#except:
+#    raise
+#    pass
 
 def lex_inner(tag):
     # split tag into name and attributes
@@ -167,6 +168,13 @@ def lex(text):
         else:
             raise InternalError, 'unknown event from lex_outer'
 
+def parse_name(name):
+    try:
+        namespace, name = name.split(':', 1)
+    except:
+        namespace, name = None, name
+    return namespace, name
+
 def parse_attributes(attr):
     attributes = []
 
@@ -177,22 +185,26 @@ def parse_attributes(attr):
             raise ParseError, ('expecting bare-word found %s' % attr[0][0], attr)
         name = attr.pop(0)[1]
 
-        if attr[0][0] == 'colon':
-            attr.pop(0)
-            if not attr[0][0] == 'bare-word':
-                raise ParseError, ('expecting bare-word after colon found %s' % attr[0][0], attr)
-            namespace = name
-            name = attr.pop(0)[1]
-        else:
-            namespace = None
+        if len(attr):
+            if attr[0][0] == 'colon':
+                attr.pop(0)
+                if not attr[0][0] == 'bare-word':
+                    raise ParseError, ('expecting bare-word after colon found %s' % attr[0][0], attr)
+                namespace = name
+                name = attr.pop(0)[1]
+            else:
+                namespace = None
 
-        if attr[0][0] == 'equal':
-            attr.pop(0)
-            if not attr[0][0] == 'string':
-                raise ParseError, ('expecting string after equal found %s' % attr[0][0], attr)
-            value = attr.pop(0)[1]
+            if attr[0][0] == 'equal':
+                attr.pop(0)
+                if not attr[0][0] == 'string':
+                    raise ParseError, ('expecting string after equal found %s' % attr[0][0], attr)
+                value = attr.pop(0)[1]
+            else:
+                value = None
+
         else:
-            value = None
+            namespace, value = None, None
 
         attribute = namespace, name, value
         attributes.append(attribute)
@@ -231,6 +243,8 @@ def parse(text):
         elif what in ('doctype', 'processing-instruction', 'start-tag'):
             name, raw, attr = value
             if what == 'start-tag':
+                name = parse_name(name)
+                attr = list(attr)
                 attr = parse_attributes(attr)
             else:
                 attr = list(attr)
