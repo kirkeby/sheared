@@ -71,7 +71,7 @@ def parse_querystring(qs):
 
 class UnvalidatedInputError(error.web.InputError):
     def __init__(self, name, why):
-        error.web.InputError.__init__(self, name, why)
+        error.web.InputError.__init__(self, '%s: %s' % (name, why))
         self.name = name
         self.why = why
         
