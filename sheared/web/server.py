@@ -7,6 +7,57 @@ from sheared.protocol import http
 from sheared.internet import shocket
 from sheared.python import fdpass
 
+def unscape_querystring(qs):
+    qs = qs.replace('+', ' ')
+    while 1:
+        try:
+            before, after = qs.split('%', 1)
+        except ValueError:
+            break
+        hex, after = after[0:2], after[2:]
+        qs = before + chr(int(hex, 16)) + after
+    return qs
+
+def parse_querystring(qs):
+    args = {}
+    for part in qs.split('&'):
+        thing = part.split('=', 1)
+        if len(thing) == 2:
+            name, value = thing
+        else:
+            name, value = thing[0], None
+        if len(name) == 0:
+            continue
+        if not args.has_key(name):
+            args[name] = []
+        args[name].append(value)
+    return args
+
+class HTTPQueryString:
+    def __init__(self, qs):
+        self.dict = parse_querystring(qs)
+
+    def get_int(self, name):
+        return int(self.get_scalar(name))
+
+    def get_scalar(self, name):
+        v = self.dict[name]
+        if len(v) > 1:
+            raise ValueError, 'found list-arg where scalar-arg was expected'
+        return v[0]
+
+class HTTPRequest:
+    def __init__(self, requestline, headers):
+        self.method = requestline.method
+        self.version = requestline.version
+        self.scheme = requestline.uri[0]
+        self.host = requestline.uri[1]
+        self.path = requestline.uri[2]
+        self.querystring = requestline.uri[3]
+        self.fragment = requestline.uri[4]
+        self.args = HTTPQueryString(self.querystring)
+        self.headers = headers
+
 class HTTPReply:
     def __init__(self, version, transport):
         self.transport = transport
@@ -47,11 +98,15 @@ class HTTPReply:
             self.sendHead()
         self.transport.write(data)
 
-    def sendErrorPage(self, status):
+    def sendErrorPage(self, status, text=None):
         self.setStatusCode(status)
         self.headers.setHeader('Content-Type', 'text/plain')
-        self.sendHead()
-        self.send("""I am terribly sorry, but an error occured while processing your request.\n""")
+        if not self.decapitated:
+            self.sendHead()
+        if text:
+            self.send(text)
+        else:
+            self.send("""I am terribly sorry, but an error occured while processing your request.\n""")
         self.done()
 
     def done(self):
@@ -80,8 +135,8 @@ class HTTPServer(basic.LineProtocol):
     def handle(self, request, reply):
         try:
             try:
-                if request.uri[0]:
-                    reply.sendErrorPage(http.HTTP_FORBIDDEN)
+                if request.scheme or request.host:
+                    reply.sendErrorPage(http.HTTP_FORBIDDEN, 'No HTTP proxying here.')
 
                 if request.headers.has_key('Host'):
                     vhost = self.factory.hosts.get(request.headers['Host'], None)
@@ -91,31 +146,31 @@ class HTTPServer(basic.LineProtocol):
                     vhost = self.factory.hosts[self.factory.default_host]
 
                 if vhost:
-                    vhost.handle(request, reply, request.uri[2])
+                    vhost.handle(request, reply, request.path)
                 else:
-                    reply.sendErrorPage(http.HTTP_NOT_FOUND)
+                    reply.sendErrorPage(http.HTTP_NOT_FOUND, 'No such host.')
             except:
-                if not self.reply.decapitated and not self.reply.transport.closed:
-                    self.reply.sendErrorPage(http.HTTP_INTERNAL_SERVER_ERROR)
+                if not reply.decapitated and not reply.transport.closed:
+                    reply.sendErrorPage(http.HTTP_INTERNAL_SERVER_ERROR, 'Exception.')
                 raise
         finally:
-            self.reply.done()
+            reply.done()
 
     def receivedLine(self, line):
         self.collected = self.collected + line
 
         if self.where == 'request-line':
-            self.request = http.HTTPRequestLine(line.strip())
+            self.requestline = http.HTTPRequestLine(line.strip())
             self.collected = ''
             self.where = 'headers'
-            if self.request.version == (0,9):
+            if self.requestline.version == (0,9):
                 self.receivedLine('\r\n')
     
         elif self.where == 'headers':
             if line == '\r\n':
-                self.request.headers = http.HTTPHeaders(self.collected)
-                self.reply = HTTPReply(self.request.version, self.transport)
-                self.handle(self.request, self.reply)
+                request = HTTPRequest(self.requestline, http.HTTPHeaders(self.collected))
+                reply = HTTPReply(request.version, self.transport)
+                self.handle(request, reply)
 
     def lastLineReceived(self):
         pass
@@ -151,21 +206,23 @@ class HTTPSubServer(HTTPServer):
             data = data + read
         self.transport.close()
 
-        self.request, subpath = pickle.loads(data)
+        request, subpath = pickle.loads(data)
         self.transport = self.reactor.createTransport(sock, addr)
-        self.reply = HTTPReply(self.request.version, self.transport)
-        self.handle(self.request, self.reply)
+        reply = HTTPReply(request.version, self.transport)
+        self.handle(request, reply)
 
 class VirtualHost:
     def __init__(self):
         self.bindings = []
 
-    def handle(self, request, reply, subpath):
+    def handle(self, request, reply, path):
         for root, thing in self.bindings:
             if path == root or path.startswith(root + '/'):
                 sub = path[ len(root) - 1 : ]
                 thing.handle(request, reply, sub)
-        reply.sendErrorPage(http.HTTP_NOT_FOUND)
+                break
+        else:
+            reply.sendErrorPage(http.HTTP_NOT_FOUND, '%s: No such resource.' % path)
 
     def bind(self, root, thing):
         self.bindings.append((root, thing))
@@ -192,7 +249,7 @@ class StaticCollection:
         try:
             st = os.stat(path)
             if stat.S_ISDIR(st.st_mode):
-                reply.sendErrorPage(http.HTTP_FORBIDDEN)
+                reply.sendErrorPage(http.HTTP_FORBIDDEN, 'Indexing forbidden.')
 
             elif stat.S_ISREG(st.st_mode):
                 file = open(path, 'r')
@@ -210,12 +267,12 @@ class StaticCollection:
                 reply.done()
 
             else:
-                reply.sendErrorPage(http.HTTP_FORBIDDEN)
+                reply.sendErrorPage(http.HTTP_FORBIDDEN, 'You may not view this resource.')
 
         except OSError, ex:
             if ex.errno == errno.ENOENT:
-                reply.sendErrorPage(http.HTTP_NOT_FOUND)
+                reply.sendErrorPage(http.HTTP_NOT_FOUND, 'No such file or directory.')
             else:
-                reply.sendErrorPage(http.HTTP_FORBIDDEN)
+                reply.sendErrorPage(http.HTTP_FORBIDDEN, 'You may not view this resource.')
 
 __all__ = ['HTTPServerFactory', 'VirtualHost', 'StaticCollection']
