@@ -22,6 +22,19 @@ from sheared.protocol import http
 
 import os, mimetypes, stat, errno
 
+def rooted_path(root, subpath):
+    path = [root]
+    for piece in subpath.split('/'):
+        if piece == '..':
+            if len(path) > 1:
+                path.pop()
+        elif piece == '.' or piece == '':
+            pass
+        else:
+            path.append(piece)
+
+    return os.sep.join(path)
+
 class StaticCollection:
     isWalkable = 1
 
@@ -43,20 +56,11 @@ class FilesystemCollection:
 
     def __init__(self, root):
         self.root = root
+        self.mimetypes = mimetypes.MimeTypes()
 
     def handle(self, request, reply, subpath):
-        path = [self.root]
-        for piece in subpath.split('/'):
-            if piece == '..':
-                if len(path) > 1:
-                    path.pop()
-            elif piece == '.' or piece == '':
-                pass
-            else:
-                path.append(piece)
-
-        path = os.sep.join(path)
-        type, encoding = mimetypes.guess_type(path)
+        path = rooted_path(self.root, subpath)
+        type, encoding = self.mimetypes.guess_type(path)
         if not type:
             type = 'application/octet-stream'
 
