@@ -231,7 +231,10 @@ def execute(program, context, builtins, eval):
             result += '</%s>' % name
 
         elif op == 'dynamic-tag':
-            name, attrs, dyn_attrs, omit_tag, replace, block = instruction[1:]
+            name, sta_attrs, dyn_attrs, omit_tag, replace, block = instruction[1:]
+
+            attrs = []
+            attrs.extend(sta_attrs)
 
             if omit_tag:
                 omit_tag = eval(omit_tag, context)
