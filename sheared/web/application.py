@@ -43,12 +43,8 @@ class WebserverApplication(Application):
         raise NotImplementedError
 
     def setup(self):
-        if self.port == 80:
-            l = 'http://%s/' % self.hostname
-        else:
-            l = 'http://%s:%d/' % (self.hostname, self.port)
         self.root = self.configure()
-        self.vhost = VirtualHost(self.root, l)
+        self.vhost = VirtualHost(self.root)
 
         if self.subserver:
             self.webserver = HTTPSubServer()
