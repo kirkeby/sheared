@@ -190,13 +190,18 @@ class Reactor(base.Reactor):
         fcntl.fcntl(sock.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
         self._safe_send(channel, (sock, addr))
     
-    def _accept(self, factory, sock):
+    def _accept(self, factory, sock, max_client_count):
+        client_count = 0
         while 1:
             s, a = self._wait(sock, self._handleaccept, ())
             fcntl.fcntl(s.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
             t = base.ReactorSocket(s, a, self)
             name = '<server for %r>' % factory
             self.createtasklet(self._startup, (factory, t), name=name)
+
+            client_count = client_count + 1
+            if max_client_count and client_count == max_client_count:
+                break
 
     def _connectSocket(self, family, type, addr):
         sock = socket.socket(family, type)
@@ -291,7 +296,7 @@ class Reactor(base.Reactor):
 
         return self._connectSocket(socket.AF_UNIX, socket.SOCK_STREAM, addr)
 
-    def listenTCP(self, factory, addr, backlog=5):
+    def listenTCP(self, factory, addr, backlog=5, max_client_count=0):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         fcntl.fcntl(sock.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
         # we do not want 'address already in use' because of TCP-
@@ -302,9 +307,10 @@ class Reactor(base.Reactor):
         sock.listen(backlog)
 
         name = '<TCP listener for %r>' % factory
-        self.createtasklet(self._accept, (factory, sock), name=name)
+        self.createtasklet(self._accept, (factory, sock, max_client_count),
+                           name=name)
 
-    def listenUNIX(self, factory, addr, backlog=5):
+    def listenUNIX(self, factory, addr, backlog=5, max_client_count=0):
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         fcntl.fcntl(sock.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
         # we do not want 'address already in use' because of TCP-
@@ -317,4 +323,5 @@ class Reactor(base.Reactor):
         sock.listen(backlog)
 
         name = '<UNIX listener for %r>' % factory
-        self.createtasklet(self._accept, (factory, sock), name=name)
+        self.createtasklet(self._accept, (factory, sock, max_client_count),
+                           name=name)

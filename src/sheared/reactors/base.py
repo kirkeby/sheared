@@ -189,12 +189,12 @@ class Reactor:
     def connectUNIX(self, addr):
         raise NotImplementedError
 
-    def listen(self, factory, where):
+    def listen(self, factory, where, **kwargs):
         domain, address = parse_address_uri(where)
         if domain == 'tcp':
-            return self.listenTCP(factory, address)
+            return self.listenTCP(factory, address, **kwargs)
         elif domain == 'unix':
-            return self.listenUNIX(factory, address)
+            return self.listenUNIX(factory, address, **kwargs)
     
     def listenTCP(self, factory, addr, backlog=5):
         raise NotImplementedError
