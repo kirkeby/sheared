@@ -19,6 +19,20 @@
 from sheared import reactor
 
 def readfile(path):
+    if reactor.current.started and not reactor.current.stopped:
+        return reactor_readfile(path)
+    else:
+        return builtin_readfile(path)
+def builtin_readfile(path):
+    f = open(path, 'r')
+    all = ''
+    while 1:
+        read = f.read()
+        if read == '':
+            break
+        all += read
+    return all
+def reactor_readfile(path):
     f = reactor.current.open(path, 'r')
     all = ''
     while 1:
@@ -40,6 +54,8 @@ class Drainer:
             read = self.file.read()
             data = data + read
         return data
+def readall(file):
+    return Drainer(file).read()
 
 class RecordReader:
     def __init__(self, file, newline):
