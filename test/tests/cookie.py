@@ -1,3 +1,4 @@
+# vim:nowrap:textwidth=0
 #
 # Sheared -- non-blocking network programming library for Python
 # Copyright (C) 2003  Sune Kirkeby <sune@mel.interspace.dk>
@@ -16,5 +17,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-__all__ = ['reactor', 'http', 'web', 'webclient', 'database', 'pool',
-    'commands', 'cookie']
+
+import unittest
+
+from sheared.web import cookie
+
+class CookieTestCase(unittest.TestCase):
+    def testSimple(self):
+        cake = cookie.Cookie('name', 'foo@bar.com')
+        baked = cookie.parse(cookie.format(cake))
+        
+        self.assertEquals(cake.name, baked.name)
+        self.assertEquals(cake.value, baked.value)
+
+suite = unittest.TestSuite()
+suite.addTests([unittest.makeSuite(CookieTestCase, 'test')])
+
+__all__ = ['suite']
+
+if __name__ == '__main__':
+    unittest.TextTestRunner().run(suite)
