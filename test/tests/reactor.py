@@ -37,7 +37,7 @@ class ReactorTestCaseMixin:
         """Test reading from an open file."""
         def f():
             f = os.open('test/tests/reactor.py', os.O_RDONLY)
-            f = self.reactor.openfd(f)
+            f = self.reactor.fdopen(f)
             lines = f.read(4096).split('\n')
             self.assertEquals(lines[0], '# First line.')
         self.reactor.createtasklet(f)
