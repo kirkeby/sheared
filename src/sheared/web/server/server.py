@@ -33,10 +33,12 @@ def notModifiedHandler(server, exc_info, request, reply):
     reply.done()
 
 def internalServerErrorHandler(server, exc_info, request, reply):
+    reply.headers.setHeader('Content-Type', 'text/plain')
     reply.send(http.http_reason[reply.status] + '\r\n')
     server.logInternalError(exc_info[1].args)
 
 def defaultErrorHandler(server, exc_info, request, reply):
+    reply.headers.setHeader('Content-Type', 'text/plain')
     if http.http_reason.has_key(reply.status):
         reply.send(http.http_reason[reply.status] + '\r\n')
     else:
@@ -151,7 +153,6 @@ class HTTPServer:
 
         except error.web.WebServerError, e:
             reply.setStatusCode(e.statusCode)
-            reply.headers.setHeader('Content-Type', 'text/plain')
             self.handleWebServerError(sys.exc_info(), request, reply)
 
         for cb in self.requestCompletedCallbacks:
