@@ -73,9 +73,9 @@ def call(co, *args):
 
 def mainloop():
     global running
-    running = 1
 
     try:
+        reactor.running = 1
         while not hasattr(reactor, 'result'):
             global now
             # this is icky, but unix is poorly lacking in anything resembling a global clock
@@ -177,12 +177,12 @@ def mainloop():
                     call(co, err)
 
     finally:
-        running = 0
+        reactor.running = 0
 
 running = 0
 
 def reset():
-    assert not running
+    assert not reactor.running
 
     global main_co, coroutines, accepting, reading, writing, sleeping, connecting
     main_co = coroutine.Coroutine(mainloop, 'selectable reactor mainloop')
@@ -294,4 +294,4 @@ def createTransport(fd, addr):
 
 __all__ = ['run', 'reset', 'read', 'write', 'accept', 'connect', 'bind', 'listen', 'close',
            'prepareFile', 'addCoroutine', 'listenTCP', 'connectTCP', 'createTransport',
-           'listenUNIX', 'connectUNIX']
+           'listenUNIX', 'connectUNIX', 'sleep', 'shutdown']
