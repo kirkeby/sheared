@@ -7,16 +7,16 @@ from sheared.reactor import transport
 class StringTransportTestCase(unittest.TestCase):
     def testClose(self):
         """Test that a close()d StringTransport raises IOError on read/write/close calls."""
-        t = transport.StringTransport('')
+        t = transport.StringTransport()
         t.close()
     
-        self.assertRaises(IOError, t.read)
         self.assertRaises(IOError, t.write, '')
         self.assertRaises(IOError, t.close)
 
     def testRead(self):
         """Test that a StringTransport can be read from."""
-        t = transport.StringTransport('Hello, World!')
+        t = transport.StringTransport()
+        t.appendInput('Hello, World!')
         d = ''
         while 1:
             r = t.read()
@@ -29,7 +29,8 @@ class StringTransportTestCase(unittest.TestCase):
 
     def testSmallRead(self):
         """Test that a StringTransport reads in chunks of given maximum."""
-        t = transport.StringTransport('Hello, World!')
+        t = transport.StringTransport()
+        t.appendInput('Hello, World!')
         d = ''
         while 1:
             r = t.read(1)
@@ -43,12 +44,12 @@ class StringTransportTestCase(unittest.TestCase):
 
     def testWrite(self):
         """Test that a StringTransport can be written to."""
-        t = transport.StringTransport('')
+        t = transport.StringTransport()
         t.write('Hello, ')
         t.write('World!')
         t.close()
 
-        self.assertEquals(t.received(), 'Hello, World!')
+        self.assertEquals(t.getOutput(), 'Hello, World!')
         
 suite = unittest.makeSuite(StringTransportTestCase, 'test')
 

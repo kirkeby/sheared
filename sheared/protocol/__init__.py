@@ -1,1 +1,1 @@
-__all__ = ['basic', 'echo']
+__all__ = ['basic', 'echo', 'http']

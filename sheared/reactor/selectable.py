@@ -54,7 +54,7 @@ def do_write(co, fd, d):
 def call(co, *args):
     try:
         op, args = apply(co, args)
-        apply(op, (run.caller,) + args)
+        apply(op, (main_co.caller,) + args)
     except coroutine.CoroutineFailed, ex:
         print 'CoroutineFailed:', co.name
         apply(traceback.print_exception, ex[0].exc_info)
@@ -147,11 +147,12 @@ def mainloop():
         running = 0
 
 running = 0
+
 def reset():
     assert not running
 
-    global run, coroutines, accepting, reading, writing, sleeping, connecting
-    run = coroutine.Coroutine(mainloop)
+    global main_co, coroutines, accepting, reading, writing, sleeping, connecting
+    main_co = coroutine.Coroutine(mainloop, 'selectable reactor mainloop')
     coroutines = []
     accepting = {}
     reading = {}
@@ -163,26 +164,34 @@ def reset():
         del reactor.__dict__['result']
 reset()
 
+def run():
+    try:
+        main_co()
+    except coroutine.CoroutineReturned:
+        pass
+    except coroutine.CoroutineFailed, e:
+        exc_info = e.args[0].exc_info
+        raise exc_info[0], exc_info[1], exc_info[2]
+
 def sleep(n):
-    return run(do_sleep, (n,))
+    return main_co(do_sleep, (n,))
 
 def read(fd, n):
-    return run(do_read, (fd, n))
+    return main_co(do_read, (fd, n))
 
 def write(fd, d):
-    run(do_write, (fd, d))
+    main_co(do_write, (fd, d))
 
 def accept(fd):
-    return run(do_accept, (fd,))
+    return main_co(do_accept, (fd,))
 
 def connect(fd, addr):
-    err = run(do_connect, (fd, addr))
+    err = main_co(do_connect, (fd, addr))
     if err:
         raise socket.error, (err, os.strerror(err))
 
 def shutdown(r):
-    run(do_shutdown, (r,))
-
+    main_co(do_shutdown, (r,))
 
 def prepareFile(fd):
     if not isinstance(fd, types.IntType):
@@ -191,12 +200,12 @@ def prepareFile(fd):
 
 def addCoroutine(coroutine, args):
     if running:
-        run(do_add, (coroutine, args))
+        main_co(do_add, (coroutine, args))
     else:
         coroutines.append((coroutine, args))
 
 def listenTCP(factory, address):
-    port = tcp.Port(reactor, factory, address)
+    port = tcp.TCPPort(reactor, factory, address)
     port.listen()
 
 def createTransport(fd, addr):

@@ -14,13 +14,13 @@ class ReactorTestCase(unittest.TestCase):
 
     def testCanReset(self):
         """Test that the reactor can be reset."""
-        self.assertRaises(coroutine.CoroutineReturned, self.reactor.run)
+        self.reactor.run()
         self.reactor.reset()
-        self.assertRaises(coroutine.CoroutineReturned, self.reactor.run)
+        self.reactor.run()
 
     def testNothingToDo(self):
         """Test that the reactor cleanly exits when there is nothing to do."""
-        self.assertRaises(coroutine.CoroutineReturned, self.reactor.run)
+        self.reactor.run()
 
     def testImmediateStop(self):
         """Test that the reactor cleanly exits upon an immediate shutdown-command."""
@@ -29,7 +29,7 @@ class ReactorTestCase(unittest.TestCase):
         try:
             co = coroutine.Coroutine(f)
             self.reactor.addCoroutine(co, (self.reactor,))
-            self.assertRaises(coroutine.CoroutineReturned, self.reactor.run)
+            self.reactor.run()
             self.assertEquals(self.reactor.result, 42, "return value is wrong")
         except coroutine.CoroutineFailed, ex:
             raise ex[0].exc_info[0], ex[0].exc_info[1], ex[0].exc_info[2]
@@ -45,7 +45,7 @@ class ReactorTestCase(unittest.TestCase):
         try:
             co = coroutine.Coroutine(f)
             self.reactor.addCoroutine(co, (self.reactor,))
-            self.assertRaises(coroutine.CoroutineReturned, self.reactor.run)
+            self.reactor.run()
             self.assertEquals(self.reactor.result, 42, "return value is wrong")
         except coroutine.CoroutineFailed, ex:
             raise ex[0].exc_info[0], ex[0].exc_info[1], ex[0].exc_info[2]
@@ -70,7 +70,7 @@ class ReactorTestCase(unittest.TestCase):
             port = random.random() * 8192 + 22000
             self.reactor.addCoroutine(coroutine.Coroutine(g), (self.reactor, port))
             self.reactor.addCoroutine(coroutine.Coroutine(h), (self.reactor,))
-            self.assertRaises(coroutine.CoroutineReturned, self.reactor.run)
+            self.reactor.run()
             self.failUnless(hasattr(self.reactor, 'result'), 'return value missing')
             self.assertEqual(self.reactor.result, 42)
         except coroutine.CoroutineFailed, ex:
@@ -106,7 +106,7 @@ class ReactorTestCase(unittest.TestCase):
             self.reactor.addCoroutine(co, (self.reactor, port))
             self.reactor.addCoroutine(coroutine.Coroutine(g), (self.reactor, port))
             self.reactor.addCoroutine(coroutine.Coroutine(h), (self.reactor,))
-            self.assertRaises(coroutine.CoroutineReturned, self.reactor.run)
+            self.reactor.run()
             self.failUnless(hasattr(co, 'result'), 'return value missing')
             self.assertEqual(co.result, "Hello, World\n", "return value is wrong")
         except coroutine.CoroutineFailed, ex:
@@ -135,7 +135,7 @@ class ReactorTestCase(unittest.TestCase):
             co = coroutine.Coroutine(f)
             self.reactor.addCoroutine(co, (self.reactor, port))
             self.reactor.addCoroutine(coroutine.Coroutine(g), (self.reactor, port))
-            self.assertRaises(coroutine.CoroutineReturned, self.reactor.run)
+            self.reactor.run()
             self.failUnless(hasattr(co, 'result'), 'return value missing')
             self.assertEqual(co.result, "Hello, World\n", "return value is wrong")
         except coroutine.CoroutineFailed, ex:
@@ -160,7 +160,7 @@ class ReactorTestCase(unittest.TestCase):
         self.reactor.addCoroutine(readZero, (self.reactor, '/dev/zero', 1024))
         self.reactor.addCoroutine(readPasswd, (self.reactor, '/etc/passwd', 1024))
         self.reactor.addCoroutine(writeNull, (self.reactor, '/dev/null', 'Hello, World!'))
-        self.assertRaises(coroutine.CoroutineReturned, self.reactor.run)
+        self.reactor.run()
 
         self.assertEqual(readZero.result, '\0' * 1024)
         self.failUnless(len(readPasswd.result))

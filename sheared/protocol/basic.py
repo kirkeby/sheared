@@ -9,7 +9,9 @@ class ProtocolFactory:
         self.protocol = protocol
 
     def buildCoroutine(self, transport):
-        return coroutine.Coroutine(self.protocol(transport)._run)
+        p = self.protocol(transport)
+        p.factory = self
+        return coroutine.Coroutine(p._run, '%s._run' % `p`)
 
 class Protocol:
     def __init__(self, transport):

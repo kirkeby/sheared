@@ -3,30 +3,31 @@
 import random
 
 class StringTransport:
-    def __init__(self, input):
-        self.input = input
+    def __init__(self):
+        self.input = ''
         self.output = ''
         self.closed = 0
 
     def read(self, cnt=4096):
-        if self.closed:
-            raise IOError, 'cannot do I/O on a closed Transport'
         cnt = min(cnt, 1 + int(random.random() * (len(self.input) - 1)))
         data = self.input[:cnt]
         self.input = self.input[cnt:]
         return data
+
     def write(self, data):
         if self.closed:
-            raise IOError, 'cannot do I/O on a closed Transport'
+            raise IOError, 'cannot write to a closed Transport'
         self.output = self.output + data
         return len(data)
 
     def close(self):
         if self.closed:
-            raise IOError, 'cannot do I/O on a closed Transport'
+            raise IOError, 'already closed'
         self.closed = 1
 
-    def received(self):
+    def appendInput(self, data):
+        self.input = self.input + data
+    def getOutput(self):
         return self.output
 
 class ReactorTransport:

@@ -12,7 +12,7 @@ class ProtocolFactoryTestCase(unittest.TestCase):
     def testBuildCoroutine(self):
         """Test that the basic.ProtocolFactory can build Coroutines."""
         f = basic.ProtocolFactory(basic.Protocol)
-        t = transport.StringTransport('')
+        t = transport.StringTransport()
         self.failUnless(isinstance(f.buildCoroutine(t), coroutine.Coroutine))
 
 class EchoServerTestCase(unittest.TestCase):
@@ -24,11 +24,17 @@ class EchoServerTestCase(unittest.TestCase):
 
     def testWithStringTransport(self):
         """Test that the EchoServer works correctly then attached to a StringTransport."""
-        t = transport.StringTransport('Hello, World!')
+        t = transport.StringTransport()
+        t.appendInput('Hello, World!')
         reactor.addCoroutine(self.factory.buildCoroutine(t), ())
-        self.assertRaises(coroutine.CoroutineReturned, reactor.run)
-        self.assertEquals(t.received(), 'Hello, World!')
+        self.reactor.run()
+        self.assertEquals(t.getOutput(), 'Hello, World!')
 
-suite = unittest.makeSuite(ProtocolFactoryTestCase, 'test')
-suite = unittest.makeSuite(EchoServerTestCase, 'test')
+suite = unittest.TestSuite()
+suite.addTests([unittest.makeSuite(ProtocolFactoryTestCase, 'test')])
+suite.addTests([unittest.makeSuite(EchoServerTestCase, 'test')])
 
+__all__ = ['suite']
+
+if __name__ == '__main__':
+    unittest.main()

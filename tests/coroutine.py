@@ -45,3 +45,8 @@ class CoroutineTestCase(unittest.TestCase):
             self.assertEqual(co.exc_info[0], AssertionError, "propagated exception has wrong type")
 
 suite = unittest.makeSuite(CoroutineTestCase, 'test')
+
+__all__ = ['suite']
+
+if __name__ == '__main__':
+    unittest.main()

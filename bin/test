@@ -8,7 +8,8 @@ sys.path.insert(0, '.')
 from tests import coroutine, reactor
 
 if len(sys.argv) == 1:
-    tests = 'coroutine', 'reactor', 'transport', 'protocol'
+    import tests
+    tests = tests.__all__
 else:
     tests = sys.argv[1:]
     

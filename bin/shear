@@ -1,3 +1,0 @@
-#!/bin/sh
-export PYTHONPATH=/home/user/sune/cvs/Sheared:/home/user/sune/cvs/Twisted
-exec python "$@"
