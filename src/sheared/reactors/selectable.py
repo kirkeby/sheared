@@ -191,17 +191,28 @@ class Reactor(base.Reactor):
         self._safe_send(channel, (sock, addr))
     
     def _accept(self, factory, sock, max_client_count):
-        client_count = 0
-        while 1:
-            s, a = self._wait(sock, self._handleaccept, ())
-            fcntl.fcntl(s.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
-            t = base.ReactorSocket(s, a, self)
-            name = '<server for %r>' % factory
-            self.createtasklet(self._startup, (factory, t), name=name)
+        try:
+            client_count = 0
+            while 1:
+                s, a = self._wait(sock, self._handleaccept, ())
+                fcntl.fcntl(s.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
+                t = base.ReactorSocket(s, a, self)
+                name = '<server for %r>' % factory
+                self.createtasklet(self._startup, (factory, t), name=name)
 
-            client_count = client_count + 1
-            if max_client_count and client_count == max_client_count:
-                break
+                client_count = client_count + 1
+                if max_client_count and client_count == max_client_count:
+                    break
+
+        finally:
+            sock.close()
+
+    def _acceptUNIX(self, addr, factory, sock, max_client_count):
+        try:
+            self._accept(factory, sock, max_client_count)
+        
+        finally:
+            os.unlink(addr)
 
     def _connectSocket(self, family, type, addr):
         sock = socket.socket(family, type)
@@ -323,5 +334,5 @@ class Reactor(base.Reactor):
         sock.listen(backlog)
 
         name = '<UNIX listener for %r>' % factory
-        self.createtasklet(self._accept, (factory, sock, max_client_count),
+        self.createtasklet(self._acceptUNIX, (addr, factory, sock, max_client_count),
                            name=name)
