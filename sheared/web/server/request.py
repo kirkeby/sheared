@@ -48,13 +48,11 @@ class HTTPRequest:
         if self.headers.has_key('authorization'):
             auth = self.headers['authorization']
             try:
-                type, auth = auth.split(' ', 2)
+                type, auth = auth.split(' ', 1)
 
                 if type == 'Basic':
                     auth = base64.decodestring(auth)
-                    login, password = auth.split(':', 2)
-                else:
-                    return None, None
+                    login, password = auth.split(':', 1)
 
             except:
                 pass
