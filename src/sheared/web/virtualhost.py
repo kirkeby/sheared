@@ -60,7 +60,9 @@ class VirtualHost:
 
             mp = child.getMethodParser(request.requestline.method)
             if not mp:
-                raise error.web.NotImplementedError
+                raise error.web.NotImplementedError, \
+                      'method %s not implemented for %s' \
+                      % (request.requestline.method, path)
             mp(request, reply)
             
             child.handle(request, reply, subpath)
