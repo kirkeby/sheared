@@ -100,23 +100,27 @@ class HTTPServer:
 
     def handle(self, request, reply):
         try:
-            if request.headers.has_key('Host'):
-                vhost = self.hosts.get(request.headers['Host'], None)
-            else:
-                vhost = None
-            if vhost is None and self.default_host:
-                vhost = self.hosts[self.default_host]
+            if not request.headers.has_key('Host'):
+                if self.default_host:
+                    request.headers.setHeader('Host', self.default_host)
+                else:
+                    raise error.web.NotFoundError, 'no Host header and no default host'
 
-            if vhost:
-                try:
-                    vhost.handle(request, reply)
-                except error.web.WebServerError:
-                    raise
-                except:
-                    self.logInternalError(sys.exc_info())
-                    raise error.web.InternalServerError
-            else:
-                raise error.web.NotFoundError
+            try:
+                vhost = self.hosts[request.headers['Host']]
+            except KeyError:
+                if self.default_host:
+                    vhost = self.hosts[self.default_host]
+                else:
+                    raise error.web.NotFoundError, 'unknown host and no default host'
+
+            try:
+                vhost.handle(request, reply)
+            except error.web.WebServerError:
+                raise
+            except:
+                self.logInternalError(sys.exc_info())
+                raise error.web.InternalServerError
 
         except error.web.WebServerError, e:
             if not reply.decapitated:
