@@ -1,0 +1,18 @@
+#!/usr/bin/env python
+
+import socket, sys, os
+
+ip = sys.argv[1]
+port = int(sys.argv[2])
+
+sock = socket.socket()
+sock.connect((ip, port))
+
+for line in sys.stdin.readlines():
+    os.write(sock.fileno(), line)
+for line in os.read(sock.fileno(), 4096):
+    sys.stdout.write(line)
+
+sock.close()
+
+sys.exit(0)

@@ -126,11 +126,10 @@ class ReactorTestCase(unittest.TestCase):
             return d
 
         def g(reactor, port):
-            os.system('( echo "Hello, World" | netcat -q 0 localhost %d ) &' % port)
+            os.system('( echo "Hello, World" | ./bin/netcat localhost %d ) &' % port)
             reactor.sleep(2.0)
             reactor.shutdown(42)
 
-        self.failIf(commands.getoutput('which netcat 2>/dev/null') == '', 'netcat not found on system, skipping this test')
         try:
             port = 9679
             co = coroutine.Coroutine(f)
