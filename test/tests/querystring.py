@@ -54,6 +54,15 @@ class HTTPQueryStringTestCase(unittest.TestCase):
         self.assertEquals(self.qs.has_key('babe'), 0)
         self.assertEquals(self.qs.has_key('other'), 0)
 
+    def testWildQuerystrings(self):
+        """Test HTTPQueryString against a sample of query-strings seen
+        in the wild."""
+        querystring.HTTPQueryString("&foo=bar")
+        querystring.HTTPQueryString("foo=bar&")
+        querystring.HTTPQueryString("foo=bar&&")
+        self.assertRaises(querystring.QueryStringError,
+                          querystring.HTTPQueryString, '=bar')
+
 class UnvalidatedInputTestCase(unittest.TestCase):
     def setUp(self):
         self.int = querystring.UnvalidatedInput('a', '1')

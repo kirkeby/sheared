@@ -49,6 +49,9 @@ def parse_querystring(qs):
     if not len(qs):
         return args
     for part in qs.split('&'):
+        if len(part) == 0:
+            continue
+
         thing = map(unscape_querystring, part.split('=', 1))
         if len(thing) == 1:
             thing = thing[0], ''
