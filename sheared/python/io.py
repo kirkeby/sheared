@@ -25,28 +25,29 @@ class Drainer:
 
 class RecordReader:
     def __init__(self, file, newline):
-        self.buffered = ['']
+        self.buffered = ''
         self.file = file
         self.newline = newline
 
     def read(self):
         if self.buffered:
-            data = self.newline.join(self.buffered)
-            self.buffered = ['']
+            data, self.buffered = self.buffered, ''
         else:
             data = self.file.read()
         return data
 
     def readline(self):
-        while len(self.buffered) == 1:
-            read = self.file.read()
-            if read == '':
+        while self.buffered.find(self.newline) < 0:
+            data = self.file.read()
+            if data == '':
                 break
-            lines = read.split(self.newline)
-            self.buffered[-1] = self.buffered[-1] + lines[0]
-            self.buffered.extend(lines[1:])
+            self.buffered = self.buffered + data
 
-        line = self.buffered.pop(0)
-        if self.buffered:
-            line = line + self.newline
-        return line
+        i = self.buffered.find(self.newline)
+        if i < 0:
+            data, self.buffered = self.buffered, ''
+        else:
+            data = self.buffered[ : i + len(self.newline)]
+            self.buffered = self.buffered[i + len(self.newline) : ]
+        
+        return data
