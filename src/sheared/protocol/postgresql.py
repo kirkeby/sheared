@@ -23,20 +23,23 @@ import struct
 import string
 import array
 import crypt
+import encodings
 
 from sheared.database import error
 from sheared.database import dummy
 
+str_encoder, str_decoder = encodings.search_function('utf8')[:2]
+
 # Postgresql -> Python type mappings, type-OIDs lifted from
 # /usr/include/postgresql/server/catalog/pg_type.h
 pg_type = {
-        16: lambda s: s == 't',   # bool
-        20: long,   # int8
-        21: int,    # int2
-        23: int,    # int4
-        25: str,    # text
-        1042: str,  # char(length)
-        1043: str,  # varchar(length)
+        16:   lambda s: s == 't',           # bool
+        20:   long,                         # int8
+        21:   int,                          # int2
+        23:   int,                          # int4
+        25:   lambda s: str_decoder(s)[0],  # text
+        1042: lambda s: str_decoder(s)[0],  # char(length)
+        1043: lambda s: str_decoder(s)[0],  # varchar(length)
     }
 
 class ProtocolError(error.OperationalError):
@@ -310,7 +313,7 @@ class PostgresqlClient:
         if str is None:
             return 'NULL'
         else:
-            return self._quote(str, "'")
+            return self._quote(str_encoder(str)[0], "'")
     def quote_name(self, str):
         if str is None:
             return 'NULL'
@@ -355,6 +358,7 @@ class PostgresqlClient:
                         for r in range(len(rows)):
                             for c in range(len(columns)):
                                 if not rows[r][c] is None:
+                                    # FIXME -- s/, None//?
                                     conv = pg_type.get(columns[c].type, None)
                                     rows[r][c] = conv(rows[r][c])
                     except KeyError:
