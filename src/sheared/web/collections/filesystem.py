@@ -76,7 +76,7 @@ def normal_handler(request, reply, collection, walker):
     if type == 'application/xhtml+xml':
         type = accept.chooseContentType(request, [type, 'text/html'])
         # FIXME -- should be a list
-        reply.headers.setHeader('Vary', 'Accept')
+        reply.headers.addHeader('Vary', 'Accept')
 
     last_modified = http.HTTPDateTime(walker.stat.st_mtime)
 
