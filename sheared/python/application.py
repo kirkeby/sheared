@@ -46,6 +46,12 @@ app_options = [
      
    [ 'set_str',      1, 'pidfile',   'p', 'pid-file',   'application.pid-file',
      'Write pid-file.' ],
+
+   [ 'set_int',      1, 'user',      'u', 'chuid',       'application.chuid',
+     'Change to this uid after configuring application.' ]
+     
+   [ 'set_int',      1, 'group',     'g', 'chgid',       'application.chgid',
+     'Change to this gid after configuring application.' ]
      
    [ 'opt_conf',     1, '',          'c', 'conf-file',  '',
      'Read configuration file (may be given multiple\n'
@@ -71,6 +77,9 @@ class Application:
         self.daemonize = 0
         self.logfile = None
         self.pidfile = None
+
+        self.user = None
+        self.group = None
 
         self.reactor = reactor
 
@@ -252,6 +261,11 @@ class Application:
 
         if self.pidfile:
             daemonize.writepidfile(self.pidfile)
+
+        if not self.group is None:
+            os.chgid(self.group)
+        if not self.user is None:
+            os.chuid(self.user)
 
         if hasattr(self, 'run'):
             name = '<Main for %r>' % self
