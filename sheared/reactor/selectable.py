@@ -5,10 +5,17 @@ from sheared.python import queue
 from sheared.reactor import transport
 
 class ReactorFile:
-    def __init__(self, fd):
+    def __init__(self, fd, reactor):
         self.fd = fd
+        self.reactor = reactor
     def fileno(self):
         return self.fd
+    def read(self, max=4096):
+        return self.reactor.read(self, max)
+    def write(self, data):
+        self.reactor.write(self, data)
+    def seek(self, o, i):
+        return os.seek(self.fd, o, i)
     def close(self):
         os.close(self.fd)
 
@@ -16,6 +23,12 @@ class ReactorShutdown(Exception):
     pass
 
 class Reactor:
+    def safe_send(self, ch, *what):
+        if self.channel_tasklet.has_key(ch):
+            apply(ch.send, what)
+        else:
+            print 'send to dead channel intercepted.'
+
     def shutdown(self):
         self.stop = 1
 
@@ -39,11 +52,11 @@ class Reactor:
         except select.error, why:
             handler, file, channel, argv = self.waiting[fd]
             del self.waiting[fd]
-            channel.send_exception(select.error, why)
+            self.safe_send(channel, why)
         
     def handleread(self, file, channel, (max)):
         del self.waiting[file.fileno()]
-        channel.send(os.read(file.fileno(), max))
+        self.safe_send(channel, os.read(file.fileno(), max))
 
     def handlewrite(self, file, channel, argv):
         count = os.write(file.fileno(), argv)
@@ -52,21 +65,21 @@ class Reactor:
             self.waiting[file.fileno()] = self.handlewrite, file, channel, argv
         else:
             del self.waiting[file.fileno()]
-            channel.send(None)
+            self.safe_send(channel, None)
             
     def handleaccept(self, file, channel, argv):
         sock, addr = file.accept()
         del self.waiting[file.fileno()]
         fcntl.fcntl(sock.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
-        channel.send((sock, addr))
+        self.safe_send(channel, (sock, addr))
 
     def handleconnect(self, file, channel, argv):
         del self.waiting[file.fileno()]
         err = file.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
         if err:
-            channel.send(socket.error(err, os.strerror(err)))
+            self.safe_send(channel, socket.error(err, os.strerror(err)))
         else:
-            channel.send(None)
+            self.safe_send(channel, None)
 
     def wait(self, file, op, argv):
         channel = self.tasklet_channel[stackless.getcurrent()]
@@ -112,6 +125,7 @@ class Reactor:
         self.tasklet = stackless.tasklet()
 
         self.tasklet_channel = {}
+        self.channel_tasklet = {}
 
         self.waiting = {}
         self.sleeping = queue.MinQueue()
@@ -124,7 +138,7 @@ class Reactor:
         now = self.time()
         while (not self.sleeping.empty()) and (self.sleeping.minkey() <= now):
             channel = self.sleeping.getmin()
-            channel.send(None)
+            self.safe_send(channel, None)
 
     def start(self):
         self.started = 1
@@ -161,14 +175,16 @@ class Reactor:
                         fds.append(fd)
 
                 for fd in fds:
+                    if not self.waiting.has_key(fd):
+                        continue
                     handler, file, channel, argv = self.waiting[fd]
                     try:
                         handler(file, channel, argv)
                     except socket.error, (eno, estr):
                         if not eno in (errno.EINTR, errno.EAGAIN):
-                            channel.send(sys.exc_info()[1])
+                            self.safe_send(channel, sys.exc_info()[1])
                     except:
-                        channel.send(sys.exc_info()[1])
+                        self.safe_send(channel, sys.exc_info()[1])
 
         finally:
             self.stopped = 1
@@ -187,6 +203,7 @@ class Reactor:
         t = stackless.tasklet()
         c = stackless.channel()
         self.tasklet_channel[t] = c
+        self.channel_tasklet[c] = t
 
         t.become(c)
         try:
@@ -194,6 +211,7 @@ class Reactor:
         except:
             traceback.print_exc()
 
+        del self.channel_tasklet[c]
         del self.tasklet_channel[t]
 
     def open(self, path, mode):
@@ -203,7 +221,7 @@ class Reactor:
 
     def prepareFile(self, file):
         if isinstance(file, types.IntType):
-            file = ReactorFile(file)
+            file = ReactorFile(file, self)
         fcntl.fcntl(file.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
         return file
 
