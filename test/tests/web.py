@@ -28,6 +28,24 @@ from sheared.python import commands
 
 from tests import transport
 
+class FakeRequest:
+    def __init__(self, uri):
+        self.path = uri
+        self.headers = http.HTTPHeaders()
+
+class FakeReply:
+    def __init__(self):
+        self.headers = http.HTTPHeaders()
+        self.sent = ''
+        self.status = 200
+
+    def send(self, data):
+        self.sent = self.sent + data
+    def sendfile(self, file):
+        self.send(file.read())
+    def done(self):
+        self.done = 1
+
 class SimpleCollection(resource.GettableResource):
     def __init__(self, name):
         resource.GettableResource.__init__(self)

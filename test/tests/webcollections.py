@@ -27,22 +27,7 @@ from sheared.web.collections.static import StaticCollection
 from sheared.protocol import http
 from sheared import error
 
-class FakeRequest:
-    def __init__(self, uri):
-        self.path = uri
-        self.headers = http.HTTPHeaders()
-class FakeReply:
-    def __init__(self):
-        self.headers = http.HTTPHeaders()
-        self.sent = ''
-        self.status = 200
-
-    def send(self, data):
-        self.sent = self.sent + data
-    def sendfile(self, file):
-        self.send(file.read())
-    def done(self):
-        self.done = 1
+from web import FakeRequest, FakeReply
 
 class FilesystemCollectionTestCase(unittest.TestCase):
     def doRequest(self, coll, uri):
