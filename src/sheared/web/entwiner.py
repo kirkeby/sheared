@@ -18,6 +18,7 @@
 #
 import warnings
 import os
+import sha
 
 from entwine import entwine
 
@@ -43,6 +44,17 @@ class Entwiner(resource.NormalResource):
         for i in range(len(self.template_pages)):
             last = i == range(len(self.template_pages))
             r = self.execute(self.template_pages[i], throwaway=last)
+
+        # Conditional GET support
+        if not reply.headers.has_key('ETag') and \
+           not reply.headers.has_key('Last-Modified'):
+            etag = sha.sha(r).hexdigest()
+            reply.headers.setHeader('ETag', etag)
+
+            if not request.head_only and \
+               request.headers.has_key('If-None-Match'):
+                if etag == request.headers['If-None-Match']:
+                    raise error.web.NotModified
 
         reply.send(r)
 

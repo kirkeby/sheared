@@ -18,6 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+import os
+import time
 import unittest
 
 from sheared.web.collections.filesystem import FilesystemCollection
@@ -25,33 +27,100 @@ from sheared.web.collections.entwined import EntwinedCollection
 from sheared.web.collections.static import StaticCollection
 
 from sheared.protocol import http
+from sheared.python import io
 from sheared import error
 
 from web import FakeRequest, FakeReply
 
 class FilesystemCollectionTestCase(unittest.TestCase):
-    def doRequest(self, coll, uri):
+    def doRequest(self, coll, uri, request=None):
         reply = FakeReply()
-        request = FakeRequest(uri)
+        if not request:
+            request = FakeRequest(uri)
 
-        rsrc = coll
-        for part in uri.split('/'):
-            if not part:
-                continue
-            rsrc = rsrc.getChild(request, reply, part)
-        rsrc.handle(request, reply, '')
+        try:
+            rsrc = coll
+            for part in uri.split('/'):
+                if not part:
+                    continue
+                rsrc = rsrc.getChild(request, reply, part)
+                rsrc.handle(request, reply, '')
+
+        except error.web.WebServerError, e:
+            reply.setStatusCode(e.statusCode)
 
         return reply
         
     def testRegularFile(self):
+        content = io.readfile('./test/http-docroot/hello.py')
+        last_mod = os.stat('./test/http-docroot/hello.py')[8]
+
         coll = FilesystemCollection('./test/http-docroot')
         reply = self.doRequest(coll, '/hello.py')
 
         self.assertEquals(reply.status, 200)
         self.assertEquals(reply.headers['content-type'], 'text/x-python')
-        self.assertEquals(reply.sent, 'print "Hello, World!"\n')
+        self.assertEquals(reply.headers.has_key('content-encoding'), 0)
+        self.assertEquals(reply.headers['content-length'], str(len(content)))
+        self.assertEquals(http.HTTPDateTime(reply.headers['last-modified']).unixtime,
+                          time.gmtime(last_mod))
+        self.assertEquals(reply.sent, content)
+
+    def testOldConditionalGet(self):
+        content = io.readfile('./test/http-docroot/hello.py')
+        last_mod = os.stat('./test/http-docroot/hello.py')[8]
+
+        coll = FilesystemCollection('./test/http-docroot')
+        request = FakeRequest('/hello.py')
+        request.headers.setHeader('If-Modified-Since',
+                                 str(http.HTTPDateTime(0)))
+        reply = self.doRequest(coll, '/hello.py', request)
+
+        self.assertEquals(reply.status, 200)
+        self.assertEquals(reply.headers['content-type'], 'text/x-python')
+        self.assertEquals(reply.headers.has_key('content-encoding'), 0)
+        self.assertEquals(reply.headers['content-length'], str(len(content)))
+        self.assertEquals(http.HTTPDateTime(reply.headers['last-modified']).unixtime,
+                          time.gmtime(last_mod))
+        self.assertEquals(reply.sent, content)
     
-    def testTarball(self):
+    def testCurrentConditionalGet(self):
+        content = io.readfile('./test/http-docroot/hello.py')
+        last_mod = os.stat('./test/http-docroot/hello.py')[8]
+
+        coll = FilesystemCollection('./test/http-docroot')
+        request = FakeRequest('/hello.py')
+        request.headers.setHeader('If-Modified-Since',
+                                 str(http.HTTPDateTime(last_mod)))
+        reply = self.doRequest(coll, '/hello.py', request)
+
+        self.assertEquals(reply.status, 304)
+        self.assertEquals(reply.headers['content-type'], 'text/x-python')
+        self.assertEquals(reply.headers.has_key('content-encoding'), 0)
+        self.assertEquals(reply.headers['content-length'], str(len(content)))
+        self.assertEquals(http.HTTPDateTime(reply.headers['last-modified']).unixtime,
+                          time.gmtime(last_mod))
+        self.assertEquals(reply.sent, '')
+    
+    def testFutureConditionalGet(self):
+        content = io.readfile('./test/http-docroot/hello.py')
+        last_mod = os.stat('./test/http-docroot/hello.py')[8]
+
+        coll = FilesystemCollection('./test/http-docroot')
+        request = FakeRequest('/hello.py')
+        request.headers.setHeader('If-Modified-Since',
+                                 str(http.HTTPDateTime(int(time.time()))))
+        reply = self.doRequest(coll, '/hello.py', request)
+
+        self.assertEquals(reply.status, 304)
+        self.assertEquals(reply.headers['content-type'], 'text/x-python')
+        self.assertEquals(reply.headers.has_key('content-encoding'), 0)
+        self.assertEquals(reply.headers['content-length'], str(len(content)))
+        self.assertEquals(http.HTTPDateTime(reply.headers['last-modified']).unixtime,
+                          time.gmtime(last_mod))
+        self.assertEquals(reply.sent, '')
+    
+    def testContentEncoding(self):
         coll = FilesystemCollection('./test/http-docroot')
         reply = self.doRequest(coll, '/all.tar.gz')
 
@@ -61,29 +130,29 @@ class FilesystemCollectionTestCase(unittest.TestCase):
     
     def testNonexsistantFile(self):
         coll = FilesystemCollection('./test/http-docroot')
-        self.assertRaises(error.web.NotFoundError,
-                          self.doRequest, coll, '/no-such-file')
+        reply = self.doRequest(coll, '/no-such-file')
+        self.assertEquals(reply.status, 404)
     
     def testNonexsistantPath(self):
         coll = FilesystemCollection('./test/http-docroot')
-        self.assertRaises(error.web.NotFoundError,
-                          self.doRequest, coll, '/no-such-path/this-is-also-not-here')
+        reply = self.doRequest(coll, '/no-such-path/this-is-also-not-here')
+        self.assertEquals(reply.status, 404)
+        self.assertEquals(reply.status, 404)
     
     def testAllowedListing(self):
         coll = FilesystemCollection('./test/http-docroot', allow_indexing=1)
         reply = self.doRequest(coll, '/sub/')
-
         self.assertEquals(reply.status, 200)
 
     def testForbiddenListing(self):
         coll = FilesystemCollection('./test/http-docroot')
-        self.assertRaises(error.web.ForbiddenError,
-                          self.doRequest, coll, '/sub/')
+        reply = self.doRequest(coll, '/sub/')
+        self.assertEquals(reply.status, 403)
 
     def testRedirectOnDirectory(self):
         coll = FilesystemCollection('./test/http-docroot')
-        self.assertRaises(error.web.MovedPermanently,
-                          self.doRequest, coll, '/sub')
+        reply = self.doRequest(coll, '/sub')
+        self.assertEquals(reply.status, 301)
         
 class EntwinedCollectionTestCase(unittest.TestCase):
     # FIXME -- really should have the same tests as

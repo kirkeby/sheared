@@ -31,8 +31,9 @@ class EntwinerTestCase(unittest.TestCase):
             def entwine(self, request, reply, subpath):
                 self.context['foo'] = 'foo'
         ent = Foo()
+        req = FakeRequest()
         rep = FakeReply()
-        ent.handle(None, rep, None)
+        ent.handle(req, rep, None)
         self.assertEquals(rep.sent, 'foo\n')
 
     def testTemplatePages(self):
@@ -41,8 +42,9 @@ class EntwinerTestCase(unittest.TestCase):
             def entwine(self, request, reply, subpath):
                 self.context['foo'] = 'foo'
         ent = Foo()
+        req = FakeRequest()
         rep = FakeReply()
-        ent.handle(None, rep, None)
+        ent.handle(req, rep, None)
         self.assertEquals(rep.sent, 'foo\n')
 
     def testRequestContext(self):

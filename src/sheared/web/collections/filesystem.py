@@ -70,11 +70,17 @@ def normal_handler(request, reply, collection, walker):
 
     last_modified = http.HTTPDateTime(walker.stat.st_mtime)
 
-    reply.headers.setHeader('Last-Modified', last_modified)
-    reply.headers.setHeader('Content-Length', walker.stat.st_size)
-    reply.headers.setHeader('Content-Type', type)
+    reply.headers.setHeader('Last-Modified', str(last_modified))
+    reply.headers.setHeader('Content-Length', str(walker.stat.st_size))
+    reply.headers.setHeader('Content-Type', str(type))
     if encoding:
-        reply.headers.setHeader('Content-Encoding', encoding)
+        reply.headers.setHeader('Content-Encoding', str(encoding))
+
+    # Conditional GET support
+    if not request.head_only and request.headers.has_key('If-Modified-Since'):
+        when = http.HTTPDateTime(request.headers['If-Modified-Since'])
+        if not last_modified.unixtime > when.unixtime:
+            raise error.web.NotModified
 
     file = reactor.open(walker.root, 'r')
     reply.sendfile(file)
