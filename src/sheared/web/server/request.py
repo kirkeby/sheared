@@ -21,6 +21,7 @@
 import base64
 
 from sheared import error
+from sheared.web import cookie
 
 class HTTPRequest:
     def __init__(self, requestline, headers, body):
@@ -29,6 +30,13 @@ class HTTPRequest:
         self.path = requestline.uri[2]
         self.headers = headers
         self.body = body
+
+        self.cookies = {}
+        cookies = self.headers.get('Cookie', '')
+        if cookies:
+            for c in cookies.split(','):
+                c = cookie.parse(c)
+                self.cookies[c.name] = c
 
     def parent(self):
         return self.path[self.path.rfind('/') : ]

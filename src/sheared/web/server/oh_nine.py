@@ -26,6 +26,7 @@ class HTTPReply:
         self.transport = transport
         
         self.headers = http.HTTPHeaders()
+        self.cookies = {}
 
         self.decapitated = 0
 

@@ -24,6 +24,7 @@ from sheared import error
 from sheared.protocol import http
 from sheared.python import io
 from sheared.python import log
+from sheared.web import cookie
 
 import oh_nine, one_oh
 

@@ -20,6 +20,7 @@
 
 from sheared import error
 from sheared.protocol import http
+from sheared.web import cookie
 
 class HTTPReply:
     def __init__(self, transport, version):
@@ -31,6 +32,8 @@ class HTTPReply:
         self.headers = http.HTTPHeaders()
         self.headers.addHeader('Date', str(http.HTTPDateTime()))
         self.headers.setHeader('Content-Type', 'text/html')
+
+        self.cookies = []
 
         self.decapitated = 0
 
@@ -50,6 +53,9 @@ class HTTPReply:
         self.transport.write('HTTP/%d.%d ' % self.version)
         reason = http.http_reason.get(self.status, 'Unknown Status')
         self.transport.write('%d %s\r\n' % (self.status, reason))
+
+        for c in self.cookies:
+            self.headers.addHeader('Set-Cookie', cookie.format(c))
 
         for item in self.headers.items():
             self.transport.write('%s: %s\r\n' % item)

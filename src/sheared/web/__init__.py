@@ -19,4 +19,4 @@
 #
 __all__ = ['server', 'subserver', 'querystring', 'virtualhost',
            'collection', 'error', 'entwiner', 'xmlrpc', 'resource',
-           'application', 'proxy', 'log']
+           'application', 'proxy', 'log', 'cookie']
