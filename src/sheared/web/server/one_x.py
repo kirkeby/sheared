@@ -78,7 +78,8 @@ class HTTPReply:
     def sendfile(self, file):
         if not self.decapitated:
             self.sendHead()
-        self.transport.sendfile(file)
+        if not self.head_only:
+            self.transport.sendfile(file)
 
     def done(self):
         self.transport.close()
