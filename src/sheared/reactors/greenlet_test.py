@@ -1,4 +1,5 @@
 import time
+import random
 
 from sheared.reactors.greenlet import Reactor
 
@@ -42,3 +43,33 @@ def test_read():
     reactor = Reactor()
     reactor.start(run)
     assert reactor.result == 'root'
+
+def test_connect_tcp():
+    def run(reactor):
+        t = reactor.connect('tcp:localhost:echo')
+        t.write('Hello, World!\r\n')
+        t.shutdown(1)
+        reactor.result = t.read()
+
+    reactor = Reactor()
+    reactor.start(run)
+    assert reactor.result == 'Hello, World!\r\n'
+
+def test_listen_tcp():
+    def application(transport):
+        transport.write('42')
+        transport.close()
+    def run(reactor):
+        port = int(random.random() * 8192 + 22000)
+        addr = 'tcp:localhost:%d' % port
+        reactor.listen(application, addr)
+    
+        t = reactor.connect(addr)
+        reactor.result = t.read()
+        t.close()
+
+        reactor.stop()
+
+    reactor = Reactor()
+    reactor.start(run)
+    assert reactor.result == '42'
