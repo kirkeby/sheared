@@ -45,7 +45,7 @@ def quote(str):
         if ch in good_chars:
             q_str = q_str + ch
         else:
-            q_str = q_str + ('%02x' % ord(ch))
+            q_str = q_str + ('%%%02x' % ord(ch))
     return q_str
 def unquote(q_str):
     return querystring.unscape_querystring(q_str)
