@@ -3,27 +3,21 @@ from sheared.protocol.http import splitHeaderList
 
 import re
 
-# Overrides for Accept-header.
-user_agent_overrides = [
-    (re.compile('^Mozilla/4.0 \\(compatible; MSIE '),
-                'text/html, */*; q=0.1'),
-]
-
 def parse_accepts_header(value):
     """parse_accepts_header(header_value) -> widgets
 
-    Parse a HTTP Accept(-.*)? header into a list of acceptable widgets,
-    in decreasing order of preference (e.g. [("text/html", 1.0),
+    Parse a HTTP Accept header into a list of acceptable widgets, in
+    decreasing order of preference (e.g. [("text/html", 1.0),
     ("text/plain", 0.2)])."""
 
     widgets = []
     for header in splitHeaderList(value):
         all = header.split(';')
         if len(all) == 1:
-            gizmos, = all
+            gizmo, = all
             qval = 1.0
         elif len(all) == 2:
-            gizmos, qval = all
+            gizmo, qval = all
             qval = qval.strip()
             if not qval.startswith('q='):
                 raise ValueError, 'bad parameter in Accept-header: %s' % qval
@@ -31,9 +25,13 @@ def parse_accepts_header(value):
         else:
             raise ValueError, 'bad Accept-header: %s' % value
 
-        for gizmo in gizmos.split(','):
-            widget = gizmo.strip(), qval
-            widgets.append(widget)
+        gizmo = gizmo.strip()
+        if gizmo == '*/*':
+            qval = 0.0001
+        elif gizmo.endswith('/*'):
+            qval = 0.001            
+        widget = gizmo, qval
+        widgets.append(widget)
 
     widgets.sort(lambda a, b: cmp(a[1], b[1]))
     return widgets
@@ -50,13 +48,6 @@ def chooseContentType(request, content_types):
                (gizmo.endswith('/*') and widget.startswith(gizmo[:-1])) or \
                (gizmo == '*/*') or \
                (gizmo == '*')
-
-    ua = request.headers.get('User-Agent', '')
-    if ua:
-        for ex, val in user_agent_overrides:
-            if ex.match(ua):
-                request.headers.setHeader('Accept', val)
-                break
 
     if request.headers.has_key('Accept'):
         chosen = None
