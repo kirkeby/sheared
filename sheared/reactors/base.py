@@ -92,9 +92,11 @@ class Reactor:
         if self.running:
             raise RuntimeError, 'reactor already running'
 
+        oa = stackless.getcurrent().setatomic(1)
         self.__run()
         while self.running:
             stackless.run()
+        stackless.getcurrent().setatomic(oa)
 
         return self.result
 

@@ -199,6 +199,7 @@ class Reactor(base.Reactor):
         self.tasklet_channel[id(t)] = c
         self.channel_tasklet[id(c)] = t
 
+        t.setatomic(1)
         t.become(c)
         try:
             try:
