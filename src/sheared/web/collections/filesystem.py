@@ -25,7 +25,7 @@ from sheared.python import io
 from sheared.protocol import http
 from sheared.web import resource
 
-from entwine import abml
+import abml
 
 def htaccess_authenticator(request, reply, collection, walker):
     htaccess = walker.root + os.sep + '.htaccess'
@@ -88,7 +88,7 @@ def index_handler(request, reply, collection, walker):
     for file in os.listdir(walker.root):
         reply.transport.write('<a href="%s">%s</a><br />\r\n' % (
             file.replace('"', '\\"'),
-            abml.quote(file),
+            abml.abmlify(file),
         ))
     reply.transport.write('</body></html>\r\n')
     reply.transport.close()
