@@ -20,7 +20,7 @@ def format_attribute(attr):
         s += '%s:' % ns
     s += name
     if not value is None:
-        s += "=%r" % value
+        s += '=%r' % str(value)
     return s
 
 def format_tag(name, attributes):
