@@ -45,10 +45,10 @@ class PostableResource(Resource):
         self.method_parsers['POST'] = self.parsePost
 
     def parsePost(self, request, reply):
-        if not headers.has_key('Content-Type'):
+        if not request.headers.has_key('Content-Type'):
             raise error.web.BadRequestError
 
-        ct = headers.get('Content-Type')
+        ct = request.headers.get('Content-Type')
         if ct == 'application/x-www-form-urlencoded':
             querystring = request.body.lstrip()
 
