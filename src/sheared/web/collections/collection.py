@@ -26,7 +26,9 @@ class Collection(resource.GettableResource):
 
     def handle(self, request, reply, subpath):
         if request.path.endswith('/'):
-            self.getChild(request, reply, '').handle(request, reply, subpath)
+            child = self.getChild(request, reply, '')
+            child.authenticate(request, reply)
+            child.handle(request, reply, subpath)
         else:
             reply.headers.setHeader('Location', request.path + '/')
             raise error.web.MovedPermanently
