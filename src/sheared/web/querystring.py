@@ -86,7 +86,7 @@ class UnvalidatedInput:
         return self.as_str('\x01-\xff')
 
     def as_name(self):
-        return self.as_str('a-zA-Z0-9_-')
+        return self.as_str('a-zA-Z0-9:_-')
 
     def as_word(self):
         return self.as_str('\x21-\x7e')
