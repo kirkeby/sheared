@@ -25,6 +25,7 @@ import os
 
 from sheared.python import daemonize
 from sheared.python import conffile
+from sheared.python.proctitle import setproctitle
 from sheared import reactor
 
 app_options = [
@@ -82,7 +83,6 @@ class Application:
         self.group = None
 
         self.reactor = reactor
-
 
     def help(self, name, _):
         if self.description:
@@ -243,6 +243,8 @@ class Application:
         pass
 
     def start(self):
+        setproctitle(self.name)
+
         if self.logfile:
             daemonize.openstdlog(self.logfile)
 
@@ -265,7 +267,7 @@ class Application:
         self.reactor.start()
 
     def restart(self):
-        daemonize.closeall()
+        daemonize.closeall(min=3)
 
         argv = [sys.executable]
         argv.extend(sys.argv)
@@ -273,7 +275,8 @@ class Application:
         try:
             os.execv(argv[0], argv)
         except:
-            os._exit(2)
+            pass
+        os._exit(2)
 
     def stop(self):
         self.reactor.stop()
