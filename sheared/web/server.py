@@ -272,8 +272,8 @@ class VirtualHost:
 
     def handle(self, request, reply, path):
         child, subpath = self.walkPath(path)
-        #if child is collection:
-        #    child = collection.getChild('')
+        if child is self.collection:
+            child = self.collection.getChild('')
         child.handle(request, reply, subpath)
 
 __all__ = ['HTTPRequest', 'HTTPReply', 'UnvalidatedInput',

@@ -1,4 +1,5 @@
 from sheared import reactor
+from sheared import error
 from sheared.protocol import http
 
 import os, mimetypes, stat, errno
