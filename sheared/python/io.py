@@ -16,6 +16,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+from __future__ import generators
+
 from sheared import reactor
 
 def readfile(path):
@@ -53,6 +55,7 @@ class BufferedReader:
         return got
 
     def readline(self, nl='\r\n'):
+        # FIXME -- default nl value should be '\n'
         while 1:
             i = self.buffer.find(nl)
             if i >= 0:
@@ -70,6 +73,13 @@ class BufferedReader:
             self.buffer = self.buffer[i + len(nl) : ]
 
         return got
+
+    def readlines(self, nl='\n'):
+        while 1:
+            l = self.readline(nl)
+            if l == '':
+                break
+            yield l
 
     def write(self, data):
         self.file.write(data)
