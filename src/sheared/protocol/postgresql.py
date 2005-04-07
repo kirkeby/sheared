@@ -24,6 +24,7 @@ import string
 import array
 import crypt
 import encodings
+import warnings
 
 from sheared.database import error
 from sheared.database import dummy
@@ -282,6 +283,9 @@ def parsePacket(client, data, columns=None):
 # Also, if the frontend issues any listen(l) commands then it must be prepared
 # to accept NotificationResponse messages at any time; see below.
 
+class PostgresqlNotice(UserWarning):
+    pass
+
 class PostgresqlClient:
     def __init__(self, transport):
         self.transport = transport
@@ -354,6 +358,8 @@ class PostgresqlClient:
                     err = error.ProgrammingError, 'no transaction in progress'
                 elif packet.message.startswith('NOTICE:  ROLLBACK: no transaction in progress'):
                     err = error.ProgrammingError, 'no transaction in progress'
+                else:
+                    self.notice(packet)
 
             elif type is CompletedResponsePacket:
                 words = packet.command.split()
@@ -414,6 +420,9 @@ class PostgresqlClient:
             self.transport.close()
             del self.transport
 
+    def notice(self, packet):
+        warnings.warn(packet.message, PostgresqlNotice)
+
     def _sendPacket(self, p):
         p.send(self.transport)
 
@@ -422,7 +431,10 @@ class PostgresqlClient:
             packet, self.buffer = parsePacket(self, self.buffer, columns)
     
             if packet:
-                break
+                if expected and packet.__class__ is NoticeResponsePacket:
+                    self.notice(packet)
+                else:
+                    break
 
             self.buffer = self.buffer + self.transport.read(4096)
 
