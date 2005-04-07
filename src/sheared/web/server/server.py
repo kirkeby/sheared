@@ -39,6 +39,8 @@ http_reason[http.HTTP_MOVED_PERMANENTLY] = \
     "-- Charles Matthews"
 http_reason[http.HTTP_MOVED_TEMPORARILY] = \
     http_reason[http.HTTP_MOVED_PERMANENTLY]
+http_reason[http.HTTP_SEE_OTHER] = \
+    http_reason[http.HTTP_MOVED_PERMANENTLY]
 http_reason[http.HTTP_UNAUTHORIZED] = \
     "Login incorrect.\r\n" \
     "Only perfect spellers may\r\n" \
@@ -79,10 +81,6 @@ def defaultErrorHandler(server, exc_info, request, reply):
         send_http_error_page(reply, exc_info[1].args[0])
     else:
         send_http_error_page(reply, None)
-        if isinstance(exc_info[1].args, tuple) and len(exc_info[1].args) == 3:
-            server.logInternalError(exc_info[1].args)
-        else:
-            server.logInternalError(exc_info)
 
 def send_http_error_page(reply, message):
     if not message:
@@ -102,7 +100,8 @@ def send_http_error_page(reply, message):
             reply.headers.delHeader(name)
         if name.lower() == 'location' and \
            not reply.status in [ http.HTTP_MOVED_PERMANENTLY,
-                                 http.HTTP_MOVED_TEMPORARILY, ]:
+                                 http.HTTP_MOVED_TEMPORARILY,
+                                 http.HTTP_SEE_OTHER, ]:
             reply.headers.delHeader(name)
         if name.lower() == 'www-authenticate' and \
            not reply.status in [ http.HTTP_UNAUTHORIZED, ]:
@@ -210,6 +209,7 @@ class HTTPServer:
             vhost = self.hosts.get(request.hostname, None)
             if not vhost:
                 vhost = self.hosts[self.default_host]
+            request.virtual_host = vhost
 
             for cb in self.massageRequestCallbacks:
                 cb(request, reply)
