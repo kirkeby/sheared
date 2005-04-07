@@ -58,7 +58,9 @@ try:
     import sheared.reactors.greenlet
     reactor = sheared.reactors.greenlet.Reactor()
 except ImportError:
-    pass
+    import sys, warnings, traceback
+    e,i,t = sys.exc_info()
+    warnings.warn(''.join(traceback.format_exception_only(e, i)))
 
 __author__ = 'Sune Kirkeby'
 __version__ = '0.1'
