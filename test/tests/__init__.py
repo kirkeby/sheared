@@ -17,10 +17,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 __all__ = [
-    'reactor', 'database', 'pool', 'commands',
+    'database', 'pool', 'commands',
     'time_since',
     'rfc822', 'rfc1521',
-    'http', 'querystring', 'cookie', 'virtualhost', 'accept',
+    'http', 'querystring', 'cookie', 'virtualhost', 
     'webresource', 'webcollections', 'webentwiner',
     'webserver', 'webclient', 'web',
     'semaphore', 'logfile',
