@@ -17,7 +17,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import stackless
+try:
+    import stackless
+except:
+    import warnings
+    warnings.warn('stackless is not available; StacklessQueue will break')
 
 class StacklessQueue:
     def __init__(self):
@@ -39,7 +43,6 @@ class StacklessQueue:
 
     def __len__(self):
         return len(self.queue)
-
 
 class MinQueue:
     """Simpleminded implementation of min-queue."""
