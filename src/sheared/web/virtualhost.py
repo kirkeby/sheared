@@ -18,6 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+import urlparse
+
 from sheared import error
 from sheared.python import path
 
@@ -75,9 +77,8 @@ class VirtualHost:
         if not reply.headers.has_key('Location'):
             raise error.web.InternalServerError
 
-        loc = reply.headers.get('Location')
-        if loc.find('://') < 0 and request.headers.has_key('Host'):
-            if not loc.startswith('/'):
-                loc = request.path + '/' + loc
-            loc = 'http://' + request.headers['Host'] + loc
-            reply.headers.setHeader('Location', loc)
+        there = reply.headers.get('Location')
+        here = 'http://' + request.hostname + request.path
+        joined = urlparse.urljoin(here, there, 0)
+        
+        reply.headers.setHeader('Location', joined)
