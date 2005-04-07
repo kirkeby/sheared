@@ -54,13 +54,14 @@ are implmented.
 Helpers for various things related to network and daemon programming
 with Sheared (e.g. a logging infrastructure and helpers for daemonizing)."""
 
-try:
+import sys
+
+if sys.version.find('Stackless') >= 0:
+    import sheared.reactors.selectable
+    reactor = sheared.reactors.selectable.Reactor()
+else:
     import sheared.reactors.greenlet
     reactor = sheared.reactors.greenlet.Reactor()
-except ImportError:
-    import sys, warnings, traceback
-    e,i,t = sys.exc_info()
-    warnings.warn(''.join(traceback.format_exception_only(e, i)))
 
 __author__ = 'Sune Kirkeby'
 __version__ = '0.1'
