@@ -122,7 +122,7 @@ class FilesystemCollection(resource.NormalResource):
 
         self.walker = FilesystemWalker(self, root, '')
         self.mimetypes = mimetypes.MimeTypes()
-        self.mimetypes.types_map['.xhtml'] = 'application/xhtml+xml'
+        self.mimetypes.add_type('application/xhtml+xml', '.xhtml')
 
         self.multiviews = 1
         if self.multiviews:
