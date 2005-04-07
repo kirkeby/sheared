@@ -96,7 +96,7 @@ def send_http_error_page(reply, message):
                       "P.S. The numer of the error is %d." % reply.status
 
     for name in reply.headers.keys():
-        if not http.headerClass(name) in ['general', 'response']:
+        if not http.header_class(name) in ['general', 'response']:
             reply.headers.delHeader(name)
         if name.lower() == 'location' and \
            not reply.status in [ http.HTTP_MOVED_PERMANENTLY,

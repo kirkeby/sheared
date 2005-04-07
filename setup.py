@@ -1,7 +1,7 @@
 # vim:syntax=python:textwidth=0
 #
 # Sheared -- non-blocking network programming library for Python
-# Copyright (C) 2003  Sune Kirkeby <sune@mel.interspace.dk>
+# Copyright (C) 2003  Sune Kirkeby
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,12 +22,12 @@
 from distutils.core import setup, Extension
 setup(name = "Sheared", version = "0.1",
       author = "Sune Kirkeby",
-      author_email = "me@ibofobi.dk",
       url = "http://ibofobi.dk/stuff/sheared/",
       packages = [
         'sheared', 'sheared.database', 'sheared.protocol',
         'sheared.python', 'sheared.reactors', 'sheared.web',
-        'sheared.web.server', 'sheared.web.collections'
+        'sheared.web.server', 'sheared.web.collections',
+        'skewed', 'skewed.wsgi', 'skewed.wsgi.misc', 'skewed.web',
       ],
       package_dir = { '': 'src' },
       ext_modules = [

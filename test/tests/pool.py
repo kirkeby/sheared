@@ -53,4 +53,10 @@ suite.addTests([unittest.makeSuite(DatabaseConnectionPoolTestCase, "test")])
 __all__ = ['suite']
 
 if __name__ == '__main__':
-    unittest.main()
+    try:
+        import stackless
+    except:
+        stackless = None
+
+    if not stackless is None:
+        unittest.main()

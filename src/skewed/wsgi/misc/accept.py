@@ -1,7 +1,10 @@
-from sheared import error
-from sheared.protocol.http import splitHeaderList
-
-import re
+def split_header_list(s):
+    l = []
+    for e in s.split(','):
+        e = e.strip()
+        if e:
+            l.append(e)
+    return l
 
 def parse_accepts_header(value):
     """parse_accepts_header(header_value) -> widgets
@@ -11,7 +14,7 @@ def parse_accepts_header(value):
     ("text/plain", 0.2)])."""
 
     widgets = []
-    for header in splitHeaderList(value):
+    for header in split_header_list(value):
         all = header.split(';')
         if len(all) == 1:
             gizmo, = all
@@ -36,17 +39,17 @@ def parse_accepts_header(value):
     widgets.sort(lambda a, b: cmp(a[1], b[1]))
     return widgets
     
-def chooseContentType(request, content_types):
-    """chooseContentType(request, content_types) -> content_type
+def choose_widget(environ, widgets, default=None):
+    """choose_widget(environ, widgets) -> widget
     
-    Find the preferred content type for a given request, among a list of
-    possible content types. Or, if none of the possible content types
-    are acceptable raise sheared.error.web.NotAcceptable."""
+    Find the preferred widget for the clients Accept-headers for a given
+    request, among a list of possible (widget, headers dict) pairs. Or, if
+    none of the possible widgets are acceptable return default."""
 
-    if request.headers.get('User-Agent', '').find('MSIE') > 0:
-        accepts = 'text/html, */*'
+    if environ.has_key('HTTP_ACCEPT'):
+        accepts = environ['HTTP_ACCEPT']
     else:
-        accepts = request.headers.get('Accept', '*/*')
+        accepts = '*/*'
 
     def is_acceptable(widget, gizmo):
         return (widget == gizmo) or \
@@ -56,14 +59,14 @@ def chooseContentType(request, content_types):
 
     chosen = None
     acceptable = parse_accepts_header(accepts)
-    for content_type in content_types:
+    for widget, headers in widgets:
         for gizmo, qval in acceptable:
-            if is_acceptable(content_type, gizmo):
+            ct = headers.get('Content-Type', None)
+            if ct and is_acceptable(ct, gizmo):
                 if not chosen or qval > chosen[1]:
-                    chosen = content_type, qval
+                    chosen = widget, qval
 
     if chosen is None:
-        raise error.web.NotAcceptable, \
-              'cannot serve any of %s' % accepts
-
-    return chosen[0]
+        return default
+    else:
+        return chosen[0]

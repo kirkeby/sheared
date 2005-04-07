@@ -29,7 +29,6 @@ from sheared import error
 from sheared.python import io
 from sheared.protocol import http
 from sheared.web import resource
-from sheared.web import accept
 
 import abml
 
@@ -74,7 +73,8 @@ def normal_handler(request, reply, collection, walker):
     if not type:
         type = 'application/octet-stream'
     if type == 'application/xhtml+xml':
-        type = accept.chooseContentType(request, [type, 'text/html'])
+        acc = request.headers.get('Accept', '*/*')
+        type = http.choose_just_the_content_type_maam(acc, [type, 'text/html'])
         # FIXME -- should be a list
         reply.headers.addHeader('Vary', 'Accept')
 
@@ -122,7 +122,10 @@ class FilesystemCollection(resource.NormalResource):
 
         self.walker = FilesystemWalker(self, root, '')
         self.mimetypes = mimetypes.MimeTypes()
-        self.mimetypes.types_map['.xhtml'] = 'application/xhtml+xml'
+        if hasattr(self.mimetypes, 'add_type'):
+            self.mimetypes.add_type('application/xhtml+xml', '.xhtml')
+        else:
+            self.mimetypes.types_map['.xhtml'] = 'application/xhtml+xml'
 
         self.multiviews = 1
         if self.multiviews:
@@ -217,7 +220,8 @@ class FilesystemWalker(resource.NormalResource):
                         try:
                             if views:
                                 mimetypes = views.keys()
-                                mt = accept.chooseContentType(request, mimetypes)
+                                acc = request.headers.get('Accept', '*/*')
+                                mt = http.choose_just_the_content_type_maam(acc, mimetypes)
                                 # FIXME -- should be a list
                                 reply.headers.setHeader('Vary', 'Accept')
                                 path = views[mt]

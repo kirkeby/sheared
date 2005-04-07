@@ -402,6 +402,7 @@ class PostgresqlClient:
             
             else:
                 self.transport.close()
+                del self.transport
                 raise error.InterfaceError, 'got unexpected %s' % `packet`
 
         raise 'internal error; branch should never execute'
@@ -414,8 +415,10 @@ class PostgresqlClient:
         self.query('ROLLBACK')
 
     def close(self):
-        self._sendPacket(TerminatePacket())
-        self.transport.close()
+        if hasattr(self, 'transport'):
+            self._sendPacket(TerminatePacket())
+            self.transport.close()
+            del self.transport
 
     def notice(self, packet):
         warnings.warn(packet.message, PostgresqlNotice)
@@ -436,7 +439,10 @@ class PostgresqlClient:
             self.buffer = self.buffer + self.transport.read(4096)
 
         if expected and not packet.__class__ is expected:
+            if packet.__class__ is ErrorPacket:
+                raise error.ProgrammingError, packet.message
             self.transport.close()
+            del self.transport
             raise error.InterfaceError, 'got unexpected %s when we wanted %s' % (`packet`, `expected`)
 
         return packet

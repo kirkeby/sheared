@@ -20,8 +20,8 @@
 
 import urlparse
 
+import sheared
 from sheared import reactor
-from sheared import version_string
 from sheared.protocol import http
 from sheared.python import io
 
@@ -57,7 +57,7 @@ def get(url, headers=None):
     else:
         headers.setHeader('Host', '%s:%d' % (host, port))
     if not headers.has_key('User-Agent'):
-        headers.setHeader('User-Agent', 'Sheared/%s' % version_string)
+        headers.setHeader('User-Agent', 'Sheared/%s' % sheared.__version__)
 
     tr = reactor.connect('tcp:%s:%d' % (host, port))
     tr = io.BufferedReader(tr)

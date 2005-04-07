@@ -17,9 +17,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import stackless
-
-class Semaphore:
+class StacklessSemaphore:
     def __init__(self):
         self.channel = stackless.channel()
         self.taken = 0
@@ -40,3 +38,15 @@ class Semaphore:
             self.channel.send(None)
         else:
             self.taken = 0
+
+class BogusSemaphore:
+    def grab(self):
+        pass
+    def release(self):
+        pass
+
+try:
+    import stackless
+    Semaphore = StacklessSemaphore
+except ImportError:
+    Semaphore = BogusSemaphore
