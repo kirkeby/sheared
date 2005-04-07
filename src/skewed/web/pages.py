@@ -75,7 +75,14 @@ class Pages:
         if path is None:
             return None
 
-        else:
+        elif os.path.isdir(path):
+            loc = relative('', environ)
+            start_response('301 Moved Permanently',
+                           [('Content-Type', 'text/plain'),
+                            ('Location', loc),])
+            return ['Moved here: %s.' % loc]
+        
+        elif os.path.isfile(path):
             ct, ce = mimes.guess_type(path)
             if ct and not headers.has_key('Content-Type'):
                 headers['Content-Type'] = ct
@@ -84,6 +91,10 @@ class Pages:
             
             start_response('200 Ok', headers.items())
             return [open(path).read()]
+
+        else:
+            start_response('410 Forbidden', [('Content-Type', 'text/plain')])
+            return ['Not allowed.']
 
     def as_pypage(self, environ, start_response):
         path_info = environ['PATH_INFO']
@@ -156,7 +167,7 @@ class ZPTView:
         raise NotImplementedError, 'ZPTView.massage'
     def render(self, context, request, reply):
         path_info = request.environ['PATH_INFO']
-        template = self.application.templates_path + path_info + '.xhtml'
+        template = self.application.pages_path + path_info + '.xhtml'
         if os.access(template, os.R_OK):
             ct = 'Content-Type', 'application/xhtml+xml; charset=utf-8'
             reply.headers.append(ct)
