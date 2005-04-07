@@ -35,6 +35,7 @@ class FakeRequest(HTTPRequest):
         requestline = http.HTTPRequestLine(requestline)
         headers = http.HTTPHeaders(headers)
         HTTPRequest.__init__(self, requestline, headers, body)
+        self.hostname = headers.get('Host', None) or 'foo.com'
 
 class FakeReply:
     def __init__(self, head_only=0):
