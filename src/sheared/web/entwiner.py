@@ -54,7 +54,7 @@ class Entwiner(resource.NormalResource):
         ct = accept.chooseContentType(request, self.content_types)
         ct = ct + '; charset=%s' % self.charset
         reply.headers.setHeader('Content-Type', ct)
-        reply.headers.addHeader('Vary', 'Accept')
+        reply.headers.addHeader('Vary', 'Accept User-Agent')
     
         self.context = {}
         if hasattr(request, 'context'):
