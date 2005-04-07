@@ -26,7 +26,7 @@ import encodings
 from entwine import entwine
 
 from sheared.python import io
-from sheared.web import accept
+from sheared.protocol import http
 from sheared.web import resource
 from sheared import error
 
@@ -51,7 +51,7 @@ class Entwiner(resource.NormalResource):
         self.result = None
 
         # Accept support
-        ct = accept.chooseContentType(request, self.content_types)
+        ct = http.choose_just_the_content_type_maam(request.headers.get('Accept', '*/*'), self.content_types)
         ct = ct + '; charset=%s' % self.charset
         reply.headers.setHeader('Content-Type', ct)
         reply.headers.addHeader('Vary', 'Accept User-Agent')
