@@ -18,8 +18,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import stackless
-
 from sheared import reactor
 
 from sheared.python.log import Log
