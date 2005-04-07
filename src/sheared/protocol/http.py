@@ -274,5 +274,12 @@ def choose_content_type(accepts, widgets):
         return None
     else:
         return chosen[0]
+    
+def choose_just_the_content_type_maam(accepts, widgets):
+    """choose_content_type(accepts, widgets) -> widget
+    
+    Find the preferred content type for a given request, among a list of
+    possible content types. Or, if none of the possible content types are
+    acceptable return None."""
 
-#__all__ = ['HTTPDateTime', 'HTTPHeaders', 'HTTPRequestLine', 'HTTPStatusLine', 'split_header_list']
+    return choose_content_type(accepts, [ (t,t) for t in widgets ])
