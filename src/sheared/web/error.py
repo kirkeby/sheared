@@ -20,6 +20,8 @@ from sheared.protocol.http import HTTP_NOT_FOUND, \
                                   HTTP_UNAUTHORIZED, \
                                   HTTP_FORBIDDEN, \
                                   HTTP_MOVED_PERMANENTLY, \
+                                  HTTP_MOVED_TEMPORARILY, \
+                                  HTTP_SEE_OTHER, \
                                   HTTP_NOT_MODIFIED, \
                                   HTTP_NOT_ACCEPTABLE, \
                                   HTTP_BAD_REQUEST, \
@@ -47,6 +49,10 @@ class Moved(WebServerError):
     pass
 class MovedPermanently(Moved):
     statusCode = HTTP_MOVED_PERMANENTLY
+class MovedTemporarily(Moved):
+    statusCode = HTTP_MOVED_TEMPORARILY
+class SeeOther(Moved):
+    statusCode = HTTP_SEE_OTHER
 class NotModified(WebServerError):
     statusCode = HTTP_NOT_MODIFIED
 
