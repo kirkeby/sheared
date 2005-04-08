@@ -113,16 +113,17 @@ class Pages:
         code = compile(src, pywidget, 'exec')
         namespace = {
             'ZPTView': ZPTView,
+            'BaseController': BaseController,
             'Cookie': cookie.Cookie,
         }
         eval(code, namespace)
 
         # get controller and view for this page
-        controller = namespace.get('Controller', DefaultController)()
+        controller = namespace.get('Controller', DefaultController)(self)
         view = namespace.get('View', DefaultView)(self)
         
         # handle arguments
-        context = controller.process(request)
+        context = controller.process(request, reply)
 
         # render view
         result = view.render(context, request, reply)
@@ -156,8 +157,13 @@ class Reply:
         self.status = status
         self.headers = headers
 
-class DefaultController:
-    def process(self, request):
+class BaseController:
+    def __init__(self, app):
+        self.application = app
+    def process(self, request, reply):
+        raise NotImplementedError
+class DefaultController(BaseController):
+    def process(self, request, reply):
         return {}
 class ZPTView:
     def __init__(self, application):
