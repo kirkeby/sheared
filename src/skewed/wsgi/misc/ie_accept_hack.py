@@ -1,7 +1,17 @@
 __all__ = ['IEAcceptHack']
 
-def is_explorer(environ):
-    return environ.get('HTTP_USER_AGENT', '').startswith('Mozilla/4.0 (compatible; MSIE ')
+bad_user_agents = [
+    'Mozilla/4.0 (compatible; MSIE ',
+    'Googlebot/',
+]
+def is_bad(environ):
+    ua = environ.get('HTTP_USER_AGENT', '')
+    if not ua:
+        return 0
+    for bad in bad_user_agents:
+        if ua.startswith(bad):
+            return 1
+    return 0
 
 class IEAcceptHack:
     def __init__(self, application):
@@ -9,7 +19,7 @@ class IEAcceptHack:
 
     def __call__(self, environ, start_response):
         def _start_response(status, headers):
-            if is_explorer(environ):
+            if is_bad(environ):
                 headers = list(headers)
                 for i in range(len(headers)):
                     if headers[i][0].lower() == 'content-type':
