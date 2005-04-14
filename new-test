@@ -2,4 +2,4 @@
 set -e
 python setup.py install --prefix=$PWD/build
 cd $PWD/build/lib/python*/site-packages
-exec env PYTHONPATH=$PYTHONPATH:. py.test "$@"
+exec env PYTHONPATH=$PYTHONPATH:. py.test --nomagic --nocapture "$@"
