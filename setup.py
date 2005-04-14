@@ -32,13 +32,4 @@ setup(name = "Sheared", version = "0.1",
       package_dir = { '': 'src' },
       package_data = { 'sheared.web': ['test-docroot/*.*',
                                        'test-docroot/sub/.empty'], },
-#      ext_modules = [
-#        Extension("sheared.python.fdpass",
-#                  ["src/sheared/python/fdpass.c"]),
-#        Extension("sheared.python.proctitle",
-#                  ["src/sheared/python/proctitle.c"]),
-#        Extension("sheared.python.aio",
-#                  ["src/sheared/python/aio.c"],
-#                  libraries = ['rt']),
-#      ],
     )
