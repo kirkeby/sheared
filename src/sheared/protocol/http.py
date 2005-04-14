@@ -121,12 +121,12 @@ class HTTPDateTime:
     def parseString(self, s):
         # RFC 822 format (Sun, 06 Nov 1994 08:49:37 GMT)
         try:
-            return time.strptime(s, "%a, %d %b %Y %H:%M:%S GMT")
+            return time.strptime(s, "%a, %d %b %Y %H:%M:%S %Z")
         except ValueError:
             pass
         # RFC 850 format (Sunday, 06-Nov-94 08:49:37 GMT)
         try:
-            return time.strptime(s, "%A, %d-%b-%y %H:%M:%S GMT")
+            return time.strptime(s, "%A, %d-%b-%y %H:%M:%S %Z")
         except ValueError:
             pass
         # ANSI C's asctime format (Sun Nov  6 08:49:37 1994)

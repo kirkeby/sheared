@@ -25,7 +25,6 @@ import encodings
 
 from entwine import entwine
 
-from sheared.python import io
 from sheared.protocol import http
 from sheared.web import resource
 from sheared import error
@@ -89,7 +88,7 @@ class Entwiner(resource.NormalResource):
             path = [root] + path.split('/')
             path = os.sep.join(path)
 
-        result = entwine(io.readfile(path), self.context, source=path)
+        result = entwine(open(path).read(), self.context, source=path)
         if result.strip():
             if not self.result is None:
                 warnings.warn('%s: multiple results' % path)

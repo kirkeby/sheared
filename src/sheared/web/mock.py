@@ -18,17 +18,44 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import unittest, os, random, signal, time
-
-from sheared import reactor
 from sheared import error
 from sheared.protocol import http
-from sheared.web import server, subserver, virtualhost, resource
+from sheared.web import resource
 from sheared.web.collections.collection import Collection
 from sheared.web.server.request import HTTPRequest
-from sheared.python import commands
 
-from tests import transport
+class StringTransport:
+    def __init__(self):
+        self.input = ''
+        self.output = ''
+        self.closed = 0
+        self.other = '<some string>'
+
+    def read(self, cnt=4096):
+        cnt = min(cnt, len(self.input))
+        data = self.input[:cnt]
+        self.input = self.input[cnt:]
+        return data
+    
+    def write(self, data):
+        if self.closed:
+            raise IOError, 'cannot write to a closed Transport'
+        self.output = self.output + data
+        return len(data)
+    
+    def sendfile(self, file):
+        d = file.read()
+        while not d == '':
+            self.output = self.output + d
+            d = file.read()
+    
+    def close(self):
+        self.closed = 1
+    
+    def appendInput(self, data):
+        self.input = self.input + data
+    def getOutput(self):
+        return self.output
 
 class FakeRequest(HTTPRequest):
     def __init__(self, requestline='GET / HTTP/1.0', headers='', body=''):
