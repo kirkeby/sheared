@@ -115,22 +115,26 @@ def test_NewConditionalRequest():
     assert status.code == 304
     assert body == ''
 
-# FIXME
-#def test_MassageReplyHeaders():
-#    def foo(request, reply):
-#        reply.headers.setHeader('Foo', 'fubar')
-#
-#    self.server.massageReplyHeadCallbacks.append(foo)
-#    status, headers, body = do_request('''GET / HTTP/1.0\r\nHost: foo.com\r\n\r\n''')
-#    self.reactor.start()
-#
-#    status, headers, body = parseReply(self.transport.getOutput())
-#    
-#    assert status.code == 200
-#    assert body == 'Welcome to foo.com!\r\n'
-#    assert headers['Content-Length'] == str(len(body))
-#    assert headers['Content-Type'] == 'text/plain'
-#    assert headers['Foo'] == 'fubar'
+def test_MassageReplyHeaders():
+    server = HTTPServer()
+    vh = VirtualHost(SimpleCollection('foo.com'))
+    server.addVirtualHost('foo.com', vh)
+
+    def foo(request, reply):
+        reply.headers.setHeader('Foo', 'fubar')
+    server.massageReplyHeadCallbacks.append(foo)
+
+    transport = StringTransport()
+    transport.appendInput('''GET / HTTP/1.0\r\nHost: foo.com\r\n\r\n''')
+    server.startup(transport)
+
+    status, headers, body = parseReply(transport.getOutput())
+    
+    assert status.code == 200
+    assert body == 'Welcome to foo.com!\r\n'
+    assert headers['Content-Length'] == str(len(body))
+    assert headers['Content-Type'] == 'text/plain'
+    assert headers['Foo'] == 'fubar'
 
 def test_ErrorMessage():
     status, headers, body = do_request('''GET /abuse-me HTTP/1.0\r\n\r\n''')
