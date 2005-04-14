@@ -26,6 +26,9 @@ class IEAcceptHack:
                         # FIXME -- handle parameters
                         if headers[i][1] == 'application/xhtml+xml':
                             headers[i] = (headers[i][0], 'text/html')
+                        elif headers[i][1].startswith('application/xhtml+xml;'):
+                            _, params = headers[i][1].split(';', 1)
+                            headers[i] = (headers[i][0], 'text/html;' + params)
             return start_response(status, headers)
         # FIXME -- hack Accept header too
         return self.application(environ, _start_response)

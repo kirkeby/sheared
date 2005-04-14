@@ -17,3 +17,16 @@ def test_ie_hack():
            == 'HTTP/1.0 200 Ok\r\nContent-Type: text/html\r\n\r\n'
     assert get_application(hacked_app, [user_agents[1]]) \
            == 'HTTP/1.0 200 Ok\r\nContent-Type: text/html\r\n\r\n'
+
+def test_ie_hack_with_params():
+    def app(environ, start_response):
+        ct = 'application/xhtml+xml; charset=utf-8'
+        start_response('200 Ok', [('Content-Type', ct)])
+        return []
+    hacked_app = IEAcceptHack(app)
+    assert get_application(hacked_app, []) \
+           == 'HTTP/1.0 200 Ok\r\nContent-Type: application/xhtml+xml; charset=utf-8\r\n\r\n'
+    assert get_application(hacked_app, [user_agents[0]]) \
+           == 'HTTP/1.0 200 Ok\r\nContent-Type: text/html; charset=utf-8\r\n\r\n'
+    assert get_application(hacked_app, [user_agents[1]]) \
+           == 'HTTP/1.0 200 Ok\r\nContent-Type: text/html; charset=utf-8\r\n\r\n'
