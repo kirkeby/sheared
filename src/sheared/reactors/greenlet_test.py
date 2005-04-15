@@ -1,7 +1,18 @@
 import time
 import random
+import weakref
 
 from sheared.reactors.greenlet import Reactor
+
+def test_file():
+    def run(reactor):
+        f = reactor.open('/etc/passwd')
+        reactor.file_ref = weakref.ref(f)
+        reactor.qux = f.read(4)
+    reactor = Reactor()
+    reactor.start(run)
+    assert reactor.qux == 'root'
+    assert reactor.file_ref() is None
 
 def test_noop():
     def run(reactor):
@@ -80,3 +91,4 @@ def test_listen_tcp():
     reactor = Reactor()
     reactor.start(run)
     assert reactor.result == '127.0.0.1:%d - 127.0.0.1:%d' % reactor.ports
+

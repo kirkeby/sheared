@@ -57,9 +57,22 @@ def parse_address_uri(where):
 class ReactorExit(Exception):
     pass
 
+class ReactorFileCloser:
+    def __init__(self, file):
+        self.file = file
+    def __del__(self):
+        if self.file is None:
+            return
+        if isinstance(self.file, int):
+            os.close(self.file)
+        else:
+            self.file.close()
+            self.file = None
+
 class ReactorFile:
     def __init__(self, reactor, fd): 
         self.reactor = reactor
+        self.closer = ReactorFileCloser(fd)
         self.fd = fd
         self.buffered = ''
 
@@ -113,11 +126,15 @@ class ReactorFile:
 
     def close(self):
         os.close(self.fd)
-        del self.reactor
+        self.reactor = None
+        self.closer = None
 
 class ReactorSocket(ReactorFile):
     def __init__(self, reactor, sock):
-        ReactorFile.__init__(self, reactor, sock.fileno())
+        self.reactor = reactor
+        self.closer = ReactorFileCloser(sock)
+        self.fd = sock.fileno()
+        self.buffered = ''
         self.sock = sock
         self.here = self.sock.getsockname()
         self.peer = self.sock.getpeername()
@@ -127,8 +144,8 @@ class ReactorSocket(ReactorFile):
 
     def close(self):
         self.sock.close()
-        del self.reactor
-        del self.sock
+        self.closer = None
+        self.reactor = None
 
 class Reactor:
     def __init__(self):
@@ -170,6 +187,12 @@ class Reactor:
         heappush(self.sleepers, (0.0, g.parent))
         g.parent = g.parent.parent
         g.switch(*args, **kwargs)
+
+    def open(self, *args):
+        f = open(*args)
+        rf = ReactorFile(self, f.fileno())
+        rf.file = f
+        return rf
 
     def read(self, fd, max):
         self.__wait_on_io(fd, self.reading)
