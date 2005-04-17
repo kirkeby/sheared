@@ -169,33 +169,38 @@ class ZPTView:
     def __init__(self, application):
         self.application = application
         self.model = self.application.model
+        self.template_extensions = ['.xhtml', '.xml']
     def massage(self, context):
         raise NotImplementedError, 'ZPTView.massage'
     def render(self, context, request, reply):
         path_info = request.environ['PATH_INFO']
-        template = self.application.pages_path + path_info + '.xhtml'
-        if os.access(template, os.R_OK):
-            ct = 'Content-Type', 'application/xhtml+xml; charset=utf-8'
-            reply.headers.append(ct)
-
-            page_template = os.path.join(self.application.templates_path,
-                                         self.application.page_template_path)
-            if os.access(page_template, os.R_OK):
-                pt = open(page_template).read()
-                pt = "<page metal:define-macro='page' tal:omit-tag='true'>%s</page>" % pt
-                entwine.entwine(pt, context)
-            else:
-                pt = None
-
-            t = open(template).read()
-            if pt:
-                t = "<page metal:use-macro='page'>%s</page>" % t
-    
-            self.massage(context)
-            return [entwine.entwine(t, context)]
-
+        for ext in self.template_extensions:
+            template = self.application.pages_path + path_info + ext
+            if os.access(template, os.R_OK):
+                break
         else:
             return ['Action completed, but no view was found.']
+
+        ct, ce = mimes.guess_type(template)
+        assert not ce
+        ct = 'Content-Type', ct + '; charset=utf-8'
+        reply.headers.append(ct)
+
+        page_template = os.path.join(self.application.templates_path,
+                                     self.application.page_template_path)
+        if os.access(page_template, os.R_OK):
+            pt = open(page_template).read()
+            pt = "<page metal:define-macro='page' tal:omit-tag='true'>%s</page>" % pt
+            entwine.entwine(pt, context)
+        else:
+            pt = None
+
+        t = open(template).read()
+        if pt:
+            t = "<page metal:use-macro='page'>%s</page>" % t
+
+        self.massage(context)
+        return [entwine.entwine(t, context).encode('utf-8')]
 class DefaultView(ZPTView):
     def massage(self, context):
         pass
