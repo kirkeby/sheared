@@ -12,11 +12,11 @@ def test_ie_hack():
         return []
     hacked_app = IEAcceptHack(app)
     assert get_application(hacked_app, []) \
-           == 'HTTP/1.0 200 Ok\r\nContent-Type: application/xhtml+xml\r\n\r\n'
+           == 'HTTP/1.0 200 Ok\r\nContent-Type: application/xhtml+xml\r\nVary: User-Agent\r\n\r\n'
     assert get_application(hacked_app, [user_agents[0]]) \
-           == 'HTTP/1.0 200 Ok\r\nContent-Type: text/html\r\n\r\n'
+           == 'HTTP/1.0 200 Ok\r\nContent-Type: text/html\r\nVary: User-Agent\r\n\r\n'
     assert get_application(hacked_app, [user_agents[1]]) \
-           == 'HTTP/1.0 200 Ok\r\nContent-Type: text/html\r\n\r\n'
+           == 'HTTP/1.0 200 Ok\r\nContent-Type: text/html\r\nVary: User-Agent\r\n\r\n'
 
 def test_ie_hack_with_params():
     def app(environ, start_response):
@@ -25,8 +25,26 @@ def test_ie_hack_with_params():
         return []
     hacked_app = IEAcceptHack(app)
     assert get_application(hacked_app, []) \
-           == 'HTTP/1.0 200 Ok\r\nContent-Type: application/xhtml+xml; charset=utf-8\r\n\r\n'
+           == 'HTTP/1.0 200 Ok\r\nContent-Type: application/xhtml+xml; charset=utf-8\r\nVary: User-Agent\r\n\r\n'
     assert get_application(hacked_app, [user_agents[0]]) \
-           == 'HTTP/1.0 200 Ok\r\nContent-Type: text/html; charset=utf-8\r\n\r\n'
+           == 'HTTP/1.0 200 Ok\r\nContent-Type: text/html; charset=utf-8\r\nVary: User-Agent\r\n\r\n'
     assert get_application(hacked_app, [user_agents[1]]) \
-           == 'HTTP/1.0 200 Ok\r\nContent-Type: text/html; charset=utf-8\r\n\r\n'
+           == 'HTTP/1.0 200 Ok\r\nContent-Type: text/html; charset=utf-8\r\nVary: User-Agent\r\n\r\n'
+
+def test_ie_hack_with_vary_accept():
+    def app(environ, start_response):
+        start_response('200 Ok', [('Content-Type', 'application/xhtml+xml'),
+                                  ('Vary', 'Accept'),])
+        return []
+    hacked_app = IEAcceptHack(app)
+    assert get_application(hacked_app, []) \
+           == 'HTTP/1.0 200 Ok\r\nContent-Type: application/xhtml+xml\r\nVary: Accept User-Agent\r\n\r\n', `get_application(hacked_app, [])`
+
+def test_ie_hack_with_vary_ua():
+    def app(environ, start_response):
+        start_response('200 Ok', [('Content-Type', 'application/xhtml+xml'),
+                                  ('Vary', 'User-Agent'),])
+        return []
+    hacked_app = IEAcceptHack(app)
+    assert get_application(hacked_app, []) \
+           == 'HTTP/1.0 200 Ok\r\nContent-Type: application/xhtml+xml\r\nVary: User-Agent\r\n\r\n'

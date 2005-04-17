@@ -23,12 +23,21 @@ class IEAcceptHack:
                 headers = list(headers)
                 for i in range(len(headers)):
                     if headers[i][0].lower() == 'content-type':
-                        # FIXME -- handle parameters
                         if headers[i][1] == 'application/xhtml+xml':
                             headers[i] = (headers[i][0], 'text/html')
                         elif headers[i][1].startswith('application/xhtml+xml;'):
                             _, params = headers[i][1].split(';', 1)
                             headers[i] = (headers[i][0], 'text/html;' + params)
+
+            vary_found = 0
+            for i in range(len(headers)):
+                if headers[i][0].lower() == 'vary':
+                    if not 'user-agent' in headers[i][1].lower().split():
+                        headers[i] = headers[i][0], headers[i][1] + ' User-Agent'
+                    vary_found = 1
+            if not vary_found:
+                headers.append(('Vary', 'User-Agent'))
+
             return start_response(status, headers)
-        # FIXME -- hack Accept header too
+
         return self.application(environ, _start_response)
