@@ -92,7 +92,7 @@ class BaseWSGIServer:
                 self.__handle_request(transport, response)
 
             except BadRequestError, why:
-                log.error('Bad Request: ' + why.rstrip('\r\n'))
+                log.error('Bad Request: ' + why.args[0].rstrip('\r\n'))
                 response.send_error_page('500 Bad Request', why)
 
             except:

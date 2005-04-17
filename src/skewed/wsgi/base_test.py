@@ -28,8 +28,8 @@ class WSGIServer(BaseWSGIServer):
     def find_application(self, host, path_info):
         return self.__application, '', path_info
 
-def get_application(app, headers=[]):
-    req = 'GET / HTTP/1.0\r\n'
+def get_application(app, uri='/', headers=[]):
+    req = 'GET %s HTTP/1.0\r\n' % uri
     for header in headers:
         req = req + header + '\r\n'
     req = req + '\r\n'
@@ -62,7 +62,7 @@ def test_http_env():
         start_response('200 Ok', [])
         return ['HTTP_QUX: ' + env.get('HTTP_QUX', '')]
 
-    assert get_application(app, ['Qux: FuBar']) == 'HTTP/1.0 200 Ok\r\n\r\n' \
+    assert get_application(app, headers=['Qux: FuBar']) == 'HTTP/1.0 200 Ok\r\n\r\n' \
                                          'HTTP_QUX: FuBar'
 
 def test_http_headers():
@@ -70,6 +70,18 @@ def test_http_headers():
         start_response('200 Ok', [('Qux', 'quuuuux')])
         return ['']
 
-    assert get_application(app, []) == 'HTTP/1.0 200 Ok\r\n' \
+    assert get_application(app) == 'HTTP/1.0 200 Ok\r\n' \
                              'Qux: quuuuux\r\n' \
                              '\r\n'
+
+def test_bad_request():
+    def app(env, start_response):
+        start_response('200 Ok', [])
+        return ['']
+
+    log.setLevel(100)
+    assert get_application(app, uri='') == \
+           'HTTP/1.0 500 Bad Request\r\n' \
+           'Content-Type: text/plain\r\n\r\n' \
+           'Bad Request: GET  HTTP/1.0\r\n'
+    log.setLevel(0)
