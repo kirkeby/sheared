@@ -42,7 +42,6 @@ class Pages:
                 '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"\r\n'
                 '          "http://www.w3.org/TR/html4/strict.dtd">\r\n',
         }
-        self.add_doctype = 1
 
         self.load_templates()
 
@@ -209,9 +208,8 @@ class ZPTView:
         self.massage(context)
         body = entwine.entwine(open(template).read(), context).encode('utf-8')
         result = [body]
-        if self.application.add_doctype:
-            if self.application.doctypes.has_key(ct):
-                result.insert(0, self.application.doctypes[ct])
+        if self.application.doctypes.has_key(ct):
+            result.insert(0, self.application.doctypes[ct])
         return result
 class DefaultView(ZPTView):
     def massage(self, context):
