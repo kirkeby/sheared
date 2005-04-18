@@ -17,13 +17,13 @@ pages.load_templates()
 def test_index():
     result = get_application(pages)
     assert type(result) is str
-    assert result == 'HTTP/1.0 200 Ok\r\n' 'Content-Type: text/xml; charset=utf-8\r\n\r\n' "<?xml version='1.0' encoding='utf-8'?>\r\n" '<page>/index</page>'
+    assert result == 'HTTP/1.0 200 Ok\r\n' 'Content-Type: text/xml; charset=utf-8\r\n\r\n' "<?xml version='1.0' encoding='utf-8'?>\r\n" '<page></page>'
 
-    #result = get_application(pages, uri='/index')
-    #assert result.split('\r\n')[-1] == '<pages>/qux</pages>'
+    result = get_application(pages, uri='/index')
+    assert result.split('\r\n')[-1] == '<page></page>'
 
-    #result = get_application(pages, uri='/index/qux')
-    #assert result.split('\r\n')[-1] == '<pages>/qux</pages>'
+    result = get_application(pages, uri='/index/qux')
+    assert result.split('\r\n')[-1] == '<page>/qux</page>'
 
 def test_qux():
     result = get_application(pages, uri='/qux')

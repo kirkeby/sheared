@@ -123,18 +123,33 @@ class Pages:
     def as_pypage(self, environ, start_response):
         path_info = environ['PATH_INFO']
 
-        pywidget = self.pages_path + path_info + '.py'
-        if not os.access(pywidget, os.R_OK):
+        script_name = self.pages_path
+        for i, piece in enumerate(path_info.split('/')):
+            if not piece:
+                continue
+            script_name = os.path.join(script_name, piece)
+            if os.path.isfile(script_name + '.py'):
+                script_name = script_name + '.py'
+                path_info = path_info.split('/', i+1)
+                if len(path_info) == i+1:
+                    path_info = ''
+                else:
+                    path_info = '/' + path_info[-1]
+                break
+        else:
             start_response('404 Not Found',
                            [('Content-Type', 'text/plain')])
             return ['Path not found.']
+
+        environ['PATH_INFO'] = path_info
+        environ['SCRIPT_NAME'] = script_name # FIXME -- correct?
 
         request = Request(environ)
         reply = Reply('200 Ok', [])
 
         # load, compile and execute Python-code
-        src = open(pywidget).read()
-        code = compile(src, pywidget, 'exec')
+        src = open(script_name).read()
+        code = compile(src, script_name, 'exec')
         namespace = {
             'ZPTView': ZPTView,
             'BaseController': BaseController,
@@ -196,9 +211,9 @@ class ZPTView:
     def massage(self, context):
         raise NotImplementedError, 'ZPTView.massage'
     def render(self, context, request, reply):
-        path_info = request.environ['PATH_INFO']
+        script_name = request.environ['SCRIPT_NAME']
         for ext in self.template_extensions:
-            template = self.application.pages_path + path_info + ext
+            template = script_name.replace('.py', ext)
             if os.access(template, os.R_OK):
                 break
         else:
