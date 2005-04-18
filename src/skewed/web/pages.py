@@ -6,6 +6,7 @@ import os.path
 import mimetypes
 import logging
 import entwine
+import warnings
 
 from sheared.web.querystring import HTTPQueryString
 from sheared.web import cookie
@@ -48,9 +49,12 @@ class Pages:
     def load_templates(self):
         self.templates = {}
         for path in glob.glob(os.path.join(self.templates_path, '*.xhtml')):
-            template = open(path).read()
-            compiled = entwine.metal.compile(template, entwine.tales)
-            entwine.metal.execute(compiled, self.templates)
+            try:
+                template = open(path).read()
+                compiled = entwine.metal.compile(template, entwine.tales)
+                entwine.metal.execute(compiled, self.templates)
+            except:
+                warnings.warn('Could not load %s' % path)
     
     def __call__(self, environ, start_response):
         path_info = environ['PATH_INFO']

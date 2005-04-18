@@ -4,6 +4,8 @@ from skewed.wsgi.base_test import get_application
 from skewed.web.pages import Pages
 
 import os
+import warnings
+warnings.filterwarnings('ignore', 'Could not load .*')
 
 app_root = os.path.join(os.path.dirname(__file__), 'test-application')
 
