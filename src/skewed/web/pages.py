@@ -29,8 +29,29 @@ class Pages:
         self.pages_path = 'pages'
         self.templates_path = 'templates'
         self.static_path = 'static'
-        self.page_template_path = 'page.xhtml'
         self.index = 'index'
+
+        self.doctypes = {
+            'text/xml': "<?xml version='1.0' charset='utf-8'?>\r\n",
+            'application/xml': "<?xml version='1.0' charset='utf-8'?>\r\n",
+            'application/xhtml+xml':
+                "<?xml version='1.0' charset='utf-8'?>\r\n"
+                '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"\r\n'
+                '          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\r\n',
+            'text/html':
+                '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"\r\n'
+                '          "http://www.w3.org/TR/html4/strict.dtd">\r\n',
+        }
+        self.add_doctype = 1
+
+        self.load_templates()
+
+    def load_templates(self):
+        self.templates = {}
+        for path in glob.glob(os.path.join(self.templates_path, '*.xhtml')):
+            template = open(path).read()
+            compiled = entwine.metal.compile(template, entwine.tales)
+            entwine.metal.execute(compiled, self.templates)
     
     def __call__(self, environ, start_response):
         path_info = environ['PATH_INFO']
@@ -161,15 +182,14 @@ class BaseController:
     def __init__(self, app):
         self.application = app
     def process(self, request, reply):
-        raise NotImplementedError
+        return { 'here': { 'templates': self.application.templates } }
 class DefaultController(BaseController):
-    def process(self, request, reply):
-        return {}
+    pass
 class ZPTView:
     def __init__(self, application):
         self.application = application
         self.model = self.application.model
-        self.template_extensions = ['.xhtml', '.xml']
+        self.template_extensions = ['.xhtml', '.xml', '.html']
     def massage(self, context):
         raise NotImplementedError, 'ZPTView.massage'
     def render(self, context, request, reply):
@@ -183,24 +203,16 @@ class ZPTView:
 
         ct, ce = mimes.guess_type(template)
         assert not ce
-        ct = 'Content-Type', ct + '; charset=utf-8'
-        reply.headers.append(ct)
-
-        page_template = os.path.join(self.application.templates_path,
-                                     self.application.page_template_path)
-        if os.access(page_template, os.R_OK):
-            pt = open(page_template).read()
-            pt = "<page metal:define-macro='page' tal:omit-tag='true'>%s</page>" % pt
-            entwine.entwine(pt, context)
-        else:
-            pt = None
-
-        t = open(template).read()
-        if pt:
-            t = "<page metal:use-macro='page'>%s</page>" % t
+        header = 'Content-Type', ct + '; charset=utf-8'
+        reply.headers.append(header)
 
         self.massage(context)
-        return [entwine.entwine(t, context).encode('utf-8')]
+        body = entwine.entwine(open(template).read(), context).encode('utf-8')
+        result = [body]
+        if self.application.add_doctype:
+            if self.application.doctypes.has_key(ct):
+                result.insert(0, self.application.doctypes[ct])
+        return result
 class DefaultView(ZPTView):
     def massage(self, context):
         pass
