@@ -74,51 +74,69 @@ class Pages:
 
     def as_static(self, environ, start_response):
         path_info = environ['PATH_INFO']
+        script_name = self.static_path
 
-        static = self.static_path + path_info
-        path, headers = None, None
+        for i, piece in enumerate(path_info.split('/')):
+            if not piece:
+                continue
+            script_name = os.path.join(script_name, piece)
 
-        # First, see if the exact path requested exists
-        if os.access(static, os.R_OK):
-            path, headers = static, {}
-
-        # If not, do the multiview-dance
-        else:
-            widgets = {}
-            for possible in glob.glob(static + '*'):
-                ct, ce = mimes.guess_type(possible)
-                if not ct:
+            # First, see if the exact path requested exists
+            if os.path.exists(script_name):
+                if os.path.isdir(script_name):
                     continue
-                widgets[possible] = { 'Vary': 'Accept', 'Content-Type': ct }
+                elif os.path.isfile(script_name):
+                    headers = {}
+                    break
+                else:
+                    # FIXME -- this is a forbidden, not a not found
+                    return
 
-            path = accept.choose_widget(environ, widgets.items())
-            if path:
-                headers = widgets[path]
+            # If not, do the multiview-dance
+            else:
+                widgets = {}
+                for possible in glob.glob(script_name + '.*'):
+                    ct, ce = mimes.guess_type(possible)
+                    if not ct:
+                        continue
+                    widgets[possible] = { 'Vary': 'Accept',
+                                          'Content-Type': ct }
+                if not widgets:
+                    return
 
-        # Serve the chosen file (if any)
-        if path is None:
-            return None
+                script_name = accept.choose_widget(environ, widgets.items())
+                if script_name:
+                    headers = widgets[script_name]
+                else:
+                    script_name, headers = possible, widgets[possible]
+                break
+            
+        path_info = path_info.split('/', i+1)
+        if len(path_info) == i+1:
+            path_info = ''
+        else:
+            path_info = '/' + path_info[-1]
 
-        elif os.path.isdir(path):
+        environ['SCRIPT_NAME'] = script_name
+        environ['PATH_INFO'] = path_info
+
+        # Serve the file or directory we found
+        if os.path.isdir(script_name):
             loc = relative('', environ)
             start_response('301 Moved Permanently',
                            [('Content-Type', 'text/plain'),
                             ('Location', loc),])
             return ['Moved here: %s.' % loc]
         
-        elif os.path.isfile(path):
-            ct, ce = mimes.guess_type(path)
+        elif os.path.isfile(script_name):
+            ct, ce = mimes.guess_type(script_name)
             if ct and not headers.has_key('Content-Type'):
                 headers['Content-Type'] = ct
             if ce and not headers.has_key('Content-Encoding'):
                 headers['Content-Encoding'] = ce
             
             start_response('200 Ok', headers.items())
-            return [open(path).read()]
-
-        else:
-            start_response('410 Forbidden', [('Content-Type', 'text/plain')])
-            return ['Not allowed.']
+            return [open(script_name).read()]
 
     def as_pypage(self, environ, start_response):
         path_info = environ['PATH_INFO']
