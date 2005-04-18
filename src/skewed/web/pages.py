@@ -33,10 +33,10 @@ class Pages:
         self.index = 'index'
 
         self.doctypes = {
-            'text/xml': "<?xml version='1.0' charset='utf-8'?>\r\n",
-            'application/xml': "<?xml version='1.0' charset='utf-8'?>\r\n",
+            'text/xml': "<?xml version='1.0' encoding='utf-8'?>\r\n",
+            'application/xml': "<?xml version='1.0' encoding='utf-8'?>\r\n",
             'application/xhtml+xml':
-                "<?xml version='1.0' charset='utf-8'?>\r\n"
+                "<?xml version='1.0' encoding='utf-8'?>\r\n"
                 '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"\r\n'
                 '          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\r\n',
             'text/html':
