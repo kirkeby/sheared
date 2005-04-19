@@ -18,6 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+import sys
 import sheared
 from cStringIO import StringIO
 
@@ -160,7 +161,7 @@ class BaseWSGIServer:
             'wsgi.version': (1, 0),
             'wsgi.url_scheme': 'http',
             'wsgi.input': StringIO(content),
-            'wsgi.errors': StringIO(''), # FIXME
+            'wsgi.errors': sys.stderr,
             'wsgi.multithread': 1,
             'wsgi.multiprocess': 0,
             'wsgi.run_once': 0,

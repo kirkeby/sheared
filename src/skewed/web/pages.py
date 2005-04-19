@@ -32,18 +32,6 @@ class Pages:
         self.static_path = 'static'
         self.index = 'index'
 
-        self.doctypes = {
-            'text/xml': "<?xml version='1.0' encoding='utf-8'?>\r\n",
-            'application/xml': "<?xml version='1.0' encoding='utf-8'?>\r\n",
-            'application/xhtml+xml':
-                "<?xml version='1.0' encoding='utf-8'?>\r\n"
-                '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"\r\n'
-                '          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">\r\n',
-            'text/html':
-                '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"\r\n'
-                '          "http://www.w3.org/TR/html4/strict.dtd">\r\n',
-        }
-
         self.load_templates()
 
     def load_templates(self):
@@ -245,8 +233,6 @@ class ZPTView:
         self.massage(context)
         body = entwine.entwine(open(template).read(), context).encode('utf-8')
         result = [body]
-        if self.application.doctypes.has_key(ct):
-            result.insert(0, self.application.doctypes[ct])
         return result
 class DefaultView(ZPTView):
     def massage(self, context):
