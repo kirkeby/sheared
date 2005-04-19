@@ -62,18 +62,20 @@ class Pages:
 
     def as_static(self, environ, start_response):
         path_info = environ['PATH_INFO']
-        script_name = self.static_path
+        path_translated = self.static_path
+        script_name = ''
 
         for i, piece in enumerate(path_info.split('/')):
             if not piece:
                 continue
-            script_name = os.path.join(script_name, piece)
+            path_translated = os.path.join(path_translated, piece)
+            script_name = script_name + '/' + piece
 
             # First, see if the exact path requested exists
-            if os.path.exists(script_name):
-                if os.path.isdir(script_name):
+            if os.path.exists(path_translated):
+                if os.path.isdir(path_translated):
                     continue
-                elif os.path.isfile(script_name):
+                elif os.path.isfile(path_translated):
                     headers = {}
                     break
                 else:
@@ -83,7 +85,7 @@ class Pages:
             # If not, do the multiview-dance
             else:
                 widgets = {}
-                for possible in glob.glob(script_name + '.*'):
+                for possible in glob.glob(path_translated + '.*'):
                     ct, ce = mimes.guess_type(possible)
                     if not ct:
                         continue
@@ -92,11 +94,11 @@ class Pages:
                 if not widgets:
                     return
 
-                script_name = accept.choose_widget(environ, widgets.items())
-                if script_name:
-                    headers = widgets[script_name]
+                path_translated = accept.choose_widget(environ, widgets.items())
+                if path_translated:
+                    headers = widgets[path_translated]
                 else:
-                    script_name, headers = possible, widgets[possible]
+                    path_translated, headers = possible, widgets[possible]
                 break
             
         path_info = path_info.split('/', i+1)
@@ -106,36 +108,37 @@ class Pages:
             path_info = '/' + path_info[-1]
 
         environ['SCRIPT_NAME'] = script_name
+        environ['PATH_TRANSLATED'] = path_translated
         environ['PATH_INFO'] = path_info
 
         # Serve the file or directory we found
-        if os.path.isdir(script_name):
+        if os.path.isdir(path_translated):
             loc = relative('', environ)
             start_response('301 Moved Permanently',
                            [('Content-Type', 'text/plain'),
                             ('Location', loc),])
             return ['Moved here: %s.' % loc]
         
-        elif os.path.isfile(script_name):
-            ct, ce = mimes.guess_type(script_name)
+        elif os.path.isfile(path_translated):
+            ct, ce = mimes.guess_type(path_translated)
             if ct and not headers.has_key('Content-Type'):
                 headers['Content-Type'] = ct
             if ce and not headers.has_key('Content-Encoding'):
                 headers['Content-Encoding'] = ce
-            
             start_response('200 Ok', headers.items())
-            return [open(script_name).read()]
+            return [open(path_translated).read()]
 
     def as_pypage(self, environ, start_response):
         path_info = environ['PATH_INFO']
-
-        script_name = self.pages_path
+        path_translated = self.pages_path
+        script_name = ''
         for i, piece in enumerate(path_info.split('/')):
             if not piece:
                 continue
-            script_name = os.path.join(script_name, piece)
-            if os.path.isfile(script_name + '.py'):
-                script_name = script_name + '.py'
+            path_translated = os.path.join(path_translated, piece)
+            script_name = script_name + '/' + piece
+            if os.path.isfile(path_translated + '.py'):
+                path_translated = path_translated + '.py'
                 path_info = path_info.split('/', i+1)
                 if len(path_info) == i+1:
                     path_info = ''
@@ -148,14 +151,15 @@ class Pages:
             return ['Path not found.']
 
         environ['PATH_INFO'] = path_info
-        environ['SCRIPT_NAME'] = script_name # FIXME -- correct?
+        environ['PATH_TRANSLATED'] = path_translated
+        environ['SCRIPT_NAME'] = script_name
 
         request = Request(environ)
         reply = Reply('200 Ok', [])
 
         # load, compile and execute Python-code
-        src = open(script_name).read()
-        code = compile(src, script_name, 'exec')
+        src = open(path_translated).read()
+        code = compile(src, path_translated, 'exec')
         namespace = {
             'ZPTView': ZPTView,
             'BaseController': BaseController,
@@ -217,9 +221,9 @@ class ZPTView:
     def massage(self, context):
         raise NotImplementedError, 'ZPTView.massage'
     def render(self, context, request, reply):
-        script_name = request.environ['SCRIPT_NAME']
+        path = request.environ['PATH_TRANSLATED']
         for ext in self.template_extensions:
-            template = script_name.replace('.py', ext)
+            template = path.replace('.py', ext)
             if os.access(template, os.R_OK):
                 break
         else:

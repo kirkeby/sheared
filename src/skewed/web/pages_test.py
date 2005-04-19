@@ -39,3 +39,8 @@ def test_static():
     result = get_application(pages, uri='/blech/qux')
     assert type(result) is str
     assert result == "HTTP/1.0 200 Ok\r\nContent-Type: text/xml\r\nVary: Accept\r\n\r\n<page>Qux</page>\n"
+
+def test_dir():
+    result = get_application(pages, uri='/empty')
+    assert type(result) is str
+    assert result == "HTTP/1.0 301 Moved Permanently\r\nContent-Type: text/plain\r\nLocation: http://localhost/empty/\r\n\r\nMoved here: http://localhost/empty/."
