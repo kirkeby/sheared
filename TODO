@@ -1,2 +1,9 @@
-Documentation is badly needed; both as doc-strings, as HOWTOs, and as more
-traditional book-like ramblings.
+ * Implement .block_on(object) and .notify_on(object) greenlet signalling
+   primitives in the reactor-core, and implement full grennlet comunication
+   channels on top of that.
+
+ * Split reactor into EventLoop (i.e. low-level I/O and timeout primitives,
+   for implementing reactors) and Reactor (i.e. the greenlet primitives).
+
+ * Documentation is badly needed; both as doc-strings, as HOWTOs, and as more
+   traditional book-like ramblings.

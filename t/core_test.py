@@ -3,6 +3,7 @@ import random
 import weakref
 
 from sheared import Reactor
+from sheared import TimeoutError
 
 def test_file():
     def run(reactor):
@@ -46,15 +47,6 @@ def test_stop():
 
     assert round(stop - start, 1) == 0.0
 
-def test_read():
-    def run(reactor):
-        f = open('/etc/passwd')
-        reactor.result = reactor.read(f.fileno(), 4)
-
-    reactor = Reactor()
-    reactor.start(run)
-    assert reactor.result == 'root'
-
 def test_connect_tcp():
     def run(reactor):
         t = reactor.connect('tcp:localhost:echo')
@@ -72,13 +64,14 @@ def test_connect_tcp():
                               '127.0.0.1:%d - 127.0.0.1:7\r\n' % reactor.port,
                               'foo']
 
+port = int(random.random() * 8192 + 22000)
+addr = 'tcp:localhost:%d' % port
+
 def test_listen_tcp():
     def application(transport):
         transport.write('%s:%d - %s:%d' % (transport.here + transport.peer))
         transport.close()
     def run(reactor):
-        port = int(random.random() * 8192 + 22000)
-        addr = 'tcp:localhost:%d' % port
         reactor.listen(application, addr)
     
         t = reactor.connect(addr)
@@ -91,3 +84,26 @@ def test_listen_tcp():
     reactor = Reactor()
     reactor.start(run)
     assert reactor.result == '127.0.0.1:%d - 127.0.0.1:%d' % reactor.ports
+
+def test_listen_tcp_tieout():
+    def run(reactor):
+        def application(transport):
+            reactor.sleep(60.0)
+            transport.close()
+
+        reactor.listen(application, addr)
+    
+        t = reactor.connect(addr)
+        try:
+            _ = t.read(8192, 0.1)
+        except TimeoutError:
+            reactor.result = 'Ok'
+        else:
+            reactor.result = 'Fail'
+        t.close()
+
+        reactor.stop()
+
+    reactor = Reactor()
+    reactor.start(run)
+    assert reactor.result == 'Ok'

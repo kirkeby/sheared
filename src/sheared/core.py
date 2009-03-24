@@ -18,146 +18,42 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from py.magic import greenlet
-
 import os
 import sys
-import time
-import select
-import socket
-import fcntl
-import errno
+from itertools import chain
+from time import time
+from py.magic import greenlet
+from select import select
+from select import error as SelectError
+from socket import socket, SOL_SOCKET, SO_ERROR, SO_REUSEADDR
+from socket import error as SocketError
+from fcntl import fcntl, F_SETFL
+from errno import EINPROGRESS
 from heapq import heappush, heappop
 
-# dummy object for detecting dead greenlets
-dummy = object()
+from sheared.prelude import parse_address_uri, ReactorFile, ReactorSocket
+from sheared.error import TimeoutError, ReactorExit
 
-def parse_address_uri(where):
-    domain, address = where.split(':', 1)
+import logging
+log = logging.getLogger(__name__)
 
-    if domain == 'tcp':
-        domain = socket.AF_INET, socket.SOCK_STREAM
-        ip, port = address.split(':')
-        if ip == '*':
-            ip = ''
-        try:
-            port = int(port)
-        except ValueError:
-            port = socket.getservbyname(port, 'tcp')
-        address = ip, port
-
-    elif domain == 'unix':
-        domain = socket.AF_UNIX, socket.SOCK_STREAM
-
-    else:
-        raise 'Unknown domain: %s' % domain
-
-    return domain, address
-
-class ReactorExit(Exception):
-    pass
-
-class ReactorFileCloser:
-    def __init__(self, file):
-        self.file = file
-    def __del__(self):
-        if self.file is None:
-            return
-        if isinstance(self.file, int):
-            os.close(self.file)
-        else:
-            self.file.close()
-            self.file = None
-
-class ReactorFile:
-    def __init__(self, reactor, fd): 
-        self.reactor = reactor
-        self.closer = ReactorFileCloser(fd)
-        self.fd = fd
-        self.buffered = ''
-
-    def read(self, max=None):
-        if max is None:
-            data, self.buffered = self.buffered, ''
-            while 1:
-                d = self.reactor.read(self.fd, 8192)
-                if d == '':
-                    break
-                data = data + d
-            return data
-        elif self.buffered:
-            data, self.buffered = self.buffered[:max], self.buffered[max:]
-        else:
-            data = self.reactor.read(self.fd, max)
-        return data
-
-    def readline(self):
-        i = self.buffered.find('\n')
-        while i < 0:
-            d = self.reactor.read(self.fd, 8192)
-            if d == '':
-                i = len(self.buffered)
-                break
-            j = d.find('\n')
-            if not j < 0:
-                i = j + len(self.buffered)
-            self.buffered = self.buffered + d
-
-        data, self.buffered = self.buffered[:i+1], self.buffered[i+1:]
-        return data
-
-    def readlines(self):
-        return [line for line in self]
-
-    # iteration protocol
-    def __iter__(self):
-        return self
-    def next(self):
-        line = self.readline()
-        if line == '':
-            raise StopIteration
-        else:
-            return line
-
-    def write(self, data):
-        while data:
-            i = self.reactor.write(self.fd, data)
-            data = data[i:]
-
-    def close(self):
-        os.close(self.fd)
-        self.reactor = None
-        self.closer = None
-
-class ReactorSocket(ReactorFile):
-    def __init__(self, reactor, sock):
-        self.reactor = reactor
-        self.closer = ReactorFileCloser(sock)
-        self.fd = sock.fileno()
-        self.buffered = ''
-        self.sock = sock
-        self.here = self.sock.getsockname()
-        self.peer = self.sock.getpeername()
-
-    def shutdown(self, how):
-        self.sock.shutdown(how)
-
-    def close(self):
-        self.sock.close()
-        self.closer = None
-        self.reactor = None
+# Obects used to identify why we switch back from the core-greenley
+# to a user-greenlet.
+EV_TIMEOUT = TimeoutError
+EV_IO_READY = object()
 
 class Reactor:
     def __init__(self):
-        # state of reactor, is 'stopped', 'running' or 'stopping'
+        # State of reactor, is 'stopped', 'running' or 'stopping'
         self.state = 'stopped'
-        # mapping selected file descriptors to greenlets
+        # Mapping selected file descriptors to greenlets
         self.fd_greenlet = {}
-        # file descriptors sets to select on
+        # File descriptors sets to select on
         self.reading, self.writing = [], []
         # heapq of sleeping processes
         self.sleepers = []
         
+    # -*- Reactor control functions -*-
     def start(self, f):
         if not self.state == 'stopped':
             raise AssertionError, 'reactor not stopped'
@@ -175,60 +71,55 @@ class Reactor:
     def stop(self):
         self.state = 'stopping'
 
+    # -*- Greenlet control functions -*-
     def sleep(self, seconds):
         g = greenlet.getcurrent()
-        heappush(self.sleepers, (time.time() + seconds, g))
-        result = g.parent.switch()
-        if not result is dummy:
-            raise result
+        heappush(self.sleepers, (time() + seconds, g))
+        r = g.parent.switch()
 
     def spawn(self, function, args=(), kwargs={}):
         g = greenlet(function)
         heappush(self.sleepers, (0.0, g.parent))
         g.parent = g.parent.parent
-        g.switch(*args, **kwargs)
+        r = g.switch(*args, **kwargs)
+        if not r is EV_TIMEOUT:
+            raise AssertionError('sleeping greenlet awoken with %r' % r)
 
+    # -*- I/O Convenience methods -*-
     def open(self, *args):
         f = open(*args)
         rf = ReactorFile(self, f.fileno())
         rf.file = f
         return rf
 
-    def read(self, fd, max):
-        self.__wait_on_io(fd, self.reading)
-        return os.read(fd, max)
-    def write(self, fd, data):
-        self.__wait_on_io(fd, self.writing)
-        return os.write(fd, data)
-
     def listen(self, factory, addr, backlog=5):
         domain, addr = parse_address_uri(addr)
-        sock = socket.socket(*domain)
-        fcntl.fcntl(sock.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
+        sock = socket(*domain)
+        fcntl(sock.fileno(), F_SETFL, os.O_NONBLOCK)
         # we do not want 'address already in use' because of TCP-
         # connections in TIME_WAIT state
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 
         sock.bind(addr)
         sock.listen(backlog)
 
         self.spawn(self.__accept, (factory, sock))
 
-    def connect(self, addr):
+    def connect(self, addr, timeout=None):
         domain, addr = parse_address_uri(addr)
-        sock = socket.socket(*domain)
-        fcntl.fcntl(sock.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
+        sock = socket(*domain)
+        fcntl(sock.fileno(), F_SETFL, os.O_NONBLOCK)
 
         try:
             sock.connect(addr)
-        except socket.error, (eno, _):
-            if not eno == errno.EINPROGRESS:
+        except SocketError, (eno, _):
+            if not eno == EINPROGRESS:
                 raise
-        self.__wait_on_io(sock.fileno(), self.writing)
+        self.__wait_on_io(sock.fileno(), self.writing, timeout)
         
-        err = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+        err = sock.getsockopt(SOL_SOCKET, SO_ERROR)
         if err:
-            raise socket.error, (err, os.strerror(err))
+            raise SocketError, (err, os.strerror(err))
 
         return ReactorSocket(self, sock)
 
@@ -236,11 +127,11 @@ class Reactor:
         try:
             while 1:
                 try:
-                    self.__wait_on_io(sock.fileno(), self.reading)
+                    self.__wait_on_io(sock.fileno(), self.reading, None)
                 except ReactorExit:
                     break
                 s, a = sock.accept()
-                fcntl.fcntl(s.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
+                fcntl(s.fileno(), F_SETFL, os.O_NONBLOCK)
                 t = ReactorSocket(self, s)
                 self.spawn(factory, (t,))
             
@@ -250,24 +141,14 @@ class Reactor:
             except:
                 pass
 
-    def __wait_on_io(self, fd, list):
-        g = greenlet.getcurrent()
-        self.fd_greenlet[fd] = g
-        list.append(fd)
-        result = g.parent.switch()
-        list.remove(fd)
-        del self.fd_greenlet[fd]
-
-        if not result is dummy:
-            raise result
-
+    # -*- Internal reactor bookkeeping methods -*-
     def __bootstrap(self, f):
         g = greenlet(f)
         g.switch(self)
 
     def __mainloop(self):
         while 1:
-            now = time.time()
+            now = time()
             timeout = self.__wake_sleepers(now)
             if not timeout and not self.reading and not self.writing:
                 break
@@ -276,18 +157,42 @@ class Reactor:
             self.__select(timeout)
 
     def __cleanup(self):
-        # FIXME -- this code-path is untested
+        err = ReactorExit('Reactor is shutting down')
         for fd in self.reading + self.writing:
-            g = self.fd_greenlet[fd]
-            g.switch(ReactorExit('reactor is shutting down'))
+            self.__notify_on_fd(fd, err)
 
-        self.fd_greenlet = {}
-        self.reading, self.writing = [], []
+        assert not (self.fd_greenlet or self.reading or self.writing)
 
+    # -*- Internal I/O methods called in user greenlets -*-
+    def _read(self, fd, max, timeout):
+        self.__wait_on_io(fd, self.reading, timeout)
+        return os.read(fd, max)
+    def _write(self, fd, data, timeout):
+        self.__wait_on_io(fd, self.writing, timeout)
+        return os.write(fd, data)
+
+    def __wait_on_io(self, fd, l, t):
+        g = greenlet.getcurrent()
+        self.fd_greenlet[fd] = g, l
+        l.append(fd)
+        if t is not None:
+            heappush(self.sleepers, (t, g))
+        r = g.parent.switch()
+
+        if r is EV_IO_READY:
+            return
+        elif r is EV_TIMEOUT:
+            self.__notify_on_fd(fd, TimeoutError())
+        else:
+            raise AssertionError('I/O-waiting greenlet awoken with %r' % r)
+
+    # -*- Internal I/O methods called in reactor greenlet -*-
     def __wake_sleepers(self, now):
         while self.sleepers and self.sleepers[0][0] <= now:
-            _, g = heappop(self.sleepers)
-            g.switch(dummy)
+            t, g = heappop(self.sleepers)
+            if now - t > 3.0:
+                log.info('... greenlet overslept.')
+            g.switch(EV_TIMEOUT)
         if self.sleepers:
             return self.sleepers[0][0] - now
         else:
@@ -295,29 +200,33 @@ class Reactor:
 
     def __select(self, timeout):
         try:
-            r, w, e = select.select(self.reading, self.writing, [], timeout)
-        except select.error:
+            r, w, e = select(self.reading, self.writing, [], timeout)
+            for fd in chain(r, w, e):
+                self.__notify_on_fd(fd)
+        except SelectError:
+            log.warn('Error waiting for I/O', exc_info=True)
             self.__flush_unselectables()
-            return
-            
-        for fd in r + w + e:
-            g = self.fd_greenlet[fd]
-            # if the greenlet is dead this switches back to g.parent
-            # (i.e. here), we use dummy to detect this
-            if g.switch(dummy) is dummy:
-                # FIXME -- this code-path is untested
-                raise AssertionError, 'greenlet is dead: %s' % g
+
+    def __notify_on_fd(self, fd, ev=EV_IO_READY):
+        g, l = self.fd_greenlet.pop(fd)
+        l.remove(fd)
+
+        if g.dead:
+            log.error('Greenlet waiting for IO in %d is dead')
+        elif isinstance(ev, Exception):
+            g.throw(ev)
+        elif ev is not None:
+            g.switch(ev)
 
     def __flush_unselectables(self):
+        # Assume there is only one, if there are more, we'll just get called
+        # more than once.
         try:
-            list = self.reading
             for fd in self.reading:
-                select.select([fd], [], [], 0.0)
-            list = self.writing
+                select([fd], [], [], 0.0)
             for fd in self.writing:
-                select.select([], [fd], [], 0.0)
-        except select.error:
-            g = self.fd_greenlet[fd]
-            g.switch(sys.exc_info()[1])
+                select([], [fd], [], 0.0)
+        except SelectError, err:
+            self.__notify_on_fd(fd, err)
         
 __all__ = ['Reactor']
