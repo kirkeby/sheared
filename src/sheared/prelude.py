@@ -1,3 +1,4 @@
+import os
 from socket import getservbyname, AF_UNIX, AF_INET, SOCK_STREAM
 
 def parse_address_uri(where):

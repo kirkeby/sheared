@@ -5,33 +5,33 @@ import weakref
 from sheared import Reactor
 from sheared import TimeoutError
 
-def test_file():
-    def run(reactor):
-        f = reactor.open('/etc/passwd')
-        reactor.file_ref = weakref.ref(f)
-        reactor.qux = f.read(4)
-    reactor = Reactor()
-    reactor.start(run)
-    assert reactor.qux == 'root'
-    assert reactor.file_ref() is None
+def in_reactor(expected_result):
+    def outer(f):
+        def inner():
+            reactor = Reactor()
+            reactor.start(f)
+            if callable(expected_result):
+                assert expected_result(reactor.result)
+            else:
+                assert reactor.result == expected_result
+        return inner
+    return outer
 
-def test_noop():
-    def run(reactor):
-        pass
+@in_reactor('ok')
+def test_noop(reactor):
+    reactor.result = 'ok'
 
-    reactor = Reactor()
-    reactor.start(run)
+@in_reactor(lambda (qux, ref): qux == 'root' and ref() is None)
+def test_file(reactor):
+    f = reactor.open('/etc/passwd')
+    reactor.result = f.read(4), weakref.ref(f)
 
-def test_sleep():
-    def run(reactor):
-        start = time.time()
-        reactor.sleep(0.1)
-        stop = time.time()
-        reactor.result = stop - start
-
-    reactor = Reactor()
-    reactor.start(run)
-    assert round(reactor.result, 1) == 0.1
+@in_reactor(lambda result: round(result, 2) == 0.1)
+def test_sleep(reactor):
+    start = time.time()
+    reactor.sleep(0.1)
+    stop = time.time()
+    reactor.result = stop - start
 
 def test_stop():
     def sleeper(reactor):
@@ -47,63 +47,48 @@ def test_stop():
 
     assert round(stop - start, 1) == 0.0
 
-def test_connect_tcp():
-    def run(reactor):
-        t = reactor.connect('tcp:localhost:echo')
-        t.write('Hello, World!\r\n')
-        t.write('%s:%d - %s:%d\r\n' % (t.here + t.peer))
-        t.write('foo')
-        t.shutdown(1)
-        reactor.result = t.readlines()
-        reactor.port = t.here[1]
-        t.close()
-
-    reactor = Reactor()
-    reactor.start(run)
-    assert reactor.result == ['Hello, World!\r\n',
-                              '127.0.0.1:%d - 127.0.0.1:7\r\n' % reactor.port,
-                              'foo']
+@in_reactor(['Hello, World!\r\n', '127.0.0.1:7\r\n', 'foo'])
+def test_connect_tcp(reactor):
+    t = reactor.connect('tcp:localhost:echo')
+    t.write('Hello, World!\r\n')
+    t.write('%s:%d\r\n' % t.peer)
+    t.write('foo')
+    t.shutdown(1)
+    reactor.result = t.readlines()
+    t.close()
 
 port = int(random.random() * 8192 + 22000)
 addr = 'tcp:localhost:%d' % port
 
-def test_listen_tcp():
+@in_reactor('127.0.0.1:%d' % port)
+def test_listen_tcp(reactor):
     def application(transport):
-        transport.write('%s:%d - %s:%d' % (transport.here + transport.peer))
+        transport.write('%s:%d' % transport.here)
         transport.close()
-    def run(reactor):
-        reactor.listen(application, addr)
-    
-        t = reactor.connect(addr)
-        reactor.ports = port, t.here[1]
-        reactor.result = t.read()
-        t.close()
+    reactor.listen(application, addr)
 
-        reactor.stop()
+    t = reactor.connect(addr)
+    reactor.result = t.read()
+    t.close()
 
-    reactor = Reactor()
-    reactor.start(run)
-    assert reactor.result == '127.0.0.1:%d - 127.0.0.1:%d' % reactor.ports
+    reactor.stop()
 
-def test_listen_tcp_tieout():
-    def run(reactor):
-        def application(transport):
-            reactor.sleep(60.0)
-            transport.close()
+@in_reactor('Ok')
+def test_listen_tcp_timeout(reactor):
+    def application(transport):
+        reactor.sleep(60.0)
+        transport.close()
 
-        reactor.listen(application, addr)
-    
-        t = reactor.connect(addr)
-        try:
-            _ = t.read(8192, 0.1)
-        except TimeoutError:
-            reactor.result = 'Ok'
-        else:
-            reactor.result = 'Fail'
-        t.close()
+    reactor.listen(application, addr)
 
-        reactor.stop()
+    t = reactor.connect(addr)
+    try:
+        _ = t.read(8192, 0.1)
+    except TimeoutError:
+        reactor.result = 'Ok'
+    else:
+        reactor.result = 'Fail'
+    t.close()
 
-    reactor = Reactor()
-    reactor.start(run)
-    assert reactor.result == 'Ok'
+    reactor.stop()
+
