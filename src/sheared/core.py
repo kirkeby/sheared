@@ -27,12 +27,11 @@ class Reactor:
     def __init__(self):
         # State of reactor, is 'stopped', 'running' or 'stopping'
         self.state = 'stopped'
-        # Mapping selected file descriptors to greenlets
-        self.fd_greenlet = {}
-        # File descriptors sets to select on
-        self.reading, self.writing = [], []
+        # mapping file descriptors to greenlets waiting for I/O
+        self.reading, self.writing = dictolist(), dictolist()
         # heapq of sleeping processes
         self.sleepers = []
+        # mapping blocked on objects to blockees
         self.blockers = dictolist()
         
     # -*- Reactor control functions -*-
@@ -171,10 +170,12 @@ class Reactor:
 
     def __cleanup(self):
         err = ReactorExit('Reactor is shutting down')
-        for fd in self.reading + self.writing:
-            self.__notify_on_fd(fd, err)
+        for fd in self.reading.keys():
+            self.__notify_on_fd(fd, self.reading, err)
+        for fd in self.writing.keys():
+            self.__notify_on_fd(fd, self.writing, err)
 
-        assert not (self.fd_greenlet or self.reading or self.writing)
+        assert not (self.reading or self.writing)
 
     # -*- Internal I/O methods called in user greenlets -*-
     def _read(self, fd, max, timeout):
@@ -195,8 +196,7 @@ class Reactor:
 
     def __wait_on_io(self, fd, l, t):
         g = greenlet.getcurrent()
-        self.fd_greenlet[fd] = g, l
-        l.append(fd)
+        l.append_to(fd, g)
         if t is not None:
             heappush(self.sleepers, (t, g, EV_TIMEOUT))
         r = g.parent.switch()
@@ -204,7 +204,7 @@ class Reactor:
         if r is EV_IO_READY:
             return
         elif r is EV_TIMEOUT:
-            self.__notify_on_fd(fd, TimeoutError())
+            self.__notify_on_fd(fd, l, TimeoutError())
         else:
             raise AssertionError('I/O-waiting greenlet awoken with %r' % r)
 
@@ -222,18 +222,22 @@ class Reactor:
 
     def __select(self, timeout):
         try:
-            r, w, e = select(self.reading, self.writing, [], timeout)
-            for fd in chain(r, w, e):
-                self.__notify_on_fd(fd)
+            r, w, e = select(self.reading.keys(),
+                             self.writing.keys(),
+                             [],
+                             timeout)
+            for fd in r:
+                self.__notify_on_fd(fd, self.reading)
+            for fd in w:
+                self.__notify_on_fd(fd, self.writing)
         except SelectError:
             log.warn('Error waiting for I/O', exc_info=True)
             self.__flush_unselectables()
 
-    def __notify_on_fd(self, fd, ev=EV_IO_READY):
-        g, l = self.fd_greenlet.pop(fd)
-        l.remove(fd)
-
+    def __notify_on_fd(self, fd, l, ev=EV_IO_READY):
+        g = l.pop_from(fd)
         if g.dead:
+            # FIXME - restart notify-on-fd
             log.error('Greenlet waiting for IO in %d is dead')
         elif isinstance(ev, Exception):
             g.throw(ev)
@@ -244,11 +248,13 @@ class Reactor:
         # Assume there is only one, if there are more, we'll just get called
         # more than once.
         try:
+            l = self.reading
             for fd in self.reading:
                 select([fd], [], [], 0.0)
+            l = self.writing
             for fd in self.writing:
                 select([], [fd], [], 0.0)
         except SelectError, err:
-            self.__notify_on_fd(fd, err)
+            self.__notify_on_fd(fd, l, err)
         
 __all__ = ['Reactor']

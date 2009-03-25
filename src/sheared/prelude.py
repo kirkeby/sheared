@@ -133,6 +133,15 @@ class dictolist(object):
     def __init__(self):
         self.pairs = {}
 
+    def keys(self):
+        return self.pairs.keys()
+
+    def __iter__(self):
+        return iter(self.pairs)
+
+    def __len__(self):
+        return len(self.pairs)
+
     def append_to(self, key, item):
         if key not in self.pairs:
             self.pairs[key] = []
