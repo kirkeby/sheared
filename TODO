@@ -1,6 +1,4 @@
- * Implement .block_on(object) and .notify_on(object) greenlet signalling
-   primitives in the reactor-core, and implement full grennlet comunication
-   channels on top of that.
+ * Implement full greenlet comunication channels on top of .{block,notify}_on.
 
  * Split reactor into EventLoop (i.e. low-level I/O and timeout primitives,
    for implementing reactors) and Reactor (i.e. the greenlet primitives).

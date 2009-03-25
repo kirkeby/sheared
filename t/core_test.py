@@ -92,3 +92,20 @@ def test_listen_tcp_timeout(reactor):
 
     reactor.stop()
 
+@in_reactor('Ok')
+def test_block_notify(reactor):
+    def one(o):
+        reactor.result = reactor.block_on(o)
+    def two(o, what):
+        reactor.notify_on(o, what)
+
+    reactor.spawn(one, (42,))
+    reactor.spawn(two, (42, 'Ok'))
+
+@in_reactor('Ok')
+def test_block_notify_timeout(reactor):
+    try:
+        reactor.block_on(42, 0.1)
+    except TimeoutError:
+        reactor.result = 'Ok'
+

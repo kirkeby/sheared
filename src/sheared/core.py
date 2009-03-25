@@ -29,9 +29,10 @@ from socket import socket, SOL_SOCKET, SO_ERROR, SO_REUSEADDR
 from socket import error as SocketError
 from fcntl import fcntl, F_SETFL
 from errno import EINPROGRESS
-from heapq import heappush, heappop
+from heapq import heappush, heappop, _siftdown
 
 from sheared.prelude import parse_address_uri, ReactorFile, ReactorSocket
+from sheared.prelude import dictolist
 from sheared.error import TimeoutError, ReactorExit
 
 import logging
@@ -52,6 +53,7 @@ class Reactor:
         self.reading, self.writing = [], []
         # heapq of sleeping processes
         self.sleepers = []
+        self.blockers = dictolist()
         
     # -*- Reactor control functions -*-
     def start(self, f):
@@ -72,18 +74,39 @@ class Reactor:
         self.state = 'stopping'
 
     # -*- Greenlet control functions -*-
+    def block_on(self, o, timeout=None):
+        g = greenlet.getcurrent()
+        if timeout is None:
+            it = (sys.maxint, g, EV_TIMEOUT)
+        else:
+            it = (time() + timeout, g, EV_TIMEOUT)
+        heappush(self.sleepers, it)
+        self.blockers.append_to(o, it)
+
+        r = g.parent.switch()
+        if r is EV_TIMEOUT:
+            self.blockers.remove_from(o, it)
+            raise TimeoutError()
+        return r
+
+    def notify_on(self, o, what):
+        it = self.blockers.pop_from(o)
+        i = self.sleepers.index(it)
+        self.sleepers[i] = (0, it[1], what)
+        _siftdown(self.sleepers, 0, i)
+
     def sleep(self, seconds):
         g = greenlet.getcurrent()
-        heappush(self.sleepers, (time() + seconds, g))
+        heappush(self.sleepers, (time() + seconds, g, EV_TIMEOUT))
         r = g.parent.switch()
+        if not r is EV_TIMEOUT:
+            raise AssertionError('sleeping greenlet awoken with %r' % r)
 
     def spawn(self, function, args=(), kwargs={}):
         g = greenlet(function)
-        heappush(self.sleepers, (0.0, g.parent))
+        heappush(self.sleepers, (0.0, g.parent, EV_TIMEOUT))
         g.parent = g.parent.parent
-        r = g.switch(*args, **kwargs)
-        if not r is EV_TIMEOUT:
-            raise AssertionError('sleeping greenlet awoken with %r' % r)
+        g.switch(*args, **kwargs)
 
     # -*- I/O Convenience methods -*-
     def open(self, *args):
@@ -176,7 +199,7 @@ class Reactor:
         self.fd_greenlet[fd] = g, l
         l.append(fd)
         if t is not None:
-            heappush(self.sleepers, (t, g))
+            heappush(self.sleepers, (t, g, EV_TIMEOUT))
         r = g.parent.switch()
 
         if r is EV_IO_READY:
@@ -189,10 +212,10 @@ class Reactor:
     # -*- Internal I/O methods called in reactor greenlet -*-
     def __wake_sleepers(self, now):
         while self.sleepers and self.sleepers[0][0] <= now:
-            t, g = heappop(self.sleepers)
-            if now - t > 3.0:
+            t, g, ev = heappop(self.sleepers)
+            if t and now - t > 3.0:
                 log.info('... greenlet overslept.')
-            g.switch(EV_TIMEOUT)
+            g.switch(ev)
         if self.sleepers:
             return self.sleepers[0][0] - now
         else:

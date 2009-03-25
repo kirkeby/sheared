@@ -116,3 +116,23 @@ class ReactorSocket(ReactorFile):
         self.closer = None
         self.reactor = None
 
+class dictolist(object):
+    '''I am a dict'o'lists.'''
+    def __init__(self):
+        self.pairs = {}
+
+    def append_to(self, key, item):
+        if key not in self.pairs:
+            self.pairs[key] = []
+        self.pairs[key].append(item)
+
+    def pop_from(self, key, i=0):
+        v = self.pairs[key].pop(i)
+        if not self.pairs[key]:
+            del self.pairs[key]
+        return v
+
+    def remove_from(self, key, item):
+        self.pairs[key].remove(item)
+        if not self.pairs[key]:
+            del self.pairs[key]
