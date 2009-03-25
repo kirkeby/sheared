@@ -95,6 +95,11 @@ class Reactor:
         rf.file = f
         return rf
 
+    def socket(self, family, type):
+        sock = socket(family, type)
+        fcntl(sock.fileno(), F_SETFL, os.O_NONBLOCK)
+        return ReactorSocket(self, sock)
+
     def listen(self, factory, addr, backlog=5):
         domain, addr = parse_address_uri(addr)
         sock = socket(*domain)
@@ -124,7 +129,10 @@ class Reactor:
         if err:
             raise SocketError, (err, os.strerror(err))
 
-        return ReactorSocket(self, sock)
+        s = ReactorSocket(self, sock)
+        s.here = sock.getsockname()
+        s.peer = sock.getpeername()
+        return s
 
     def __accept(self, factory, sock):
         try:
@@ -136,6 +144,8 @@ class Reactor:
                 s, a = sock.accept()
                 fcntl(s.fileno(), F_SETFL, os.O_NONBLOCK)
                 t = ReactorSocket(self, s)
+                t.here = s.getsockname()
+                t.peer = s.getpeername()
                 self.spawn(factory, (t,))
             
         finally:
@@ -170,6 +180,15 @@ class Reactor:
     def _read(self, fd, max, timeout):
         self.__wait_on_io(fd, self.reading, timeout)
         return os.read(fd, max)
+    def _recvfrom(self, sock, max, timeout):
+        self.__wait_on_io(sock.fileno(), self.reading, timeout)
+        return sock.recvfrom(max)
+    def _send(self, sock, bytes, timeout):
+        self.__wait_on_io(sock.fileno(), self.writing, timeout)
+        return sock.send(bytes)
+    def _sendto(self, sock, bytes, flags, addr, timeout):
+        self.__wait_on_io(sock.fileno(), self.writing, timeout)
+        return sock.sendto(bytes, flags, addr)
     def _write(self, fd, data, timeout):
         self.__wait_on_io(fd, self.writing, timeout)
         return os.write(fd, data)

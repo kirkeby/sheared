@@ -23,6 +23,8 @@ def parse_address_uri(where):
 
     return domain, address
 
+# FIXME - Why did I add this? Is there a good reason, the __del__ method
+# from here can't be on ReactorFile? Brain too tired to solve this mystery.
 class ReactorFileCloser:
     '''I make sure the file you hand me is closed, when I am deleted.'''
     def __init__(self, file):
@@ -95,26 +97,36 @@ class ReactorFile:
 
     def close(self):
         os.close(self.fd)
-        self.reactor = None
+        self.closer.file = None
         self.closer = None
+        self.reactor = None
 
 class ReactorSocket(ReactorFile):
     def __init__(self, reactor, sock):
-        self.reactor = reactor
-        self.closer = ReactorFileCloser(sock)
-        self.fd = sock.fileno()
-        self.buffered = ''
-        self.sock = sock
-        self.here = self.sock.getsockname()
-        self.peer = self.sock.getpeername()
+        ReactorFile.__init__(self, reactor, sock.fileno())
+        self.socket = sock
+
+    def recv(self, max_bytes):
+        return self.recvfrom(max_bytes)[1]
+
+    def recvfrom(self, max_bytes):
+        return self.reactor._recvfrom(self.socket, max_bytes, None)
+
+    def send(self, buffer):
+        return self.reactor._send(self.socket, buffer, None)
+        
+    def sendto(self, buffer, addr, flags=0):
+        return self.reactor._sendto(self.socket, buffer, flags, addr, None)
+
+    def bind(self, addr):
+        self.socket.bind(addr)
+
+    def connect(self, addr):
+        self.socket.connect(addr)
+        # FIXME - Ehm, return when ready, i.e. readable, right?
 
     def shutdown(self, how):
-        self.sock.shutdown(how)
-
-    def close(self):
-        self.sock.close()
-        self.closer = None
-        self.reactor = None
+        self.socket.shutdown(how)
 
 class dictolist(object):
     '''I am a dict'o'lists.'''

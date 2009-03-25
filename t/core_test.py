@@ -108,4 +108,3 @@ def test_block_notify_timeout(reactor):
         reactor.block_on(42, 0.1)
     except TimeoutError:
         reactor.result = 'Ok'
-
