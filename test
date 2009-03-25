@@ -1,5 +1,0 @@
-#!/bin/sh
-set -e
-python setup.py install --prefix=$PWD/install
-cd install/lib/python$(python -c 'import sys ; print "%d.%d" % sys.version_info[:2]')/site-packages
-env PYTHONPATH=$PWD:$PYTHONPATH py.test "$@"

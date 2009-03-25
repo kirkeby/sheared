@@ -2,7 +2,7 @@ import time
 import random
 import weakref
 
-from sheared.reactors.greenlet import Reactor
+from sheared import Reactor
 
 def test_file():
     def run(reactor):
@@ -91,4 +91,3 @@ def test_listen_tcp():
     reactor = Reactor()
     reactor.start(run)
     assert reactor.result == '127.0.0.1:%d - 127.0.0.1:%d' % reactor.ports
-

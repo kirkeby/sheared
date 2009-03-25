@@ -1,6 +1,2 @@
-Document is badly needed; both as doc-strings, as HOWTOs, and as more
+Documentation is badly needed; both as doc-strings, as HOWTOs, and as more
 traditional book-like ramblings.
-
-Implement HTTP/1.1 in the web-server.
-
-Clashes in argument names should be caught by Application.

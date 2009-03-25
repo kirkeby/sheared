@@ -1,0 +1,5 @@
+Sheared is an asynchronous network programming library for Python, built
+with greenlets and event polling instead of threads and blocking I/O.
+
+[ The origianl iplementation is from sometime in 2002 or 2003, it is
+all starting get a bit hazy... ]
