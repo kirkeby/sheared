@@ -1,3 +1,4 @@
+import os
 import time
 import random
 import weakref
@@ -23,7 +24,8 @@ def test_noop(reactor):
 
 @in_reactor(lambda (qux, ref): qux == 'root' and ref() is None)
 def test_file(reactor):
-    f = reactor.open('/etc/passwd')
+    here = os.path.dirname(__file__)
+    f = reactor.open(os.path.join(here, 'passwd'))
     reactor.result = f.read(4), weakref.ref(f)
 
 @in_reactor(lambda result: round(result, 1) == 0.1)
