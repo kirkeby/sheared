@@ -87,6 +87,16 @@ class Reactor:
         g.parent = g.parent.parent
         g.switch(*args, **kwargs)
 
+    # -*- Internal greenlet control methods -*-
+    def __schedule(self, g, o):
+        try:
+            if isinstance(o, Exception):
+                g.throw(o)
+            else:
+                g.switch(o)
+        except Exception:
+            log.error('Uncaught exception in greenlet %s', g, exc_info=True)
+
     # -*- I/O Convenience methods -*-
     def open(self, *args):
         return ReactorFile(self, open(*args))
@@ -201,7 +211,8 @@ class Reactor:
         if r is EV_IO_READY:
             return
         elif r is EV_TIMEOUT:
-            self.__notify_on_fd(fd, l, TimeoutError())
+            l.remove_from(fd, g)
+            raise TimeoutError()
         else:
             raise AssertionError('I/O-waiting greenlet awoken with %r' % r)
 
@@ -211,7 +222,7 @@ class Reactor:
             t, g, ev = heappop(self.sleepers)
             if t and now - t > 3.0:
                 log.info('... greenlet overslept.')
-            g.switch(ev)
+            self.__schedule(g, ev)
         if self.sleepers:
             return self.sleepers[0][0] - now
         else:
@@ -234,12 +245,10 @@ class Reactor:
     def __notify_on_fd(self, fd, l, ev=EV_IO_READY):
         g = l.pop_from(fd)
         if g.dead:
-            # FIXME - restart notify-on-fd
-            log.error('Greenlet waiting for IO in %d is dead')
-        elif isinstance(ev, Exception):
-            g.throw(ev)
-        elif ev is not None:
-            g.switch(ev)
+            # FIXME - Restart notify-on-fd - there might be others waiting.
+            log.error('Greenlet %s waiting for IO on fd %d is dead', g, fd)
+        else:
+            self.__schedule(g, ev)
 
     def __flush_unselectables(self):
         # Assume there is only one, if there are more, we'll just get called

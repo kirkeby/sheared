@@ -12,9 +12,11 @@ def in_reactor(expected_result):
             reactor = Reactor()
             reactor.start(f)
             if callable(expected_result):
-                assert expected_result(reactor.result)
+                assert expected_result(reactor.result), \
+                       repr(reactor.result)
             else:
-                assert reactor.result == expected_result
+                assert reactor.result == expected_result, \
+                       '%r <> %r' % (reactor.result, expected_result,)
         return inner
     return outer
 
