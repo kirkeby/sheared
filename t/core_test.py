@@ -26,7 +26,7 @@ def test_file(reactor):
     f = reactor.open('/etc/passwd')
     reactor.result = f.read(4), weakref.ref(f)
 
-@in_reactor(lambda result: round(result, 2) == 0.1)
+@in_reactor(lambda result: round(result, 1) == 0.1)
 def test_sleep(reactor):
     start = time.time()
     reactor.sleep(0.1)
