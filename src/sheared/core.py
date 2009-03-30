@@ -89,10 +89,7 @@ class Reactor:
 
     # -*- I/O Convenience methods -*-
     def open(self, *args):
-        f = open(*args)
-        rf = ReactorFile(self, f.fileno())
-        rf.file = f
-        return rf
+        return ReactorFile(self, open(*args))
 
     def socket(self, family, type):
         sock = socket(family, type)

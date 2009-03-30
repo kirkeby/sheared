@@ -1,3 +1,4 @@
+import sys
 import os
 from socket import getservbyname, AF_UNIX, AF_INET, SOCK_STREAM
 
@@ -23,26 +24,11 @@ def parse_address_uri(where):
 
     return domain, address
 
-# FIXME - Why did I add this? Is there a good reason, the __del__ method
-# from here can't be on ReactorFile? Brain too tired to solve this mystery.
-class ReactorFileCloser:
-    '''I make sure the file you hand me is closed, when I am deleted.'''
-    def __init__(self, file):
-        self.file = file
-    def __del__(self):
-        if self.file is None:
-            return
-        if isinstance(self.file, int):
-            os.close(self.file)
-        else:
-            self.file.close()
-            self.file = None
-
 class ReactorFile:
-    def __init__(self, reactor, fd): 
+    def __init__(self, reactor, file): 
         self.reactor = reactor
-        self.closer = ReactorFileCloser(fd)
-        self.fd = fd
+        self.file = file
+        self.fd = file.fileno()
         self.buffered = ''
 
     def read(self, max=None, timeout=None):
@@ -96,37 +82,37 @@ class ReactorFile:
             data = data[i:]
 
     def close(self):
-        os.close(self.fd)
-        self.closer.file = None
-        self.closer = None
+        if self.file is None:
+            return
+        self.file.close()
+        self.file = None
         self.reactor = None
 
 class ReactorSocket(ReactorFile):
     def __init__(self, reactor, sock):
-        ReactorFile.__init__(self, reactor, sock.fileno())
-        self.socket = sock
+        ReactorFile.__init__(self, reactor, sock)
 
     def recv(self, max_bytes):
         return self.recvfrom(max_bytes)[1]
 
     def recvfrom(self, max_bytes):
-        return self.reactor._recvfrom(self.socket, max_bytes, None)
+        return self.reactor._recvfrom(self.file, max_bytes, None)
 
     def send(self, buffer):
-        return self.reactor._send(self.socket, buffer, None)
+        return self.reactor._send(self.file, buffer, None)
         
     def sendto(self, buffer, addr, flags=0):
-        return self.reactor._sendto(self.socket, buffer, flags, addr, None)
+        return self.reactor._sendto(self.file, buffer, flags, addr, None)
 
     def bind(self, addr):
-        self.socket.bind(addr)
+        self.file.bind(addr)
 
     def connect(self, addr):
-        self.socket.connect(addr)
+        self.file.connect(addr)
         # FIXME - Ehm, return when ready, i.e. readable, right?
 
     def shutdown(self, how):
-        self.socket.shutdown(how)
+        self.file.shutdown(how)
 
 class dictolist(object):
     '''I am a dict'o'lists.'''
