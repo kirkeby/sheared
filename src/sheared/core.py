@@ -8,8 +8,9 @@ from select import error as SelectError
 from socket import socket, SOL_SOCKET, SO_ERROR, SO_REUSEADDR
 from socket import error as SocketError
 from fcntl import fcntl, F_SETFL
-from errno import EINPROGRESS
+from errno import EINPROGRESS, EINTR
 from heapq import heappush, heappop, _siftdown
+from signal import signal, SIG_DFL, SIG_IGN
 
 from sheared.prelude import parse_address_uri, ReactorFile, ReactorSocket
 from sheared.prelude import dictolist
@@ -33,6 +34,9 @@ class Reactor:
         self.sleepers = []
         # mapping blocked on objects to blockees
         self.blockers = dictolist()
+        # signal handlers and pending signals
+        self.signal_handlers = {}
+        self.pending_signals = []
         
     # -*- Reactor control functions -*-
     def start(self, f):
@@ -86,6 +90,17 @@ class Reactor:
         heappush(self.sleepers, (0.0, g.parent, EV_TIMEOUT))
         g.parent = g.parent.parent
         g.switch(*args, **kwargs)
+
+    # -*- Signal handling -*-
+    def signal(self, signo, action):
+        if action is SIG_DFL or action is SIG_IGN:
+            if signo in self.signal_handlers:
+                del self.signal_handlers[signo]
+        elif callable(action):
+            self.signal_handlers[signo] = action
+        else:
+            raise ValueError('action neither SIG_DFL, SIG_IGN or callable')
+        return signal(signo, self.__handle_signal)
 
     # -*- Internal greenlet control methods -*-
     def __schedule(self, g, o):
@@ -167,6 +182,11 @@ class Reactor:
 
     def __mainloop(self):
         while 1:
+            # FIXME - This leaves a window where we can delay delivery of a
+            # signal indefinetly. See http://tinyurl.com/c8h93d for the
+            # details, and possible solutions.
+            if self.pending_signals:
+                self.__handle_signals()
             now = time()
             timeout = self.__wake_sleepers(now)
             if not timeout and not self.reading and not self.writing:
@@ -238,9 +258,10 @@ class Reactor:
                 self.__notify_on_fd(fd, self.reading)
             for fd in w:
                 self.__notify_on_fd(fd, self.writing)
-        except SelectError:
-            log.warn('Error waiting for I/O', exc_info=True)
-            self.__flush_unselectables()
+        except SelectError, ex:
+            if ex.args[0] <> EINTR:
+                log.warn('Error waiting for I/O', exc_info=True)
+                self.__flush_unselectables()
 
     def __notify_on_fd(self, fd, l, ev=EV_IO_READY):
         g = l.pop_from(fd)
@@ -262,5 +283,20 @@ class Reactor:
                 select([], [fd], [], 0.0)
         except SelectError, err:
             self.__notify_on_fd(fd, l, err)
+
+    # -*- Internal signal handling methods -*-
+    def __handle_signal(self, signal, frame):
+        handler = self.signal_handlers[signal]
+        self.pending_signals.append((signal, handler))
+        
+    def __handle_signals(self):
+        def f(pending):
+            for signal, handler in pending:
+                try:
+                    handler(signal)
+                except Exception:
+                    log.warn('Exception in signal-handler', exc_info=True)
+        self.pending_signals, pending_signals = [], self.pending_signals
+        greenlet(f).switch(pending_signals)
         
 __all__ = ['Reactor']
